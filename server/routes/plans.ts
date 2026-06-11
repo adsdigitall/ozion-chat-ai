@@ -1,63 +1,61 @@
+// @ts-nocheck
 import { Router } from 'express';
-import { db } from '../db/index.js';
-import * as schema from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { getSupabase } from '../db/supabase.js';
 import crypto from 'crypto';
 
 const router = Router();
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const rows = db.select().from(schema.plans).all();
-    res.json(rows.map((p: any) => ({ ...p, features: JSON.parse(p.features || '[]') })));
+    const sb = getSupabase();
+    const { data, error } = await sb.from('plans').select('*');
+    if (error) throw error;
+    res.json((data || []).map((p: any) => ({ ...p, features: JSON.parse(p.features || '[]') })));
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
+    const sb = getSupabase();
     const id = crypto.randomUUID();
-    const row = { id, ...req.body, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    db.insert(schema.plans).values(row).run();
-    res.json(row);
+    const row = { id, name: req.body.name, price: req.body.price, features: JSON.stringify(req.body.features || []), limits: JSON.stringify(req.body.limits || {}), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    const { error } = await sb.from('plans').insert(row);
+    if (error) throw error;
+    res.json({ ...row, features: req.body.features || [], limits: req.body.limits || {} });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
-    db.update(schema.plans).set({ ...req.body, updatedAt: new Date().toISOString() }).where(eq(schema.plans.id, req.params.id)).run();
+    const sb = getSupabase();
+    const updates: any = { updated_at: new Date().toISOString() };
+    if (req.body.name) updates.name = req.body.name;
+    if (req.body.price) updates.price = req.body.price;
+    if (req.body.features) updates.features = JSON.stringify(req.body.features);
+    if (req.body.limits) updates.limits = JSON.stringify(req.body.limits);
+    
+    const { error } = await sb.from('plans').update(updates).eq('id', req.params.id);
+    if (error) throw error;
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    db.delete(schema.plans).where(eq(schema.plans.id, req.params.id)).run();
+    const sb = getSupabase();
+    const { error } = await sb.from('plans').delete().eq('id', req.params.id);
+    if (error) throw error;
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.get('/subscriptions', (req, res) => {
+router.get('/subscriptions', async (req, res) => {
   try {
     const tid = (req.headers['x-tenant-id'] as string) || 'default';
-    const rows = db.select().from(schema.subscriptions).where(eq(schema.subscriptions.tenantId, tid)).all();
-    res.json(rows);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-router.post('/subscriptions', (req, res) => {
-  try {
-    const tid = (req.headers['x-tenant-id'] as string) || 'default';
-    const id = crypto.randomUUID();
-    const row = { id, tenantId: tid, ...req.body, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    db.insert(schema.subscriptions).values(row).run();
-    res.json(row);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-router.put('/subscriptions/:id', (req, res) => {
-  try {
-    db.update(schema.subscriptions).set({ ...req.body, updatedAt: new Date().toISOString() }).where(eq(schema.subscriptions.id, req.params.id)).run();
-    res.json({ ok: true });
+    const sb = getSupabase();
+    const { data, error } = await sb.from('subscriptions').select('*').eq('tenant_id', tid);
+    if (error) throw error;
+    res.json(data || []);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

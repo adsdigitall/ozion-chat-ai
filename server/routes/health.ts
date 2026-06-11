@@ -1,45 +1,36 @@
 // @ts-nocheck
 import { Router } from 'express';
-import { db } from '../db/index.js';
-import * as schema from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { getSupabase } from '../db/supabase.js';
 import crypto from 'crypto';
 
 const router = Router();
 
-router.get('/system', (req, res) => {
+router.get('/system', async (req, res) => {
   try {
-    const rows = db.select().from(schema.systemHealth).all();
-    res.json(rows);
+    const sb = getSupabase();
+    const { data, error } = await sb.from('system_health').select('*');
+    if (error) throw error;
+    res.json(data || []);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/check', (req, res) => {
+router.post('/check', async (req, res) => {
   try {
-    const components = ['meta-cloud-api', 'webhooks-whatsapp', 'openai', 'elevenlabs', 'utmify', 'kiwify', 'hotmart', 'asaas', 'mercadopago', 'stripe', 'database', 'storage', 'queues', 'auth', 'webhooks'];
+    const sb = getSupabase();
+    const components = ['meta-cloud-api', 'webhooks-whatsapp', 'database', 'storage', 'auth', 'webhooks'];
+    
     for (const comp of components) {
-      const existing = db.select().from(schema.systemHealth).where(eq(schema.systemHealth.component, comp)).get() as any;
-      const status = existing ? existing.status : 'online';
+      const { data: existing } = await sb.from('system_health').select('*').eq('component', comp).single();
+      
       if (existing) {
-        db.update(schema.systemHealth).set({ lastCheckedAt: new Date().toISOString() }).where(eq(schema.systemHealth.id, existing.id)).run();
+        await sb.from('system_health').update({ lastCheckedAt: new Date().toISOString() }).eq('id', existing.id);
       } else {
-        db.insert(schema.systemHealth).values({ id: crypto.randomUUID(), component: comp, status, lastCheckedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }).run();
+        await sb.from('system_health').insert({ id: crypto.randomUUID(), component: comp, status: 'online', lastCheckedAt: new Date().toISOString(), updated_at: new Date().toISOString() });
       }
     }
-    const rows = db.select().from(schema.systemHealth).all();
-    res.json({ checked: true, components: rows });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-router.put('/:component', (req, res) => {
-  try {
-    const existing = db.select().from(schema.systemHealth).where(eq(schema.systemHealth.component, req.params.component)).get() as any;
-    if (existing) {
-      db.update(schema.systemHealth).set({ ...req.body, updatedAt: new Date().toISOString() }).where(eq(schema.systemHealth.id, existing.id)).run();
-    } else {
-      db.insert(schema.systemHealth).values({ id: crypto.randomUUID(), component: req.params.component, ...req.body, updatedAt: new Date().toISOString() }).run();
-    }
-    res.json({ ok: true });
+    
+    const { data: rows } = await sb.from('system_health').select('*');
+    res.json({ checked: true, components: rows || [] });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
