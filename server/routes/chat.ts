@@ -1,125 +1,133 @@
 // @ts-nocheck
 import { Router } from 'express';
-import { db } from '../db/index.js';
-import * as schema from '../db/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { getSupabase } from '../db/supabase.js';
 import crypto from 'crypto';
 
 const router = Router();
 
-router.get('/conversations', (req, res) => {
+router.get('/conversations', async (req, res) => {
   try {
     const tid = (req.headers['x-tenant-id'] as string) || 'default';
-    const { status, search, tag, assigned, source, campaign, phoneNumber } = req.query;
-    let rows = db.select().from(schema.conversations).where(eq(schema.conversations.tenantId, tid)).all();
-    if (status) rows = rows.filter((c: any) => c.status === status);
-    if (assigned) rows = rows.filter((c: any) => c.assignedTo === assigned);
-    if (campaign) rows = rows.filter((c: any) => c.campaignId === campaign);
-    const enriched = rows.map((c: any) => {
-      const contact = db.select().from(schema.contacts).where(eq(schema.contacts.id, c.contactId)).get() as any;
-      return { ...c, contact: contact ? { ...contact, tags: JSON.parse(contact.tags || '[]'), customFields: JSON.parse(contact.customFields || '{}') } : null };
-    }).filter((c: any) => {
-      if (search && c.contact && !(c.contact.name || '').toLowerCase().includes((search as string).toLowerCase()) && !(c.contact.phone || '').includes(search as string)) return false;
-      if (tag && c.contact && !JSON.parse(c.contact.tags || '[]').includes(tag)) return false;
-      return true;
-    });
+    const sb = getSupabase();
+    
+    let query = sb.from('conversations').select('*, contacts(*)').eq('tenant_id', tid);
+    const { data: rows, error } = await query;
+    if (error) throw error;
+    
+    let enriched = (rows || []).map((c: any) => ({
+      ...c,
+      contact: c.contacts ? { ...c.contacts, tags: JSON.parse(c.contacts.tags || '[]') } : null,
+    }));
+    
+    const { status, search, assigned } = req.query;
+    if (status) enriched = enriched.filter((c: any) => c.status === status);
+    if (assigned) enriched = enriched.filter((c: any) => c.assigned_to === assigned);
+    if (search) enriched = enriched.filter((c: any) => c.contact?.name?.toLowerCase().includes((search as string).toLowerCase()));
+    
     res.json({ conversations: enriched, total: enriched.length });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.get('/conversations/:id', (req, res) => {
+router.get('/conversations/:id', async (req, res) => {
   try {
-    const conv = db.select().from(schema.conversations).where(eq(schema.conversations.id, req.params.id)).get() as any;
-    if (!conv) return res.status(404).json({ error: 'Conversation not found' });
-    const contact = db.select().from(schema.contacts).where(eq(schema.contacts.id, conv.contactId)).get() as any;
-    const msgs = db.select().from(schema.messages).where(eq(schema.messages.conversationId, req.params.id)).all();
-    res.json({ ...conv, contact: contact ? { ...contact, tags: JSON.parse(contact.tags || '[]'), customFields: JSON.parse(contact.customFields || '{}') } : null, messages: msgs });
+    const sb = getSupabase();
+    const { data: conv, error: e1 } = await sb.from('conversations').select('*, contacts(*)').eq('id', req.params.id).single();
+    if (e1 || !conv) return res.status(404).json({ error: 'Conversation not found' });
+    
+    const { data: msgs } = await sb.from('messages').select('*').eq('conversation_id', req.params.id).order('sent_at', { ascending: false });
+    
+    res.json({
+      ...conv,
+      contact: conv.contacts ? { ...conv.contacts, tags: JSON.parse(conv.contacts.tags || '[]') } : null,
+      messages: msgs || [],
+    });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/messages', (req, res) => {
+router.post('/messages', async (req, res) => {
   try {
     const { conversationId, content, type } = req.body;
     if (!conversationId || !content) return res.status(400).json({ error: 'conversationId and content required' });
 
+    const sb = getSupabase();
+
     // Risk word check
-    const riskWords = db.select().from(schema.riskWords).where(eq(schema.riskWords.isActive, true)).all();
+    const { data: riskWords } = await sb.from('risk_words').select('*').eq('is_active', true);
     const lowerContent = content.toLowerCase();
-    for (const rw of riskWords) {
-      if (lowerContent.includes((rw as any).word.toLowerCase())) {
-        db.update(schema.conversations).set({ isAiActive: false, assignedTo: 'human', updatedAt: new Date().toISOString() }).where(eq(schema.conversations.id, conversationId)).run();
-        return res.status(403).json({ error: 'Mensagem bloqueada - palavra de risco detectada', riskWord: (rw as any).word, action: 'transferred_to_human' });
+    for (const rw of (riskWords || [])) {
+      if (lowerContent.includes(rw.word.toLowerCase())) {
+        await sb.from('conversations').update({ is_ai_active: false, assigned_to: 'human', updated_at: new Date().toISOString() }).eq('id', conversationId);
+        return res.status(403).json({ error: 'Mensagem bloqueada', riskWord: rw.word, action: 'transferred_to_human' });
       }
     }
 
     const id = crypto.randomUUID();
-    const row = { id, conversationId, direction: 'outbound', type: type || 'text', content, status: 'sent', sentAt: new Date().toISOString() };
-    db.insert(schema.messages).values(row).run();
-    db.update(schema.conversations).set({ lastMessageAt: new Date().toISOString(), updatedAt: new Date().toISOString() }).where(eq(schema.conversations.id, conversationId)).run();
+    const row = { id, conversation_id: conversationId, direction: 'outbound', type: type || 'text', content, status: 'sent', sent_at: new Date().toISOString() };
+    const { error } = await sb.from('messages').insert(row);
+    if (error) throw error;
+    
+    await sb.from('conversations').update({ last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', conversationId);
+    
     res.json(row);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.put('/conversations/:id/status', (req, res) => {
+router.put('/conversations/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
-    const updates: any = { status, updatedAt: new Date().toISOString() };
-    if (status === 'closed') updates.closedAt = new Date().toISOString();
-    db.update(schema.conversations).set(updates).where(eq(schema.conversations.id, req.params.id)).run();
+    const updates: any = { status, updated_at: new Date().toISOString() };
+    if (status === 'closed') updates.closed_at = new Date().toISOString();
+    const sb = getSupabase();
+    await sb.from('conversations').update(updates).eq('id', req.params.id);
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/conversations/:id/assign', (req, res) => {
+router.post('/conversations/:id/ai-toggle', async (req, res) => {
   try {
-    db.update(schema.conversations).set({ assignedTo: req.body.userId, updatedAt: new Date().toISOString() }).where(eq(schema.conversations.id, req.params.id)).run();
-    res.json({ ok: true });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-router.post('/conversations/:id/ai-toggle', (req, res) => {
-  try {
-    const conv = db.select().from(schema.conversations).where(eq(schema.conversations.id, req.params.id)).get() as any;
+    const sb = getSupabase();
+    const { data: conv } = await sb.from('conversations').select('is_ai_active').eq('id', req.params.id).single();
     if (!conv) return res.status(404).json({ error: 'Conversation not found' });
-    const newAiState = !conv.isAiActive;
-    db.update(schema.conversations).set({ isAiActive: newAiState, updatedAt: new Date().toISOString() }).where(eq(schema.conversations.id, req.params.id)).run();
-    res.json({ ok: true, isAiActive: newAiState });
+    
+    const newState = !conv.is_ai_active;
+    await sb.from('conversations').update({ is_ai_active: newState, updated_at: new Date().toISOString() }).eq('id', req.params.id);
+    res.json({ ok: true, isAiActive: newState });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   try {
     const tid = (req.headers['x-tenant-id'] as string) || 'default';
-    const all = db.select().from(schema.conversations).where(eq(schema.conversations.tenantId, tid)).all();
-    const inbox = all.filter((c: any) => c.status === 'open' && !c.isAiActive).length;
-    const waiting = all.filter((c: any) => c.status === 'open' && c.isAiActive).length;
-    const finished = all.filter((c: any) => c.status === 'closed').length;
-    res.json({ inbox, waiting, finished, total: all.length });
+    const sb = getSupabase();
+    const { data: all } = await sb.from('conversations').select('status, is_ai_active').eq('tenant_id', tid);
+    
+    const inbox = (all || []).filter((c: any) => c.status === 'open' && !c.is_ai_active).length;
+    const waiting = (all || []).filter((c: any) => c.status === 'open' && c.is_ai_active).length;
+    const finished = (all || []).filter((c: any) => c.status === 'closed').length;
+    
+    res.json({ inbox, waiting, finished, total: (all || []).length });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.get('/risk-words', (req, res) => {
+router.get('/risk-words', async (req, res) => {
   try {
     const tid = (req.headers['x-tenant-id'] as string) || 'default';
-    const rows = db.select().from(schema.riskWords).where(eq(schema.riskWords.tenantId, tid)).all();
-    res.json(rows);
+    const sb = getSupabase();
+    const { data, error } = await sb.from('risk_words').select('*').eq('tenant_id', tid);
+    if (error) throw error;
+    res.json(data || []);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/risk-words', (req, res) => {
+router.post('/risk-words', async (req, res) => {
   try {
     const tid = (req.headers['x-tenant-id'] as string) || 'default';
+    const sb = getSupabase();
     const id = crypto.randomUUID();
-    const row = { id, tenantId: tid, word: req.body.word, isActive: true, createdAt: new Date().toISOString() };
-    db.insert(schema.riskWords).values(row).run();
+    const row = { id, tenant_id: tid, word: req.body.word, is_active: true, created_at: new Date().toISOString() };
+    const { error } = await sb.from('risk_words').insert(row);
+    if (error) throw error;
     res.json(row);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-router.delete('/risk-words/:id', (req, res) => {
-  try {
-    db.delete(schema.riskWords).where(eq(schema.riskWords.id, req.params.id)).run();
-    res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

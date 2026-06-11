@@ -1,35 +1,36 @@
-import { config, getConfig } from './config.js';
-import type { ConnectionStatus, TestResult, LogEntry, ProviderConfig } from './types.js';
+import Groq from 'groq';
 
-class ProviderClient {
-  private apiKey: string | null = null;
-  private config: typeof config;
+const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 
-  constructor() {
-    this.config = getConfig();
+let client: Groq;
+
+export function getGroqClient(): Groq {
+  if (!client) {
+    client = new Groq({ apiKey: GROQ_API_KEY });
   }
-
-  async connect(credentials: ProviderConfig): Promise<ConnectionStatus> {
-    this.apiKey = credentials.apiKey || null;
-    return {
-      connected: true,
-      version: this.config.version,
-      lastChecked: new Date().toISOString(),
-    };
-  }
-
-  async disconnect(): Promise<void> {
-    this.apiKey = null;
-  }
-
-  isConnected(): boolean {
-    return this.apiKey !== null;
-  }
-
-  getConfig() {
-    return this.config;
-  }
+  return client;
 }
 
-export const client = new ProviderClient();
-export default client;
+export async function chatCompletion(messages: any[], options: any = {}) {
+  const groq = getGroqClient();
+  return groq.chat.completions.create({
+    model: options.model || 'llama-3.3-70b-versatile',
+    messages,
+    temperature: options.temperature || 0.7,
+    max_tokens: options.max_tokens || 1024,
+  });
+}
+
+export async function testConnection() {
+  try {
+    const groq = getGroqClient();
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: 'Hello' }],
+      max_tokens: 10,
+    });
+    return { success: true, model: response.model };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
