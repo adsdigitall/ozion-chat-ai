@@ -741,3 +741,4 @@ async function updateTokenUsage() { try { const d = await api('/api/analytics/de
 function fmtN(n) { if(n>=1000000) return (n/1000000).toFixed(1)+'M'; if(n>=1000) return (n/1000).toFixed(0)+'K'; return n.toString(); }
 
 render();
+// force redeploy Thu Jun 11 15:32:46 -03 2026
