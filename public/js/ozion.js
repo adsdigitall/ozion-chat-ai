@@ -777,9 +777,9 @@ async function loadCTWA(el) {
       <div class="card-header"><h3>📊 Campanhas CTWA</h3></div>
       <div class="card-body">
         ${(campaigns?.campaigns||[]).length === 0 ? '<div style="text-align:center;padding:20px;color:var(--text-muted)"><p>Nenhuma campanha CTWA registrada</p></div>' : 
-          <table><thead><tr><th>Campanha</th><th>Cliques</th><th>Leads</th><th>Compras</th><th>Receita</th><th>CPA</th></tr></thead><tbody>
+          `<table><thead><tr><th>Campanha</th><th>Cliques</th><th>Leads</th><th>Compras</th><th>Receita</th><th>CPA</th></tr></thead><tbody>
           ${(campaigns?.campaigns||[]).map(c => `<tr><td>${c.campaign_id||'N/A'}</td><td>${c.clicks}</td><td>${c.leads}</td><td>${c.purchases}</td><td>R$ ${c.revenue.toLocaleString()}</td><td>R$ ${c.cpa.toFixed(2)}</td></tr>`).join('')}
-          </tbody></table>
+          </tbody></table>`
         }
       </div>
     </div>`;
@@ -809,9 +809,9 @@ async function loadSales(el) {
       <div class="card-header"><h3>📋 Últimas Vendas</h3></div>
       <div class="card-body">
         ${allSales.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma venda registrada</div>' : 
-          <table><thead><tr><th>Produto</th><th>Valor</th><th>Status</th><th>Data</th></tr></thead><tbody>
+          `<table><thead><tr><th>Produto</th><th>Valor</th><th>Status</th><th>Data</th></tr></thead><tbody>
           ${allSales.map(s => `<tr><td>${s.product||'N/A'}</td><td>R$ ${(s.amount||0).toFixed(2)}</td><td><span class="badge badge-${s.status==='approved'?'green':s.status==='pending'?'yellow':'red'}">${s.status}</span></td><td>${formatDate(s.createdAt)}</td></tr>`).join('')}
-          </tbody></table>
+          </tbody></table>`
         }
       </div>
     </div>`;
