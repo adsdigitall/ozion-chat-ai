@@ -338,15 +338,18 @@ async function selectConv(id) {
   
   chatMain.innerHTML = `
     <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <h3 style="font-size:15px;margin:0">${selectedConv.contact?.name||'Desconhecido'}</h3>
-        <span style="font-size:12px;color:var(--text-muted)">${selectedConv.contact?.phone||selectedConv.contactWaId||''}</span>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="avatar" style="background:#25D366;width:36px;height:36px;font-size:14px">${(selectedConv.contact?.name||'?')[0]}</div>
+        <div>
+          <h3 style="font-size:14px;margin:0">${selectedConv.contact?.name||'Desconhecido'}</h3>
+          <span style="font-size:11px;color:var(--text-muted)">${selectedConv.contact?.phone||selectedConv.contactWaId||''} • ${selectedConv.isCtwa?'CTWA':'WhatsApp'}</span>
+        </div>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-sm btn-${selectedConv.isAiActive?'warning':'success'}" onclick="toggleAI('${id}')">
+        <button class="btn btn-sm btn-${selectedConv.isAiActive?'warning':'success'}" onclick="toggleAI('${id}')" style="display:flex;align-items:center;gap:6px">
           <i class="fa-solid fa-robot"></i> ${selectedConv.isAiActive?'Pausar IA':'Ativar IA'}
         </button>
-        <button class="btn btn-sm btn-secondary" onclick="closeConv('${id}')"><i class="fa-solid fa-check"></i></button>
+        <button class="btn btn-sm btn-secondary" onclick="closeConv('${id}')" title="Finalizar"><i class="fa-solid fa-check"></i></button>
       </div>
     </div>
     <div class="chat-messages" id="chat-messages">
