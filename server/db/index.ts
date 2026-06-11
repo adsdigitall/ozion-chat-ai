@@ -1,6 +1,6 @@
 // Lazy SQLite initialization (only for local dev)
 let sqlite: any;
-let db: any;
+let _db: any;
 
 function initSqlite() {
   if (sqlite) return;
@@ -20,7 +20,8 @@ function initSqlite() {
     sqlite.pragma('foreign_keys = ON');
 
     const schema = require('./schema.js');
-    db = drizzle(sqlite, { schema });
+    const { drizzle } = require('drizzle-orm/better-sqlite3');
+    _db = drizzle(sqlite, { schema });
   } catch (e) {
     console.warn('SQLite unavailable (Vercel serverless)');
   }
@@ -28,15 +29,15 @@ function initSqlite() {
 
 export function getDb() {
   initSqlite();
-  return db;
+  return _db;
 }
 
 // Proxy that lazily initializes SQLite
 export const db = new Proxy({} as any, {
   get(target, prop) {
     initSqlite();
-    if (!db) throw new Error('SQLite not available in production');
-    return (db as any)[prop];
+    if (!_db) throw new Error('SQLite not available in production');
+    return (_db as any)[prop];
   }
 });
 
@@ -46,7 +47,6 @@ export function initDatabase() {
     console.log('⚠️  SQLite not available, using Supabase');
     return;
   }
-  // Table creation handled by migrations in production
   console.log('✅ Database initialized');
 }
 
