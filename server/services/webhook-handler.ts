@@ -1,8 +1,6 @@
 // @ts-nocheck
-import { db } from '../db/index.js';
-import { contacts, conversations, messages, ctwaAttributions, whatsappCredentials } from '../db/schema.js';
-import { eq, and } from 'drizzle-orm';
-import { sendConversionEvent } from './meta-api.js';
+import { getSupabase } from '../db/supabase.js';
+import crypto from 'crypto';
 
 interface WebhookMessage {
   from: string;
@@ -39,35 +37,36 @@ export async function processIncomingMessage(
 ) {
   const { wa_id } = contact;
   const contactName = contact.profile?.name;
+  const sb = getSupabase();
 
   // 1. Upsert contact
-  let existingContact = db.select().from(contacts)
-    .where(and(eq(contacts.tenantId, tenantId), eq(contacts.waId, wa_id)))
-    .get();
+  const { data: existingContacts } = await sb.from('contacts')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('wa_id', wa_id)
+    .limit(1);
+
+  let existingContact = existingContacts?.[0];
 
   if (!existingContact) {
     const id = crypto.randomUUID();
-    db.insert(contacts).values({
+    const { error } = await sb.from('contacts').insert({
       id,
-      tenantId,
-      waId: wa_id,
+      tenant_id: tenantId,
+      wa_id: wa_id,
       name: contactName,
       phone: wa_id,
-      leadSource: 'whatsapp',
-    }).run();
-    existingContact = db.select().from(contacts).where(eq(contacts.id, id)).get();
+      lead_source: 'whatsapp',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    if (error) console.error('Insert contact error:', error);
+    existingContact = { id, tenant_id: tenantId, wa_id, name: contactName };
   }
 
-  // 2. Extract CTWA data
+  // 2. Extract CTWA data from referral
   let ctwaData: any = null;
-  if (message.context?.ad?.ctwa) {
-    ctwaData = {
-      ctwaClid: message.context.ad.ctwa,
-      adId: message.context.ad.source?.id,
-      headline: message.context.ad.title,
-      body: message.context.ad.body,
-    };
-  } else if (message.referral?.ctwa_clid) {
+  if (message.referral?.ctwa_clid) {
     ctwaData = {
       ctwaClid: message.referral.ctwa_clid,
       adId: message.referral.source_id,
@@ -75,72 +74,83 @@ export async function processIncomingMessage(
       body: message.referral.body,
       sourceApp: message.referral.source_app,
     };
+  } else if (message.context?.ad?.ctwa) {
+    ctwaData = {
+      ctwaClid: message.context.ad.ctwa,
+      adId: message.context.ad.source?.id,
+      headline: message.context.ad.title,
+      body: message.context.ad.body,
+    };
   }
 
   // 3. Upsert conversation
-  let conversation = db.select().from(conversations)
-    .where(and(
-      eq(conversations.tenantId, tenantId),
-      eq(conversations.contactId, existingContact!.id),
-      eq(conversations.status, 'open')
-    ))
-    .get();
+  const { data: existingConvs } = await sb.from('conversations')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('contact_id', existingContact.id)
+    .eq('status', 'open')
+    .limit(1);
+
+  let conversation = existingConvs?.[0];
 
   if (!conversation) {
     const id = crypto.randomUUID();
-    db.insert(conversations).values({
+    const { error } = await sb.from('conversations').insert({
       id,
-      tenantId,
-      contactId: existingContact!.id,
-      phoneNumberId: metadata.phone_number_id,
-      contactWaId: wa_id,
+      tenant_id: tenantId,
+      contact_id: existingContact.id,
+      phone_number_id: metadata.phone_number_id,
+      contact_wa_id: wa_id,
       status: 'open',
-      isCtwa: !!ctwaData,
-      ctwaClid: ctwaData?.ctwaClid,
-      adId: ctwaData?.adId,
-      startedAt: new Date().toISOString(),
-      lastMessageAt: new Date().toISOString(),
-    }).run();
-    conversation = db.select().from(conversations).where(eq(conversations.id, id)).get();
+      is_ctwa: !!ctwaData,
+      ctwa_clid: ctwaData?.ctwaClid,
+      ad_id: ctwaData?.adId,
+      started_at: new Date().toISOString(),
+      last_message_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    if (error) console.error('Insert conversation error:', error);
+    conversation = { id, tenant_id: tenantId, contact_id: existingContact.id };
 
     // Save CTWA attribution
     if (ctwaData?.ctwaClid) {
-      try {
-        db.insert(ctwaAttributions).values({
-          id: crypto.randomUUID(),
-          tenantId,
-          contactId: existingContact!.id,
-          conversationId: conversation!.id,
-          ctwaClid: ctwaData.ctwaClid,
-          adId: ctwaData.adId,
-          headline: ctwaData.headline,
-          body: ctwaData.body,
-          sourceApp: ctwaData.sourceApp,
-          firstMessageAt: new Date().toISOString(),
-        }).run();
-      } catch (e) {
-        // Ignore duplicate ctwa_clid
+      const { error: attrError } = await sb.from('ctwa_attributions').insert({
+        id: crypto.randomUUID(),
+        tenant_id: tenantId,
+        contact_id: existingContact.id,
+        conversation_id: conversation.id,
+        ctwa_clid: ctwaData.ctwaClid,
+        ad_id: ctwaData.adId,
+        headline: ctwaData.headline,
+        body: ctwaData.body,
+        source_app: ctwaData.sourceApp,
+        first_message_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      });
+      if (attrError && !attrError.message.includes('duplicate')) {
+        console.error('Insert ctwa attribution error:', attrError);
       }
     }
   } else {
-    db.update(conversations)
-      .set({ lastMessageAt: new Date().toISOString() })
-      .where(eq(conversations.id, conversation.id))
-      .run();
+    await sb.from('conversations')
+      .update({ last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', conversation.id);
   }
 
   // 4. Save message
   const msgId = crypto.randomUUID();
-  db.insert(messages).values({
+  const { error: msgError } = await sb.from('messages').insert({
     id: msgId,
-    conversationId: conversation!.id,
-    externalId: message.id,
+    conversation_id: conversation.id,
+    external_id: message.id,
     direction: 'inbound',
     type: message.type,
     content: JSON.stringify(message.text || message.image || message.interactive || {}),
     status: 'received',
-    sentAt: new Date(parseInt(message.timestamp) * 1000).toISOString(),
-  }).run();
+    sent_at: new Date(parseInt(message.timestamp) * 1000).toISOString(),
+  });
+  if (msgError) console.error('Insert message error:', msgError);
 
   return { contact: existingContact, conversation, ctwaData };
 }
@@ -150,63 +160,26 @@ export async function processStatusUpdate(
   metadata: { phone_number_id: string },
   status: { id: string; status: string; timestamp: string }
 ) {
-  const existingMessage = db.select().from(messages)
-    .where(eq(messages.externalId, status.id))
-    .get();
+  const sb = getSupabase();
 
+  const { data: existingMessages } = await sb.from('messages')
+    .select('*')
+    .eq('external_id', status.id)
+    .limit(1);
+
+  const existingMessage = existingMessages?.[0];
   if (!existingMessage) return;
 
-  const updateData: any = {};
+  const updateData: any = { updated_at: new Date().toISOString() };
   if (status.status === 'delivered') {
     updateData.status = 'delivered';
-    updateData.deliveredAt = new Date(parseInt(status.timestamp) * 1000).toISOString();
+    updateData.delivered_at = new Date(parseInt(status.timestamp) * 1000).toISOString();
   } else if (status.status === 'read') {
     updateData.status = 'read';
-    updateData.readAt = new Date(parseInt(status.timestamp) * 1000).toISOString();
+    updateData.read_at = new Date(parseInt(status.timestamp) * 1000).toISOString();
   }
 
-  if (Object.keys(updateData).length > 0) {
-    db.update(messages).set(updateData).where(eq(messages.id, existingMessage.id)).run();
+  if (Object.keys(updateData).length > 1) {
+    await sb.from('messages').update(updateData).eq('id', existingMessage.id);
   }
-}
-
-export async function sendCtwaConversion(
-  tenantId: string,
-  ctwaClid: string,
-  eventName: string,
-  datasetId: string,
-  cApiAccessToken: string,
-  additionalData?: { currency?: string; value?: number }
-) {
-  const attribution = db.select().from(ctwaAttributions)
-    .where(eq(ctwaAttributions.ctwaClid, ctwaClid))
-    .get();
-
-  if (!attribution) throw new Error('CTWA attribution not found');
-
-  const cred = db.select().from(whatsappCredentials)
-    .where(eq(whatsappCredentials.tenantId, tenantId))
-    .get();
-
-  if (!cred) throw new Error('WhatsApp credentials not found');
-
-  await sendConversionEvent(datasetId, cApiAccessToken, {
-    eventName,
-    eventTime: Math.floor(Date.now() / 1000),
-    ctwaClid,
-    wabaId: cred.wabaId || '',
-    eventId: `${ctwaClid}-${eventName}-${Date.now()}`,
-    ...additionalData,
-  });
-
-  db.update(ctwaAttributions)
-    .set({
-      conversionSentToMeta: true,
-      conversionEventName: eventName,
-      conversionEventTime: new Date().toISOString(),
-    })
-    .where(eq(ctwaAttributions.ctwaClid, ctwaClid))
-    .run();
-
-  return { success: true };
 }
