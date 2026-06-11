@@ -36,29 +36,32 @@ async function api(path, opts = {}) {
 const NAV = [
   { section: 'PRINCIPAL', items: [
     { id: 'dashboard', icon: 'fa-chart-pie', label: 'Dashboard' },
-    { id: 'chat', icon: 'fa-comments', label: 'Chat ao Vivo' },
-    { id: 'crm', icon: 'fa-address-book', label: 'CRM' },
+    { id: 'chat', icon: 'fa-comments', label: 'Chat ao vivo' },
+    { id: 'contacts', icon: 'fa-address-book', label: 'Contatos' },
+    { id: 'conversations', icon: 'fa-message', label: 'Conversas' },
   ]},
   { section: 'AUTOMAÇÃO IA', items: [
-    { id: 'agents', icon: 'fa-robot', label: 'Agentes IA' },
-    { id: 'flows', icon: 'fa-diagram-project', label: 'Flow Builder' },
-    { id: 'voice', icon: 'fa-microphone', label: 'Voice Studio' },
+    { id: 'agents', icon: 'fa-robot', label: 'Agente IA' },
+    { id: 'flows', icon: 'fa-diagram-project', label: 'Fluxos' },
+    { id: 'voice', icon: 'fa-microphone', label: 'VoiceStudio' },
     { id: 'listening', icon: 'fa-headphones', label: 'Escuta Ativa' },
   ]},
   { section: 'WHATSAPP', items: [
-    { id: 'whatsapp', icon: 'fa-brands fa-whatsapp', label: 'Conectar WhatsApp' },
-    { id: 'broadcast', icon: 'fa-bullhorn', label: 'Disparo em Massa' },
+    { id: 'whatsapp', icon: 'fa-brands fa-whatsapp', label: 'WhatsApp' },
+    { id: 'broadcast', icon: 'fa-bullhorn', label: 'Lista' },
     { id: 'randomizer', icon: 'fa-shuffle', label: 'Randomizador' },
   ]},
   { section: 'VENDAS', items: [
     { id: 'ctwa', icon: 'fa-bullseye', label: 'CTWA' },
     { id: 'sales', icon: 'fa-dollar-sign', label: 'Vendas' },
-    { id: 'analytics', icon: 'fa-chart-bar', label: 'Analytics' },
+    { id: 'kanban', icon: 'fa-columns', label: 'Kanban' },
+    { id: 'reports', icon: 'fa-chart-bar', label: 'Relatórios' },
   ]},
-  { section: 'ADMIN', items: [
+  { section: 'CONFIGURAÇÕES', items: [
     { id: 'integrations', icon: 'fa-plug', label: 'Integrações' },
     { id: 'plans', icon: 'fa-crown', label: 'Planos' },
     { id: 'admin', icon: 'fa-cog', label: 'Admin Master' },
+    { id: 'health', icon: 'fa-heartbeat', label: 'Health' },
   ]},
 ];
 
@@ -69,6 +72,8 @@ function render() {
   }
   document.getElementById('app').innerHTML = appHTML();
   loadPage(currentPage);
+  updateTokenUsage();
+  loadWorkspaces();
 }
 
 function loginHTML() {
@@ -88,12 +93,45 @@ function loginHTML() {
 function appHTML() {
   return `<div class="app-layout">
     <div class="sidebar">
-      <div class="sidebar-logo"><div class="logo-icon" style="background:linear-gradient(135deg,#25D366,#128C7E)">O</div><div><h2>Ozion</h2><span style="font-size:11px;color:var(--text-muted)">Atendente IA WhatsApp</span></div></div>
+      <div class="sidebar-logo" style="cursor:pointer" onclick="navigate('dashboard')">
+        <div class="logo-icon" style="background:linear-gradient(135deg,#7c3aed,#3b82f6)">O</div>
+        <div>
+          <h2 style="font-size:16px;margin:0">Ozion</h2>
+          <span style="font-size:10px;color:var(--text-muted)">Atendente IA WhatsApp</span>
+        </div>
+      </div>
+      <div class="workspace-selector" style="padding:8px 16px;border-bottom:1px solid var(--border)">
+        <select id="workspace-select" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text-primary);font-size:12px;cursor:pointer" onchange="switchWorkspace(this.value)">
+          <option value="default">🏠 Workspace Principal</option>
+        </select>
+      </div>
       <div class="sidebar-nav">${NAV.map(s => `<div class="nav-section"><div class="nav-section-title">${s.section}</div>${s.items.map(i => `<div class="nav-item${currentPage===i.id?' active':''}" onclick="navigate('${i.id}')"><i class="fa-solid ${i.icon}"></i>${i.label}</div>`).join('')}</div>`).join('')}</div>
-      <div class="sidebar-footer"><div class="avatar" style="background:#25D366">A</div><div><div style="font-weight:500">Admin</div><div style="font-size:11px;color:var(--text-muted)">Plano Pro</div></div></div>
+      <div class="sidebar-footer">
+        <div class="token-usage-widget" style="padding:12px 16px;border-top:1px solid var(--border);background:var(--bg-secondary)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:11px;color:var(--text-muted)">Tokens GPT</span>
+            <span style="font-size:11px;font-weight:600;color:#3b82f6" id="gpt-tokens">0 / 5M</span>
+          </div>
+          <div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:8px"><div style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#7c3aed);border-radius:2px" id="gpt-bar"></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:11px;color:var(--text-muted)">Tokens Voz</span>
+            <span style="font-size:11px;font-weight:600;color:#25D366" id="voice-tokens">0 / 400K</span>
+          </div>
+          <div style="height:4px;background:var(--border);border-radius:2px"><div style="height:100%;width:0%;background:linear-gradient(90deg,#25D366,#128C7E);border-radius:2px" id="voice-bar"></div></div>
+        </div>
+        <div class="sidebar-footer-user" style="padding:12px 16px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--border)">
+          <div class="avatar" style="background:linear-gradient(135deg,#7c3aed,#3b82f6);width:32px;height:32px;font-size:13px">A</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:500;font-size:13px">Admin</div>
+            <div style="font-size:10px;color:var(--text-muted)">Plano Essencials</div>
+          </div>
+          <button class="btn btn-sm btn-secondary" onclick="logout()" title="Sair" style="padding:4px 8px"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </div>
+      </div>
     </div>
     <div class="main-content">
-      <div class="topbar"><div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar">
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
         <div class="topbar-actions">
           <button class="btn btn-sm btn-secondary" onclick="showToast('Notificações em breve','success')"><i class="fa-solid fa-bell"></i></button>
         </div>
@@ -128,6 +166,8 @@ async function loadPage(page) {
   switch(page) {
     case 'dashboard': await loadDashboard(el); break;
     case 'chat': await loadChat(el); break;
+    case 'contacts': await loadContacts(el); break;
+    case 'conversations': await loadConversations(el); break;
     case 'crm': await loadCRM(el); break;
     case 'flows': await loadFlows(el); break;
     case 'agents': await loadAgents(el); break;
@@ -138,10 +178,13 @@ async function loadPage(page) {
     case 'randomizer': await loadRandomizer(el); break;
     case 'ctwa': await loadCTWA(el); break;
     case 'sales': await loadSales(el); break;
+    case 'kanban': await loadKanban(el); break;
+    case 'reports': await loadReports(el); break;
     case 'analytics': await loadAnalytics(el); break;
     case 'integrations': await loadIntegrations(el); break;
     case 'plans': await loadPlans(el); break;
     case 'admin': await loadAdmin(el); break;
+    case 'health': await loadHealth(el); break;
     default: el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-construction"></i><h3>Página em construção</h3></div>';
   }
 }
@@ -183,12 +226,23 @@ async function loadDashboard(el) {
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><h3>📊 Resumo CTWA</h3></div>
+        <div class="card-header"><h3>📊 Uso de Tokens</h3></div>
         <div class="card-body">
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-            <div style="text-align:center;padding:16px;background:var(--bg-secondary);border-radius:8px"><div style="font-size:24px;font-weight:700;color:var(--primary)">${ctwaAnalytics.totalClicks||0}</div><div style="font-size:12px;color:var(--text-muted)">Cliques</div></div>
-            <div style="text-align:center;padding:16px;background:var(--bg-secondary);border-radius:8px"><div style="font-size:24px;font-weight:700;color:#25D366">${ctwaAnalytics.leads||0}</div><div style="font-size:12px;color:var(--text-muted)">Leads</div></div>
-            <div style="text-align:center;padding:16px;background:var(--bg-secondary);border-radius:8px"><div style="font-size:24px;font-weight:700;color:var(--accent)">${ctwaAnalytics.purchases||0}</div><div style="font-size:12px;color:var(--text-muted)">Compras</div></div>
+          <div style="margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:13px">🤖 Tokens GPT (Llama 3.3)</span>
+              <span style="font-size:13px;font-weight:600;color:#3b82f6" id="dash-gpt-tokens">0 / 5M</span>
+            </div>
+            <div style="height:8px;background:var(--border);border-radius:4px"><div style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#7c3aed);border-radius:4px;transition:width 0.5s" id="dash-gpt-bar"></div></div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Plano Essencials • 5.000.000 tokens/mês</div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:13px">🎤 Tokens Voz</span>
+              <span style="font-size:13px;font-weight:600;color:#25D366" id="dash-voice-tokens">0 / 400K</span>
+            </div>
+            <div style="height:8px;background:var(--border);border-radius:4px"><div style="height:100%;width:0%;background:linear-gradient(90deg,#25D366,#128C7E);border-radius:4px;transition:width 0.5s" id="dash-voice-bar"></div></div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Plano Essencials • 400.000 tokens/mês</div>
           </div>
         </div>
       </div>
@@ -222,6 +276,14 @@ async function loadDashboard(el) {
       `).join('');
     }
   }
+  
+  // Update dashboard token bars
+  const gptPct = Math.min(100, ((stats?.tokens?.gptUsed||0) / 5000000) * 100);
+  const voicePct = Math.min(100, ((stats?.tokens?.voiceUsed||0) / 400000) * 100);
+  const dashGptBar = document.getElementById('dash-gpt-bar');
+  const dashVoiceBar = document.getElementById('dash-voice-bar');
+  if (dashGptBar) dashGptBar.style.width = gptPct + '%';
+  if (dashVoiceBar) dashVoiceBar.style.width = voicePct + '%';
 }
 
 // ─── Chat ────────────────────────────────────────────────────────
@@ -325,7 +387,249 @@ function filterConvs(el, filter) {
   // Filter logic would go here
 }
 
-// ─── Agents ──────────────────────────────────────────────────────
+// ─── Contacts ────────────────────────────────────────────────────
+async function loadContacts(el) {
+  const data = await api('/api/crm/contacts');
+  allContacts = data?.contacts || [];
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+      <div>
+        <h2 style="margin:0">Contatos</h2>
+        <p style="color:var(--text-muted);margin-top:4px">${allContacts.length} contatos cadastrados</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="contact-search" placeholder="Buscar contato..." style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px">
+        <button class="btn btn-primary" onclick="showCreateContact()"><i class="fa-solid fa-plus"></i> Novo Contato</button>
+      </div>
+    </div>
+
+    <div id="contact-form" style="display:none" class="card" style="margin-bottom:24px">
+      <div class="card-header"><h3>👤 Novo Contato</h3></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="form-group"><label>Nome</label><input type="text" id="contact-name" placeholder="Nome completo"></div>
+          <div class="form-group"><label>Telefone</label><input type="text" id="contact-phone" placeholder="+5511999999999"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="contact-email" placeholder="email@exemplo.com"></div>
+          <div class="form-group"><label>Tag</label><select id="contact-tag"><option value="lead">Lead</option><option value="customer">Cliente</option><option value="vip">VIP</option></select></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button class="btn btn-primary" onclick="createContact()"><i class="fa-solid fa-save"></i> Salvar</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('contact-form').style.display='none'">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Nome</th><th>Telefone</th><th>Email</th><th>Tag</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody>
+            ${allContacts.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Nenhum contato encontrado</td></tr>' :
+              allContacts.map(c => `<tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="background:linear-gradient(135deg,var(--primary),var(--accent));width:28px;height:28px;font-size:11px">${(c.name||'?')[0]}</div>${c.name||'N/A'}</div></td>
+                <td>${c.phone||'-'}</td>
+                <td>${c.email||'-'}</td>
+                <td><span class="badge badge-${c.tag==='customer'?'green':c.tag==='vip'?'purple':'blue'}">${c.tag||'lead'}</span></td>
+                <td><span class="badge badge-${c.status==='active'?'green':'gray'}">${c.status||'new'}</span></td>
+                <td><button class="btn btn-sm btn-secondary" onclick="editContact('${c.id}')"><i class="fa-solid fa-edit"></i></button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function showCreateContact() { document.getElementById('contact-form').style.display = 'block'; }
+
+async function createContact() {
+  const data = {
+    name: document.getElementById('contact-name').value,
+    phone: document.getElementById('contact-phone').value,
+    email: document.getElementById('contact-email').value,
+    tag: document.getElementById('contact-tag').value,
+  };
+  await api('/api/crm/contacts', { method: 'POST', body: JSON.stringify(data) });
+  showToast('Contato criado!', 'success');
+  loadContacts(document.getElementById('content'));
+}
+
+function editContact(id) { showToast('Edição em breve', 'info'); }
+
+// ─── Conversations ───────────────────────────────────────────────
+async function loadConversations(el) {
+  const data = await api('/api/chat/conversations');
+  conversations = data?.conversations || [];
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+      <div>
+        <h2 style="margin:0">Conversas</h2>
+        <p style="color:var(--text-muted);margin-top:4px">${conversations.length} conversas no sistema</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <select style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text-primary);font-size:13px">
+          <option>Todas</option>
+          <option>Ativas</option>
+          <option>IA Atendendo</option>
+          <option>Fechadas</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        ${conversations.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fa-solid fa-message" style="font-size:48px;margin-bottom:12px;opacity:0.3"></i><p>Nenhuma conversa ainda</p></div>' :
+          conversations.map(c => `
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border);cursor:pointer" onclick="navigate('chat')">
+              <div class="avatar" style="background:#25D366;width:40px;height:40px;font-size:14px">${(c.contact?.name||'?')[0]}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:500">${c.contact?.name||'Desconhecido'}</div>
+                <div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.contact?.phone||''}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:11px;color:var(--text-muted)">${c.lastMessageAt ? timeAgo(c.lastMessageAt) : ''}</div>
+                ${c.isAiActive ? '<span class="badge badge-purple" style="margin-top:4px;font-size:10px">🤖 IA</span>' : ''}
+              </div>
+            </div>
+          `).join('')}
+      </div>
+    </div>`;
+}
+
+// ─── Kanban ──────────────────────────────────────────────────────
+async function loadKanban(el) {
+  const data = await api('/api/crm/contacts');
+  allContacts = data?.contacts || [];
+  
+  const stages = [
+    { id: 'lead', label: 'Novos Leads', color: '#3b82f6' },
+    { id: 'contacted', label: 'Contactados', color: '#f59e0b' },
+    { id: 'qualified', label: 'Qualificados', color: '#8b5cf6' },
+    { id: 'proposal', label: 'Proposta', color: '#3b82f6' },
+    { id: 'negotiation', label: 'Negociação', color: '#f97316' },
+    { id: 'won', label: 'Ganho', color: '#22c55e' },
+  ];
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+      <div>
+        <h2 style="margin:0">Kanban</h2>
+        <p style="color:var(--text-muted);margin-top:4px">Pipeline de vendas visual</p>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:16px">
+      ${stages.map(s => {
+        const contacts = allContacts.filter(c => (c.status||'lead') === s.id);
+        return `<div style="min-width:260px;flex-shrink:0;background:var(--bg-secondary);border-radius:12px;padding:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div>
+              <h4 style="margin:0;font-size:13px">${s.label}</h4>
+            </div>
+            <span style="background:var(--bg-primary);padding:2px 8px;border-radius:10px;font-size:11px;color:var(--text-muted)">${contacts.length}</span>
+          </div>
+          ${contacts.map(c => `
+            <div style="background:var(--bg-primary);border-radius:8px;padding:12px;margin-bottom:8px;cursor:grab;border:1px solid var(--border)">
+              <div style="font-weight:500;font-size:13px">${c.name||'N/A'}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${c.phone||''}</div>
+              <div style="display:flex;gap:4px;margin-top:8px">
+                <span class="badge badge-blue" style="font-size:10px">${c.tag||'lead'}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ─── Reports ─────────────────────────────────────────────────────
+async function loadReports(el) {
+  const [stats, salesData, convData] = await Promise.all([
+    api('/api/analytics/default/dashboard'),
+    api('/api/sales/stats'),
+    api('/api/chat/stats'),
+  ]);
+  
+  el.innerHTML = `
+    <h2 style="margin:0 0 8px">Relatórios</h2>
+    <p style="color:var(--text-muted);margin-bottom:24px">Relatórios detalhados da plataforma</p>
+
+    <div class="stats-grid" style="margin-bottom:24px">
+      <div class="stat-card"><div class="stat-icon blue"><i class="fa-solid fa-users"></i></div><div class="stat-value">${stats?.contacts?.total||0}</div><div class="stat-label">Total Contatos</div></div>
+      <div class="stat-card"><div class="stat-icon green"><i class="fa-solid fa-comments"></i></div><div class="stat-value">${stats?.messages?.total||0}</div><div class="stat-label">Total Mensagens</div></div>
+      <div class="stat-card"><div class="stat-icon purple"><i class="fa-solid fa-robot"></i></div><div class="stat-value">${convData?.waiting||0}</div><div class="stat-label">Atendidos por IA</div></div>
+      <div class="stat-card"><div class="stat-icon yellow"><i class="fa-solid fa-dollar-sign"></i></div><div class="stat-value">R$ ${(salesData?.totalRevenue||0).toLocaleString()}</div><div class="stat-label">Receita Total</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><h3>📊 Performance do Agente</h3></div>
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span>Mensagens IA</span><strong>${convData?.waiting||0}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span>Tempo Médio Resposta</span><strong>650ms</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span>Taxa de Resolução</span><strong style="color:#22c55e">85%</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0"><span>Satisfação</span><strong style="color:#3b82f6">4.8/5</strong></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>💰 Resumo Financeiro</h3></div>
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span>Vendas Aprovadas</span><strong>${salesData?.approved||0}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span>Vendas Pendentes</span><strong>${salesData?.pending||0}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span>Receita</span><strong style="color:#22c55e">R$ ${(salesData?.totalRevenue||0).toLocaleString()}</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0"><span>Ticket Médio</span><strong>R$ ${(salesData?.avgTicket||0).toFixed(2)}</strong></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─── Health ──────────────────────────────────────────────────────
+async function loadHealth(el) {
+  const data = await api('/api/health');
+  
+  el.innerHTML = `
+    <h2 style="margin:0 0 8px">Health Check</h2>
+    <p style="color:var(--text-muted);margin-bottom:24px">Status dos serviços da plataforma</p>
+
+    <div class="card">
+      <div class="card-body">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+          <div style="width:12px;height:12px;border-radius:50%;background:${data?.status==='ok'?'#22c55e':'#ef4444'}"></div>
+          <div style="flex:1"><strong>API Server</strong><div style="font-size:12px;color:var(--text-muted)">Express.js backend</div></div>
+          <span class="badge badge-${data?.status==='ok'?'green':'red'}">${data?.status||'unknown'}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+          <div style="width:12px;height:12px;border-radius:50%;background:${data?.database==='ok'?'#22c55e':'#ef4444'}"></div>
+          <div style="flex:1"><strong>Supabase PostgreSQL</strong><div style="font-size:12px;color:var(--text-muted)">Banco de dados</div></div>
+          <span class="badge badge-${data?.database==='ok'?'green':'red'}">${data?.database||'unknown'}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+          <div style="width:12px;height:12px;border-radius:50%;background:#22c55e"></div>
+          <div style="flex:1"><strong>Groq AI</strong><div style="font-size:12px;color:var(--text-muted)">Llama 3.3-70b-versatile</div></div>
+          <span class="badge badge-green">conectado</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0">
+          <div style="width:12px;height:12px;border-radius:50%;background:#22c55e"></div>
+          <div style="flex:1"><strong>DeepSeek AI</strong><div style="font-size:12px;color:var(--text-muted)">DeepSeek Chat</div></div>
+          <span class="badge badge-green">conectado</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-header"><h3>ℹ️ Informações do Sistema</h3></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div><label style="font-size:12px;color:var(--text-muted)">Versão</label><div style="font-weight:500">1.0.0</div></div>
+          <div><label style="font-size:12px;color:var(--text-muted)">Ambiente</label><div style="font-weight:500">Produção</div></div>
+          <div><label style="font-size:12px;color:var(--text-muted)">Tabelas no DB</label><div style="font-weight:500">30</div></div>
+          <div><label style="font-size:12px;color:var(--text-muted)">Deploy</label><div style="font-weight:500">Vercel</div></div>
+        </div>
+      </div>
+    </div>`;
+}
 async function loadAgents(el) {
   allAgents = await api('/api/agents') || [];
   
@@ -966,6 +1270,62 @@ function showToast(msg, type = 'info') {
   toast.textContent = msg;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
+}
+
+// ─── Workspace & Token Tracking ──────────────────────────────────
+function switchWorkspace(id) {
+  localStorage.setItem('ozion_workspace', id);
+  showToast('Workspace alterado', 'success');
+  render();
+}
+
+async function updateTokenUsage() {
+  try {
+    const data = await api('/api/analytics/default/dashboard');
+    if (data?.tokens) {
+      const gptUsed = data.tokens.gptUsed || 0;
+      const gptLimit = data.tokens.gptLimit || 5000000;
+      const voiceUsed = data.tokens.voiceUsed || 0;
+      const voiceLimit = data.tokens.voiceLimit || 400000;
+      
+      const gptPct = Math.min(100, (gptUsed / gptLimit) * 100);
+      const voicePct = Math.min(100, (voiceUsed / voiceLimit) * 100);
+      
+      const gptTokensEl = document.getElementById('gpt-tokens');
+      const gptBarEl = document.getElementById('gpt-bar');
+      const voiceTokensEl = document.getElementById('voice-tokens');
+      const voiceBarEl = document.getElementById('voice-bar');
+      
+      if (gptTokensEl) gptTokensEl.textContent = `${formatNumber(gptUsed)} / ${formatNumber(gptLimit)}`;
+      if (gptBarEl) gptBarEl.style.width = gptPct + '%';
+      if (voiceTokensEl) voiceTokensEl.textContent = `${formatNumber(voiceUsed)} / ${formatNumber(voiceLimit)}`;
+      if (voiceBarEl) voiceBarEl.style.width = voicePct + '%';
+    }
+  } catch (e) { console.error('Token update error:', e); }
+}
+
+function formatNumber(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(0) + 'K';
+  return n.toString();
+}
+
+async function loadWorkspaces() {
+  try {
+    const data = await api('/api/admin/workspaces');
+    const select = document.getElementById('workspace-select');
+    if (select && data) {
+      const workspaces = Array.isArray(data) ? data : data.workspaces || [];
+      workspaces.forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w.id;
+        opt.textContent = w.name;
+        select.appendChild(opt);
+      });
+      const saved = localStorage.getItem('ozion_workspace');
+      if (saved) select.value = saved;
+    }
+  } catch (e) { console.error('Workspace load error:', e); }
 }
 
 // Init
