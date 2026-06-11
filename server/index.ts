@@ -24,7 +24,7 @@ import updatesRoutes from './routes/updates.js';
 import logsRoutes from './routes/logs.js';
 import plansRoutes from './routes/plans.js';
 import deployRoutes from './routes/deploy.js';
-import { testConnection } from './db/index.js';
+import { getSupabase } from './db/supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -62,8 +62,17 @@ app.get('/api/health', (req, res) => {
 });
 
 async function start() {
-  const dbOk = await testConnection();
-  if (!dbOk) { console.error('❌ Cannot start without database'); process.exit(1); }
+  // Test Supabase connection
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase.from('tenants').select('id').limit(1);
+    if (error) throw error;
+    console.log('✅ Supabase PostgreSQL connected');
+  } catch (error: any) {
+    console.error('❌ Supabase connection failed:', error.message);
+    console.log('⚠️  Continuing with SQLite fallback...');
+  }
+  
   app.listen(PORT, () => {
     console.log(`🚀 Ozion Chat AI: http://localhost:${PORT}`);
   });

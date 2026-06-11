@@ -6,7 +6,8 @@
   "outputDirectory": "public",
   "env": {
     "NODE_ENV": "production",
-    "TS_NODE_COMPILER_OPTIONS": "{\"noEmit\":true,\"strict\":false,\"noImplicitAny\":false}"
+    "SUPABASE_URL": "https://dpwqqszrhizqdncifkee.supabase.co",
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwd3Fxc3pyaGl6cWRuY2lma2VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExODEzNDcsImV4cCI6MjA5Njc1NzM0N30.TZ-3X2knNNXDeKQWHNaleqH-ECw1cwZ0X0L03U7xnJQ"
   },
   "routes": [
     {
