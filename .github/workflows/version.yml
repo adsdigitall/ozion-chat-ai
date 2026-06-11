@@ -1,0 +1,84 @@
+name: Version Management
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.1.0)'
+        required: true
+      module:
+        description: 'Module affected'
+        required: true
+        type: choice
+        options:
+          - core
+          - crm
+          - chat
+          - flows
+          - agents
+          - voice
+          - ctwa
+          - sales
+          - analytics
+          - integrations
+      type:
+        description: 'Change type'
+        required: true
+        type: choice
+        options:
+          - feature
+          - fix
+          - improvement
+          - breaking
+          - security
+      description:
+        description: 'Change description'
+        required: true
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update package.json version
+        run: |
+          npm version ${{ inputs.version }} --no-git-tag-version
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Create commit
+        run: |
+          git add package.json
+          git commit -m "release: v${{ inputs.version }} - ${{ inputs.module }}"
+
+      - name: Create tag
+        run: git tag v${{ inputs.version }}
+
+      - name: Push
+        run: |
+          git push origin HEAD
+          git push origin v${{ inputs.version }}
+
+      - name: Create Release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const typeEmoji = {
+              feature: '✨',
+              fix: '🐛',
+              improvement: '⚡',
+              breaking: '💥',
+              security: '🔒'
+            };
+            const emoji = typeEmoji['${{ inputs.type }}'] || '📝';
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: 'v${{ inputs.version }}',
+              name: `${emoji} v${{ inputs.version }} — ${{ inputs.module }}`,
+              body: `## v${{ inputs.version }}\n\n**Módulo:** ${{ inputs.module }}\n**Tipo:** ${{ inputs.type }}\n\n### Descrição\n${{ inputs.description }}\n\n**Commit:** ${context.sha.substring(0, 7)}`
+            });

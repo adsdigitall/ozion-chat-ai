@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat ao Vivo - Ozion AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .chat-layout {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+        
+        .chat-sidebar {
+            width: 320px;
+            border-right: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .chat-search {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        
+        .conversation-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .conversation-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.2s;
+        }
+        
+        .conversation-item:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .conversation-item.active {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .conversation-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        
+        .conversation-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .conversation-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .conversation-preview {
+            font-size: 13px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .conversation-meta {
+            text-align: right;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-primary);
+        }
+        
+        .chat-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .chat-header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .message {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .message.inbound {
+            align-self: flex-start;
+            background: var(--bg-secondary);
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message.outbound {
+            align-self: flex-end;
+            background: var(--primary-color);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        
+        .message.outbound .message-time {
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .chat-input {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            display: flex;
+            gap: 12px;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .chat-input button {
+            padding: 12px 24px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        .chat-input button:hover {
+            background: var(--primary-hover);
+        }
+        
+        .empty-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .ctwa-badge {
+            background: #22c55e;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                    </div>
+                    <span class="logo-text">Ozion AI</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="chat.html" class="nav-item active">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    Chat ao Vivo
+                </a>
+                <a href="contacts.html" class="nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Contatos
+                </a>
+                <a href="ctwa.html" class="nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M8 12h8"/>
+                        <path d="M12 8v8"/>
+                    </svg>
+                    CTWA
+                </a>
+                <a href="analytics.html" class="nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                    Analytics
+                </a>
+                <a href="settings.html" class="nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    Configurações
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="chat-layout">
+                <div class="chat-sidebar">
+                    <div class="chat-sidebar-header">
+                        <input type="text" class="chat-search" placeholder="Buscar conversas..." id="searchInput" oninput="filterConversations()">
+                    </div>
+                    <div class="conversation-list" id="conversationList">
+                        <!-- Conversations will be loaded here -->
+                    </div>
+                </div>
+
+                <div class="chat-main" id="chatMain">
+                    <div class="empty-chat" id="emptyChat">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        <p>Selecione uma conversa para iniciar</p>
+                    </div>
+
+                    <div class="chat-header" id="chatHeader" style="display: none;">
+                        <div class="chat-header-info">
+                            <div class="conversation-avatar" id="chatAvatar">--</div>
+                            <div>
+                                <div class="conversation-name" id="chatName">--</div>
+                                <div class="conversation-preview" id="chatPhone">--</div>
+                            </div>
+                        </div>
+                        <div>
+                            <button class="btn btn-secondary btn-sm" onclick="closeConversation()">Fechar</button>
+                        </div>
+                    </div>
+
+                    <div class="chat-messages" id="chatMessages" style="display: none;">
+                        <!-- Messages will be loaded here -->
+                    </div>
+
+                    <div class="chat-input" id="chatInput" style="display: none;">
+                        <input type="text" id="messageInput" placeholder="Digite sua mensagem..." onkeypress="handleKeyPress(event)">
+                        <button onclick="sendMessage()">Enviar</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const TENANT_ID = 'default'; // Replace with actual tenant ID
+        let currentConversation = null;
+        let conversations = [];
+
+        // Load conversations
+        async function loadConversations() {
+            try {
+                const response = await fetch(`/api/messages/conversations/${TENANT_ID}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    conversations = data.conversations || [];
+                    renderConversations(conversations);
+                }
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+            }
+        }
+
+        // Render conversations
+        function renderConversations(list) {
+            const container = document.getElementById('conversationList');
+            container.innerHTML = list.map(conv => `
+                <div class="conversation-item ${currentConversation?.id === conv.id ? 'active' : ''}" 
+                     onclick="selectConversation('${conv.id}')">
+                    <div class="conversation-avatar">
+                        ${(conv.contact?.name || conv.contactWaId).substring(0, 2).toUpperCase()}
+                    </div>
+                    <div class="conversation-info">
+                        <div class="conversation-name">
+                            ${conv.contact?.name || conv.contactWaId}
+                            ${conv.isCtwa ? '<span class="ctwa-badge">CTWA</span>' : ''}
+                        </div>
+                        <div class="conversation-preview">${conv.contact?.phone || ''}</div>
+                    </div>
+                    <div class="conversation-meta">
+                        ${conv.lastMessageAt ? new Date(conv.lastMessageAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Filter conversations
+        function filterConversations() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = conversations.filter(c => 
+                (c.contact?.name || '').toLowerCase().includes(query) ||
+                c.contactWaId.includes(query)
+            );
+            renderConversations(filtered);
+        }
+
+        // Select conversation
+        async function selectConversation(conversationId) {
+            currentConversation = conversations.find(c => c.id === conversationId);
+            if (!currentConversation) return;
+
+            document.getElementById('emptyChat').style.display = 'none';
+            document.getElementById('chatHeader').style.display = 'flex';
+            document.getElementById('chatMessages').style.display = 'flex';
+            document.getElementById('chatInput').style.display = 'flex';
+
+            document.getElementById('chatAvatar').textContent = 
+                (currentConversation.contact?.name || currentConversation.contactWaId).substring(0, 2).toUpperCase();
+            document.getElementById('chatName').textContent = 
+                currentConversation.contact?.name || currentConversation.contactWaId;
+            document.getElementById('chatPhone').textContent = currentConversation.contact?.phone || '';
+
+            await loadMessages(conversationId);
+            renderConversations(conversations);
+        }
+
+        // Load messages
+        async function loadMessages(conversationId) {
+            try {
+                const response = await fetch(`/api/messages/${conversationId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    renderMessages(data.messages || []);
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        // Render messages
+        function renderMessages(msgs) {
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = msgs.reverse().map(msg => `
+                <div class="message ${msg.direction}">
+                    <div class="message-content">${getMessageContent(msg)}</div>
+                    <div class="message-time">${new Date(msg.sentAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</div>
+                </div>
+            `).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Get message content
+        function getMessageContent(msg) {
+            if (msg.type === 'text') {
+                return msg.content?.body || '';
+            } else if (msg.type === 'image') {
+                return '📷 Imagem';
+            } else if (msg.type === 'template') {
+                return `📋 Template: ${msg.content?.template || ''}`;
+            }
+            return msg.content?.body || JSON.stringify(msg.content);
+        }
+
+        // Send message
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if (!text || !currentConversation) return;
+
+            try {
+                const response = await fetch('/api/messages/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tenantId: TENANT_ID,
+                        conversationId: currentConversation.id,
+                        type: 'text',
+                        text
+                    })
+                });
+
+                if (response.ok) {
+                    input.value = '';
+                    await loadMessages(currentConversation.id);
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                alert('Erro ao enviar mensagem');
+            }
+        }
+
+        // Handle enter key
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Close conversation
+        function closeConversation() {
+            currentConversation = null;
+            document.getElementById('emptyChat').style.display = 'flex';
+            document.getElementById('chatHeader').style.display = 'none';
+            document.getElementById('chatMessages').style.display = 'none';
+            document.getElementById('chatInput').style.display = 'none';
+            renderConversations(conversations);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConversations();
+        });
+    </script>
+</body>
+</html>

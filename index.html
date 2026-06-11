@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ozion Chat AI - WhatsApp SaaS Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">O</div>
+            <span class="sidebar-brand">Ozion Chat AI</span>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section-title">Principal</div>
+            <div class="nav-item active" data-page="dashboard">
+                <i class="fas fa-th-large"></i>
+                <span class="nav-text">Dashboard</span>
+            </div>
+            <div class="nav-item" data-page="chat">
+                <i class="fas fa-comments"></i>
+                <span class="nav-text">Chat ao Vivo</span>
+                <span class="nav-badge">12</span>
+            </div>
+            <div class="nav-item" data-page="contacts">
+                <i class="fas fa-users"></i>
+                <span class="nav-text">Contatos / CRM</span>
+            </div>
+            <div class="nav-item" data-page="kanban">
+                <i class="fas fa-columns"></i>
+                <span class="nav-text">Kanban</span>
+            </div>
+
+            <div class="nav-section-title">Automação</div>
+            <div class="nav-item" data-page="flowbuilder">
+                <i class="fas fa-project-diagram"></i>
+                <span class="nav-text">Flow Builder</span>
+            </div>
+            <div class="nav-item" data-page="agents">
+                <i class="fas fa-robot"></i>
+                <span class="nav-text">Agente IA</span>
+            </div>
+            <div class="nav-item" data-page="gptstudio">
+                <i class="fas fa-brain"></i>
+                <span class="nav-text">GPT Studio</span>
+            </div>
+            <div class="nav-item" data-page="voicestudio">
+                <i class="fas fa-microphone"></i>
+                <span class="nav-text">Voice Studio</span>
+            </div>
+
+            <div class="nav-section-title">Vendas & Marketing</div>
+            <div class="nav-item" data-page="campaigns">
+                <i class="fas fa-bullhorn"></i>
+                <span class="nav-text">Campanhas</span>
+            </div>
+            <div class="nav-item" data-page="ctwa">
+                <i class="fab fa-whatsapp"></i>
+                <span class="nav-text">CTWA</span>
+            </div>
+            <div class="nav-item" data-page="sales">
+                <i class="fas fa-dollar-sign"></i>
+                <span class="nav-text">Vendas</span>
+            </div>
+            <div class="nav-item" data-page="analytics">
+                <i class="fas fa-chart-line"></i>
+                <span class="nav-text">Analytics</span>
+            </div>
+
+            <div class="nav-section-title">Sistema</div>
+            <div class="nav-item" data-page="integrations">
+                <i class="fas fa-plug"></i>
+                <span class="nav-text">Integrações</span>
+            </div>
+            <div class="nav-item" data-page="connections">
+                <i class="fas fa-link"></i>
+                <span class="nav-text">Conexões WhatsApp</span>
+            </div>
+            <div class="nav-item" data-page="workspaces">
+                <i class="fas fa-folder"></i>
+                <span class="nav-text">Workspaces</span>
+            </div>
+            <div class="nav-item" data-page="users">
+                <i class="fas fa-user-shield"></i>
+                <span class="nav-text">Usuários</span>
+            </div>
+            <div class="nav-item" data-page="plans">
+                <i class="fas fa-crown"></i>
+                <span class="nav-text">Planos</span>
+            </div>
+            <div class="nav-item" data-page="logs">
+                <i class="fas fa-history"></i>
+                <span class="nav-text">Logs</span>
+            </div>
+            <div class="nav-item" data-page="settings">
+                <i class="fas fa-cog"></i>
+                <span class="nav-text">Configurações</span>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Buscar contatos, fluxos, agentes...">
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="header-btn">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge"></span>
+                </button>
+                <button class="header-btn">
+                    <i class="fas fa-expand"></i>
+                </button>
+                <div class="user-menu">
+                    <div class="user-avatar">AD</div>
+                    <div class="user-info">
+                        <div class="user-name">Admin Master</div>
+                        <div class="user-role">Administrador</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Pages -->
+        <div class="page-content">
+            <!-- Dashboard Page -->
+            <div class="page active" id="page-dashboard">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Dashboard</h1>
+                        <p class="page-subtitle">Visão geral do seu negócio</p>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary"><i class="fas fa-download"></i> Exportar</button>
+                        <button class="btn btn-primary"><i class="fas fa-plus"></i> Novo Fluxo</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+                            <div class="stat-change positive"><i class="fas fa-arrow-up"></i> 12%</div>
+                        </div>
+                        <div class="stat-value">2.847</div>
+                        <div class="stat-label">Total de Contatos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon green"><i class="fas fa-user-plus"></i></div>
+                            <div class="stat-change positive"><i class="fas fa-arrow-up"></i> 8%</div>
+                        </div>
+                        <div class="stat-value">127</div>
+                        <div class="stat-label">Leads Hoje</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon purple"><i class="fas fa-comments"></i></div>
+                            <div class="stat-change positive"><i class="fas fa-arrow-up"></i> 23%</div>
+                        </div>
+                        <div class="stat-value">89</div>
+                        <div class="stat-label">Conversas Abertas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
+                            <div class="stat-change negative"><i class="fas fa-arrow-down"></i> 5%</div>
+                        </div>
+                        <div class="stat-value">34</div>
+                        <div class="stat-label">Aguardando Resposta</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon cyan"><i class="fas fa-check-circle"></i></div>
+                            <div class="stat-change positive"><i class="fas fa-arrow-up"></i> 15%</div>
+                        </div>
+                        <div class="stat-value">456</div>
+                        <div class="stat-label">Conversas Finalizadas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon green"><i class="fas fa-project-diagram"></i></div>
+                            <div class="stat-change positive"><i class="fas fa-arrow-up"></i> 31%</div>
+                        </div>
+                        <div class="stat-value">1.234</div>
+                        <div class="stat-label">Fluxos Executados</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon blue"><i class="fas fa-paper-plane"></i></div>
+                        </div>
+                        <div class="stat-value">8.567</div>
+                        <div class="stat-label">Mensagens Enviadas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon purple"><i class="fas fa-envelope"></i></div>
+                        </div>
+                        <div class="stat-value">6.234</div>
+                        <div class="stat-label">Mensagens Recebidas</div>
+                    </div>
+                </div>
+
+                <div class="stats-grid" style="margin-bottom:24px;">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon green"><i class="fas fa-dollar-sign"></i></div>
+                            <div class="stat-change positive"><i class="fas fa-arrow-up"></i> 42%</div>
+                        </div>
+                        <div class="stat-value">R$ 12.450</div>
+                        <div class="stat-label">Receita Hoje</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon blue"><i class="fas fa-calendar"></i></div>
+                            <div class="stat-change positive"><i class="fas fa-arrow-up"></i> 28%</div>
+                        </div>
+                        <div class="stat-value">R$ 87.320</div>
+                        <div class="stat-label">Receita do Mês</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon orange"><i class="fas fa-receipt"></i></div>
+                        </div>
+                        <div class="stat-value">R$ 187</div>
+                        <div class="stat-label">Ticket Médio</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon cyan"><i class="fas fa-brain"></i></div>
+                        </div>
+                        <div class="stat-value">45.2K</div>
+                        <div class="stat-label">Tokens GPT Hoje</div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">Leads por Dia</div>
+                            <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">Últimos 7 dias</button>
+                        </div>
+                        <div class="chart-placeholder">
+                            <i class="fas fa-chart-bar" style="font-size:48px;margin-right:12px;"></i>
+                            Gráfico de Barras
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">Vendas por Dia</div>
+                            <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">Últimos 7 dias</button>
+                        </div>
+                        <div class="chart-placeholder">
+                            <i class="fas fa-chart-line" style="font-size:48px;margin-right:12px;"></i>
+                            Gráfico de Linha
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">Conversão por Funil</div>
+                        </div>
+                        <div class="chart-placeholder">
+                            <i class="fas fa-filter" style="font-size:48px;margin-right:12px;"></i>
+                            Funil de Conversão
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">Origem dos Leads</div>
+                        </div>
+                        <div class="chart-placeholder">
+                            <i class="fas fa-pie-chart" style="font-size:48px;margin-right:12px;"></i>
+                            Gráfico Pizza
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Page -->
+            <div class="page" id="page-chat">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Chat ao Vivo</h1>
+                        <p class="page-subtitle">Atenda seus clientes em tempo real</p>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary"><i class="fas fa-filter"></i> Filtros</button>
+                        <button class="btn btn-primary"><i class="fas fa-plus"></i> Nova Conversa</button>
+                    </div>
+                </div>
+
+                <div class="chat-layout">
+                    <div class="chat-list">
+                        <div class="chat-list-header">
+                            <div class="chat-tabs">
+                                <div class="chat-tab active">Entrada <span style="font-size:11px;">(12)</span></div>
+                                <div class="chat-tab">Esperando <span style="font-size:11px;">(5)</span></div>
+                                <div class="chat-tab">Finalizados</div>
+                            </div>
+                        </div>
+                        <div class="chat-items">
+                            <div class="chat-item active">
+                                <div class="chat-avatar">ML</div>
+                                <div class="chat-info">
+                                    <div class="chat-name">Maria Lima</div>
+                                    <div class="chat-last-msg">Oi, gostaria de saber o preço do plano...</div>
+                                </div>
+                                <div class="chat-meta">
+                                    <div class="chat-time">14:32</div>
+                                    <div class="chat-unread">2</div>
+                                </div>
+                            </div>
+                            <div class="chat-item">
+                                <div class="chat-avatar">JS</div>
+                                <div class="chat-info">
+                                    <div class="chat-name">João Silva</div>
+                                    <div class="chat-last-msg">Já fiz o pagamento, quando chega?</div>
+                                </div>
+                                <div class="chat-meta">
+                                    <div class="chat-time">14:28</div>
+                                    <div class="chat-unread">1</div>
+                                </div>
+                            </div>
+                            <div class="chat-item">
+                                <div class="chat-avatar">AS</div>
+                                <div class="chat-info">
+                                    <div class="chat-name">Ana Santos</div>
+                                    <div class="chat-last-msg">Obrigada pela ajuda!</div>
+                                </div>
+                                <div class="chat-meta">
+                                    <div class="chat-time">14:15</div>
+                                </div>
+                            </div>
+                            <div class="chat-item">
+                                <div class="chat-avatar">PO</div>
+                                <div class="chat-info">
+                                    <div class="chat-name">Pedro Oliveira</div>
+                                    <div class="chat-last-msg">Preciso de ajuda com minha conta</div>
+                                </div>
+                                <div class="chat-meta">
+                                    <div class="chat-time">13:52</div>
+                                    <div class="chat-unread">3</div>
+                                </div>
+                            </div>
+                            <div class="chat-item">
+                                <div class="chat-avatar">CF</div>
+                                <div class="chat-info">
+                                    <div class="chat-name">Carla Ferreira</div>
+                                    <div class="chat-last-msg">Quero cancelar minha assinatura</div>
+                                </div>
+                                <div class="chat-meta">
+                                    <div class="chat-time">13:45</div>
+                                </div>
+                            </div>
+                            <div class="chat-item">
+                                <div class="chat-avatar">RM</div>
+                                <div class="chat-info">
+                                    <div class="chat-name">Ricardo Mendes</div>
+                                    <div class="chat-last-msg">Como faço para integrar com meu CRM?</div>
+                                </div>
+                                <div class="chat-meta">
+                                    <div class="chat-time">13:30</div>
+                                    <div class="chat-unread">1</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-main">
+                        <div class="chat-header">
+                            <div class="chat-header-info">
+                                <div class="chat-avatar">ML</div>
+                                <div>
+                                    <div style="font-weight:600;">Maria Lima</div>
+                                    <div style="font-size:12px;color:var(--text-secondary);">+55 11 99999-1234 • Online</div>
+                                </div>
+                            </div>
+                            <div class="chat-header-actions">
+                                <button class="btn btn-secondary" style="padding:8px 12px;"><i class="fas fa-robot"></i> IA Ativa</button>
+                                <button class="btn btn-secondary" style="padding:8px 12px;"><i class="fas fa-user"></i> Assumir</button>
+                                <button class="btn btn-secondary" style="padding:8px 12px;"><i class="fas fa-ellipsis-v"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="chat-messages">
+                            <div class="message incoming">
+                                <div>Olá! Gostaria de saber mais sobre o plano Pro</div>
+                                <div class="message-time">14:30</div>
+                            </div>
+                            <div class="message ai">
+                                <div><i class="fas fa-robot" style="margin-right:6px;"></i> Olá Maria! Claro! O plano Pro custa R$ 997/mês e inclui:</div>
+                                <div class="message-time">14:30 • Respondido por IA</div>
+                            </div>
+                            <div class="message incoming">
+                                <div>E quantos números posso conectar?</div>
+                                <div class="message-time">14:32</div>
+                            </div>
+                            <div class="message ai">
+                                <div><i class="fas fa-robot" style="margin-right:6px;"></i> No plano Pro você pode conectar até 3 números de WhatsApp! Todos com atendimento ilimitado.</div>
+                                <div class="message-time">14:32 • Respondido por IA</div>
+                            </div>
+                        </div>
+
+                        <div class="chat-input">
+                            <button class="btn btn-secondary" style="padding:10px;"><i class="fas fa-paperclip"></i></button>
+                            <input type="text" placeholder="Digite sua mensagem...">
+                            <button class="btn btn-secondary" style="padding:10px;"><i class="fas fa-microphone"></i></button>
+                            <button class="btn btn-primary" style="padding:10px 16px;"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="chat-sidebar">
+                        <div class="lead-section">
+                            <div class="lead-section-title">Informações do Lead</div>
+                            <div class="lead-field">
+                                <span class="lead-field-label">Nome</span>
+                                <span class="lead-field-value">Maria Lima</span>
+                            </div>
+                            <div class="lead-field">
+                                <span class="lead-field-label">Telefone</span>
+                                <span class="lead-field-value">+55 11 99999-1234</span>
+                            </div>
+                            <div class="lead-field">
+                                <span class="lead-field-label">Email</span>
+                                <span class="lead-field-value">maria@email.com</span>
+                            </div>
+                            <div class="lead-field">
+                                <span class="lead-field-label">Origem</span>
+                                <span class="lead-field-value">Facebook Ads</span>
+                            </div>
+                            <div class="lead-field">
+                                <span class="lead-field-label">Campanha</span>
+                                <span class="lead-field-value">Lançamento Pro</span>
+                            </div>
+                        </div>
+
+                        <div class="lead-section">
+                            <div class="lead-section-title">Tags</div>
+                            <div>
+                                <span class="tag tag-blue">Lead Quente</span>
+                                <span class="tag tag-green">Interessado</span>
+                                <span class="tag tag-purple">Plano Pro</span>
+                            </div>
+                        </div>
+
+                        <div class="lead-section">
+                            <div class="lead-section-title">Score do Lead</div>
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <div style="flex:1;height:8px;background:var(--bg-dark);border-radius:4px;overflow:hidden;">
+                                    <div style="width:75%;height:100%;background:var(--success);"></div>
+                                </div>
+                                <span style="font-weight:600;color:var(--success);">75/100</span>
+                            </div>
+                        </div>
+
+                        <div class="lead-section">
+                            <div class="lead-section-title">Temperatura</div>
+                            <span class="tag tag-orange" style="font-size:13px;padding:6px 12px;">🔥 Quente</span>
+                        </div>
+
+                        <div class="lead-section">
+                            <div class="lead-section-title">Resumo IA</div>
+                            <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;">
+                                Lead interessado no plano Pro. Demonstrou preocupação com preço e quantidade de números. Está no estágio de consideração.
+                            </p>
+                        </div>
+
+                        <div class="lead-section">
+                            <div class="lead-section-title">Ações</div>
+                            <div style="display:flex;flex-direction:column;gap:8px;">
+                                <button class="btn btn-secondary" style="width:100%;justify-content:center;"><i class="fas fa-tag"></i> Adicionar Tag</button>
+                                <button class="btn btn-secondary" style="width:100%;justify-content:center;"><i class="fas fa-exchange-alt"></i> Transferir</button>
+                                <button class="btn btn-secondary" style="width:100%;justify-content:center;"><i class="fas fa-sticky-note"></i> Nota Interna</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contacts/CRM Page -->
+            <div class="page" id="page-contacts">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Contatos / CRM</h1>
+                        <p class="page-subtitle">Gerencie seus contatos e leads</p>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary"><i class="fas fa-file-import"></i> Importar CSV</button>
+                        <button class="btn btn-secondary"><i class="fas fa-file-export"></i> Exportar</button>
+                        <button class="btn btn-primary"><i class="fas fa-plus"></i> Novo Contato</button>
+                    </div>
+                </div>
+
+                <div class="crm-layout">
+                    <div class="crm-toolbar">
+                        <div class="search-box" style="flex:1;max-width:300px;">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="Buscar contato...">
+                        </div>
+                        <button class="btn btn-secondary" style="font-size:13px;"><i class="fas fa-filter"></i> Filtrar</button>
+                        <button class="btn btn-secondary" style="font-size:13px;"><i class="fas fa-tag"></i> Tags</button>
+                        <button class="btn btn-secondary" style="font-size:13px;"><i class="fas fa-sort"></i> Ordenar</button>
+                        <div style="margin-left:auto;display:flex;gap:4px;">
+                            <span class="tag tag-blue">Lead Quente (45)</span>
+                            <span class="tag tag-green">Pagou (123)</span>
+                            <span class="tag tag-orange">Aguardando (28)</span>
+                        </div>
+                    </div>
+                    <table class="crm-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox"></th>
+                                <th>Nome</th>
+                                <th>Telefone</th>
+                                <th>Email</th>
+                                <th>Origem</th>
+                                <th>Tags</th>
+                                <th>Status</th>
+                                <th>Última Interação</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td><strong>Maria Lima</strong></td>
+                                <td>+55 11 99999-1234</td>
+                                <td>maria@email.com</td>
+                                <td>Facebook Ads</td>
+                                <td><span class="tag tag-blue">Lead Quente</span></td>
+                                <td><span class="tag tag-green">Ativo</span></td>
+                                <td>Hoje, 14:32</td>
+                                <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;"><i class="fas fa-ellipsis-v"></i></button></td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td><strong>João Silva</strong></td>
+                                <td>+55 21 98888-5678</td>
+                                <td>joao@email.com</td>
+                                <td>Google Ads</td>
+                                <td><span class="tag tag-green">Pagou</span></td>
+                                <td><span class="tag tag-green">Ativo</span></td>
+                                <td>Hoje, 14:28</td>
+                                <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;"><i class="fas fa-ellipsis-v"></i></button></td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td><strong>Ana Santos</strong></td>
+                                <td>+55 31 97777-9012</td>
+                                <td>ana@email.com</td>
+                                <td>Instagram</td>
+                                <td><span class="tag tag-purple">Qualificado</span></td>
+                                <td><span class="tag tag-green">Ativo</span></td>
+                                <td>Hoje, 14:15</td>
+                                <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;"><i class="fas fa-ellipsis-v"></i></button></td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td><strong>Pedro Oliveira</strong></td>
+                                <td>+55 41 96666-3456</td>
+                                <td>pedro@email.com</td>
+                                <td>Indicação</td>
+                                <td><span class="tag tag-orange">Aguardando</span></td>
+                                <td><span class="tag tag-orange">Pendente</span></td>
+                                <td>Hoje, 13:52</td>
+                                <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;"><i class="fas fa-ellipsis-v"></i></button></td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td><strong>Carla Ferreira</strong></td>
+                                <td>+55 51 95555-7890</td>
+                                <td>carla@email.com</td>
+                                <td>Site</td>
+                                <td><span class="tag tag-red">Risco</span></td>
+                                <td><span class="tag tag-orange">Atenção</span></td>
+                                <td>Hoje, 13:45</td>
+                                <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;"><i class="fas fa-ellipsis-v"></i></button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Flow Builder Page -->
+            <div class="page" id="page-flowbuilder">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Flow Builder</h1>
+                        <p class="page-subtitle">Crie fluxos de automação visuais</p>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary"><i class="fas fa-history"></i> Versões</button>
+                        <button class="btn btn-secondary"><i class="fas fa-play"></i> Testar</button>
+                        <button class="btn btn-success"><i class="fas fa-save"></i> Salvar</button>
+                        <button class="btn btn-primary"><i class="fas fa-rocket"></i> Publicar</button>
+                    </div>
+                </div>
+
+                <div class="flow-builder">
+                    <div class="flow-blocks-panel">
+                        <div style="margin-bottom:16px;">
+                            <input type="text" class="form-input" placeholder="Buscar blocos...">
+                        </div>
+
+                        <div class="flow-block-category">
+                            <div class="flow-block-category-title">Mensagem</div>
+                            <div class="flow-block-item" draggable="true">
+                                <div class="flow-block-icon" style="background:rgba(59,130,246,0.2);color:var(--primary);">
+                                    <i class="fas fa-comment"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:13px;font-weight:500;">Mensagem</div>
+                                    <div style="font-size:11px;color:var(--text-secondary);">Enviar texto</div>
+                                </div>
+                            </div>
+                            <div class="flow-block-item" draggable="true">
+                                <div class="flow-block-icon" style="background:rgba(34,197,94,0.2);color:var(--success);">
+                                    <i class="fas fa-image"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:13px;font-weight:500;">Imagem</div>
+                                    <div style="font-size:11px;color:var(--text-secondary);">Enviar mídia</div>
+                                </div>
+                            </div>
+                            <div class="flow-block-item" draggable="true">
+                                <div class="flow-block-icon" style="background:rgba(139,92,246,0.2);color:var(--secondary);">
+                                    <i class="fas fa-list"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:13px;font-weight:500;">Menu</div>
+                                    <div style="font-size:11px;color:var(--text-secondary);">Botões interativos</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flow-block-category">
+                            <div class="flow-block-category-title">Lógica</div>
+                            <div class="flow-block-item" draggable="true">
+                                <div class="flow-block-icon" style="background:rgba(245,158,11,0.2);color:var(--warning);">
+                                    <i class="fas fa-code-branch"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:13px;font-weight:500;">Condição</div>
+                                    <div style="font-size:11px;color:var(--text-secondary);">Se / Senão</div>
+                                </div>
+                            </div>
+                            <div class="flow-block-item" draggable="true">
+                                <div class="flow-block-icon" style="background:rgba(6,182,212,0.2);color:var(--info);">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:13px;font-weight:500;">Delay</div>
+                                    <div style="font-size:11px;color:var(--text-secondary);">Aguardar tempo</div>
+                                </div>
+                            </div>
+                            <div class="flow-block-item" draggable="true">
+                                <div class="flow-block-icon" style="background:rgba(239,68,68,0.2);color:var(--danger);">
+                                    <i class="fas fa-keyboard"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:13px;font-weight:500;">Palavra-chave</div>
+                                    <div style="font-size:11px;color:var(--text-secondary);">Detectar input</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flow-block-category">
+                            <div class="flow-block-category-title">IA</div>
+                            <div class="flow-block-item" draggable="true">
+                                <div class="flow-block-icon" style="background:rgba(139,92,246,0.2);color:var(--secondary);">
+                                    <i class="fas fa-brain"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:13px;font-weight:500;">GPT</div>
+                                    <div style="font-size:11px;color:var(--text-secondary);">Gerar resposta IA</div>
+                                </div>
+                            </div>
+                            <div class="flow-block-item" draggable="true">
+                                <div class="flow-block-icon" style="background:rgba(59,130,246,0.2);color:var(--primary);">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:13px;font-weight:500;">Agente IA</div>
+                                    <div style="font-size:11px;color:var(--text-secondary);">Agente autônomo</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flow-block-category">
+                            <div class="flow-block-category-title">CRM</div>
+                            <div class="flow-block-item" draggable="true">
+                                <div class="flow-block-icon" style="background:rgba(34,197,94,0.2);color:var(--success);">
+                                    <i class="fas fa-tag"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:13px;font-weight:500;">Adicionar Tag</div>
+                                    <div style="font-size:11px;color:var(--text-secondary);">Marcar contato</div>
+                                </div>
+                            </div>
+                            <div class="flow-block-item" draggable="true">
+                                <div class="flow-block-icon" style="background:rgba(245,158,11,0.2);color:var(--warning);">
+                                    <i class="fas fa-user-edit"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:13px;font-weight:500;">Atualizar Campo</div>
+                                    <div style="font-size:11px;color:var(--text-secondary);">Editar dados</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flow-canvas">
+                        <div class="flow-node" style="left:50px;top:50px;">
+                            <div class="flow-node-header">
+                                <div class="flow-node-icon" style="background:rgba(34,197,94,0.2);color:var(--success);">
+                                    <i class="fas fa-play"></i>
+                                </div>
+                                <div class="flow-node-title">Início</div>
+                            </div>
+                            <div class="flow-node-content">Mensagem de boas-vindas</div>
+                        </div>
+
+                        <div class="flow-node" style="left:50px;top:180px;">
+                            <div class="flow-node-header">
+                                <div class="flow-node-icon" style="background:rgba(59,130,246,0.2);color:var(--primary);">
+                                    <i class="fas fa-comment"></i>
+                                </div>
+                                <div class="flow-node-title">Mensagem</div>
+                            </div>
+                            <div class="flow-node-content">Olá! Como posso ajudar?</div>
+                        </div>
+
+                        <div class="flow-node" style="left:50px;top:310px;">
+                            <div class="flow-node-header">
+                                <div class="flow-node-icon" style="background:rgba(139,92,246,0.2);color:var(--secondary);">
+                                    <i class="fas fa-brain"></i>
+                                </div>
+                                <div class="flow-node-title">GPT</div>
+                            </div>
+                            <div class="flow-node-content">Analisar intenção do lead</div>
+                        </div>
+
+                        <div class="flow-node" style="left:50px;top:440px;">
+                            <div class="flow-node-header">
+                                <div class="flow-node-icon" style="background:rgba(245,158,11,0.2);color:var(--warning);">
+                                    <i class="fas fa-code-branch"></i>
+                                </div>
+                                <div class="flow-node-title">Condição</div>
+                            </div>
+                            <div class="flow-node-content">Temperatura do lead?</div>
+                        </div>
+                    </div>
+
+                    <div class="flow-properties">
+                        <div style="margin-bottom:20px;">
+                            <h3 style="font-size:16px;font-weight:600;margin-bottom:4px;">Propriedades</h3>
+                            <p style="font-size:12px;color:var(--text-secondary);">Configure o bloco selecionado</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Nome do Bloco</label>
+                            <input type="text" class="form-input" value="Mensagem de Boas-vindas">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-select">
+                                <option>Mensagem</option>
+                                <option>Condição</option>
+                                <option>GPT</option>
+                                <option>Delay</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Conteúdo</label>
+                            <textarea class="form-textarea">Olá {{nome}}! 👋
+
+Bem-vindo à Ozion Chat AI!
+
+Como posso te ajudar hoje?
+
+1️⃣ Ver planos
+2️⃣ Suporte técnico
+3️⃣ Falar com atendente</textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Variáveis Disponíveis</label>
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                                <span class="tag tag-blue" style="cursor:pointer;">{{nome}}</span>
+                                <span class="tag tag-blue" style="cursor:pointer;">{{telefone}}</span>
+                                <span class="tag tag-blue" style="cursor:pointer;">{{email}}</span>
+                                <span class="tag tag-blue" style="cursor:pointer;">{{origem}}</span>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" style="width:100%;justify-content:center;">
+                            <i class="fas fa-save"></i> Salvar Configurações
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agents Page -->
+            <div class="page" id="page-agents">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Agentes IA</h1>
+                        <p class="page-subtitle">Crie e gerencie seus assistentes virtuais</p>
+                    </div>
+                    <button class="btn btn-primary"><i class="fas fa-plus"></i> Novo Agente</button>
+                </div>
+
+                <div class="agent-grid">
+                    <div class="agent-card">
+                        <div class="agent-avatar"><i class="fas fa-robot"></i></div>
+                        <div class="agent-name">SDR Virtual</div>
+                        <div class="agent-role">Qualificação de leads e agendamento</div>
+                        <div class="agent-stats">
+                            <div class="agent-stat">
+                                <div class="agent-stat-value">1.234</div>
+                                <div class="agent-stat-label">Conversas</div>
+                            </div>
+                            <div class="agent-stat">
+                                <div class="agent-stat-value">89%</div>
+                                <div class="agent-stat-label">Satisfação</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:16px;display:flex;gap:8px;">
+                            <button class="btn btn-secondary" style="flex:1;justify-content:center;"><i class="fas fa-edit"></i> Editar</button>
+                            <button class="btn btn-primary" style="flex:1;justify-content:center;"><i class="fas fa-play"></i> Ativar</button>
+                        </div>
+                    </div>
+
+                    <div class="agent-card">
+                        <div class="agent-avatar" style="background:linear-gradient(135deg, var(--success), var(--info));"><i class="fas fa-headset"></i></div>
+                        <div class="agent-name">Suporte Técnico</div>
+                        <div class="agent-role">Resolver dúvidas e problemas</div>
+                        <div class="agent-stats">
+                            <div class="agent-stat">
+                                <div class="agent-stat-value">856</div>
+                                <div class="agent-stat-label">Conversas</div>
+                            </div>
+                            <div class="agent-stat">
+                                <div class="agent-stat-value">92%</div>
+                                <div class="agent-stat-label">Satisfação</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:16px;display:flex;gap:8px;">
+                            <button class="btn btn-secondary" style="flex:1;justify-content:center;"><i class="fas fa-edit"></i> Editar</button>
+                            <button class="btn btn-primary" style="flex:1;justify-content:center;"><i class="fas fa-play"></i> Ativar</button>
+                        </div>
+                    </div>
+
+                    <div class="agent-card">
+                        <div class="agent-avatar" style="background:linear-gradient(135deg, var(--warning), var(--danger));"><i class="fas fa-dollar-sign"></i></div>
+                        <div class="agent-name">Vendedor IA</div>
+                        <div class="agent-role">Fechar vendas e Ofertas</div>
+                        <div class="agent-stats">
+                            <div class="agent-stat">
+                                <div class="agent-stat-value">432</div>
+                                <div class="agent-stat-label">Conversas</div>
+                            </div>
+                            <div class="agent-stat">
+                                <div class="agent-stat-value">78%</div>
+                                <div class="agent-stat-label">Conversão</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:16px;display:flex;gap:8px;">
+                            <button class="btn btn-secondary" style="flex:1;justify-content:center;"><i class="fas fa-edit"></i> Editar</button>
+                            <button class="btn btn-success" style="flex:1;justify-content:center;"><i class="fas fa-check"></i> Ativo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integrations Page -->
+            <div class="page" id="page-integrations">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Integrações</h1>
+                        <p class="page-subtitle">Conecte suas ferramentas favoritas</p>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <div class="tab active">IA</div>
+                    <div class="tab">Voz</div>
+                    <div class="tab">Meta</div>
+                    <div class="tab">Pagamentos</div>
+                    <div class="tab">Automação</div>
+                    <div class="tab">Rastreamento</div>
+                </div>
+
+                <div class="integration-grid">
+                    <div class="integration-card">
+                        <div class="integration-logo" style="color:var(--success);"><i class="fas fa-brain"></i></div>
+                        <div class="integration-info">
+                            <div class="integration-name">OpenAI</div>
+                            <div class="integration-desc">GPT-4, DALL-E, TTS</div>
+                        </div>
+                        <span class="integration-status connected">Conectado</span>
+                    </div>
+                    <div class="integration-card">
+                        <div class="integration-logo" style="color:var(--primary);"><i class="fas fa-gem"></i></div>
+                        <div class="integration-info">
+                            <div class="integration-name">Gemini</div>
+                            <div class="integration-desc">Google AI</div>
+                        </div>
+                        <span class="integration-status disconnected">Desconectado</span>
+                    </div>
+                    <div class="integration-card">
+                        <div class="integration-logo" style="color:var(--secondary);"><i class="fas fa-feather"></i></div>
+                        <div class="integration-info">
+                            <div class="integration-name">Claude</div>
+                            <div class="integration-desc">Anthropic</div>
+                        </div>
+                        <span class="integration-status connected">Conectado</span>
+                    </div>
+                    <div class="integration-card">
+                        <div class="integration-logo" style="color:var(--info);"><i class="fas fa-microphone"></i></div>
+                        <div class="integration-info">
+                            <div class="integration-name">ElevenLabs</div>
+                            <div class="integration-desc">Voice AI</div>
+                        </div>
+                        <span class="integration-status connected">Conectado</span>
+                    </div>
+                    <div class="integration-card">
+                        <div class="integration-logo" style="color:var(--primary);"><i class="fab fa-whatsapp"></i></div>
+                        <div class="integration-info">
+                            <div class="integration-name">WhatsApp Cloud API</div>
+                            <div class="integration-desc">Meta Business</div>
+                        </div>
+                        <span class="integration-status connected">Conectado</span>
+                    </div>
+                    <div class="integration-card">
+                        <div class="integration-logo" style="color:var(--warning);"><i class="fas fa-shopping-cart"></i></div>
+                        <div class="integration-info">
+                            <div class="integration-name">Hotmart</div>
+                            <div class="integration-desc">Infoprodutos</div>
+                        </div>
+                        <span class="integration-status disconnected">Desconectado</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Page -->
+            <div class="page" id="page-analytics">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Analytics</h1>
+                        <p class="page-subtitle">Métricas e relatórios do funil</p>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary"><i class="fas fa-calendar"></i> Período</button>
+                        <button class="btn btn-secondary"><i class="fas fa-download"></i> Exportar</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon blue"><i class="fas fa-filter"></i></div>
+                        </div>
+                        <div class="stat-value">2.847</div>
+                        <div class="stat-label">Total no Funil</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon green"><i class="fas fa-check"></i></div>
+                        </div>
+                        <div class="stat-value">18.2%</div>
+                        <div class="stat-label">Taxa de Conversão</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
+                        </div>
+                        <div class="stat-value">2.4 dias</div>
+                        <div class="stat-label">Tempo Médio p/ Compra</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon purple"><i class="fas fa-dollar-sign"></i></div>
+                        </div>
+                        <div class="stat-value">R$ 4.23</div>
+                        <div class="stat-label">Custo por Lead</div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">Funil de Conversão</div>
+                        </div>
+                        <div style="padding:20px;">
+                            <div style="margin-bottom:16px;">
+                                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                                    <span style="font-size:13px;">Visitantes</span>
+                                    <span style="font-size:13px;font-weight:600;">10.000</span>
+                                </div>
+                                <div style="height:24px;background:var(--bg-dark);border-radius:4px;overflow:hidden;">
+                                    <div style="width:100%;height:100%;background:var(--primary);"></div>
+                                </div>
+                            </div>
+                            <div style="margin-bottom:16px;">
+                                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                                    <span style="font-size:13px;">Leads</span>
+                                    <span style="font-size:13px;font-weight:600;">2.847</span>
+                                </div>
+                                <div style="height:24px;background:var(--bg-dark);border-radius:4px;overflow:hidden;">
+                                    <div style="width:28%;height:100%;background:var(--info);"></div>
+                                </div>
+                            </div>
+                            <div style="margin-bottom:16px;">
+                                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                                    <span style="font-size:13px;">Qualificados</span>
+                                    <span style="font-size:13px;font-weight:600;">856</span>
+                                </div>
+                                <div style="height:24px;background:var(--bg-dark);border-radius:4px;overflow:hidden;">
+                                    <div style="width:8.5%;height:100%;background:var(--secondary);"></div>
+                                </div>
+                            </div>
+                            <div style="margin-bottom:16px;">
+                                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                                    <span style="font-size:13px;">Propostas</span>
+                                    <span style="font-size:13px;font-weight:600;">324</span>
+                                </div>
+                                <div style="height:24px;background:var(--bg-dark);border-radius:4px;overflow:hidden;">
+                                    <div style="width:3.2%;height:100%;background:var(--warning);"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                                    <span style="font-size:13px;">Vendas</span>
+                                    <span style="font-size:13px;font-weight:600;">127</span>
+                                </div>
+                                <div style="height:24px;background:var(--bg-dark);border-radius:4px;overflow:hidden;">
+                                    <div style="width:1.27%;height:100%;background:var(--success);"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">Top Campanhas</div>
+                        </div>
+                        <div style="padding:20px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
+                                <div>
+                                    <div style="font-weight:500;">Lançamento Pro</div>
+                                    <div style="font-size:12px;color:var(--text-secondary);">Facebook Ads</div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div style="font-weight:600;color:var(--success);">R$ 23.450</div>
+                                    <div style="font-size:12px;color:var(--text-secondary);">127 vendas</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
+                                <div>
+                                    <div style="font-weight:500;">Black Friday</div>
+                                    <div style="font-size:12px;color:var(--text-secondary);">Google Ads</div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div style="font-weight:600;color:var(--success);">R$ 18.920</div>
+                                    <div style="font-size:12px;color:var(--text-secondary);">98 vendas</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;">
+                                <div>
+                                    <div style="font-weight:500;">Orgânico</div>
+                                    <div style="font-size:12px;color:var(--text-secondary);">Instagram</div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div style="font-weight:600;color:var(--success);">R$ 12.340</div>
+                                    <div style="font-size:12px;color:var(--text-secondary);">67 vendas</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sales Page -->
+            <div class="page" id="page-sales">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Vendas</h1>
+                        <p class="page-subtitle">Acompanhe suas vendas e receita</p>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary"><i class="fas fa-calendar"></i> Período</button>
+                        <button class="btn btn-primary"><i class="fas fa-plus"></i> Registrar Venda</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+                        </div>
+                        <div class="stat-value">127</div>
+                        <div class="stat-label">Vendas Aprovadas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
+                        </div>
+                        <div class="stat-value">23</div>
+                        <div class="stat-label">Vendas Pendentes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon red"><i class="fas fa-times-circle"></i></div>
+                        </div>
+                        <div class="stat-value">8</div>
+                        <div class="stat-label">Vendas Canceladas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon blue"><i class="fas fa-dollar-sign"></i></div>
+                        </div>
+                        <div class="stat-value">R$ 87.320</div>
+                        <div class="stat-label">Receita Total</div>
+                    </div>
+                </div>
+
+                <div class="crm-layout">
+                    <table class="crm-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Cliente</th>
+                                <th>Produto</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Data</th>
+                                <th>Origem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>#1234</td>
+                                <td><strong>Maria Lima</strong></td>
+                                <td>Plano Pro</td>
+                                <td><strong>R$ 997,00</strong></td>
+                                <td><span class="tag tag-green">Aprovada</span></td>
+                                <td>Hoje, 14:32</td>
+                                <td>WhatsApp</td>
+                            </tr>
+                            <tr>
+                                <td>#1233</td>
+                                <td><strong>João Silva</strong></td>
+                                <td>Plano Essentials</td>
+                                <td><strong>R$ 397,00</strong></td>
+                                <td><span class="tag tag-green">Aprovada</span></td>
+                                <td>Hoje, 13:45</td>
+                                <td>Site</td>
+                            </tr>
+                            <tr>
+                                <td>#1232</td>
+                                <td><strong>Ana Santos</strong></td>
+                                <td>Plano Pro</td>
+                                <td><strong>R$ 997,00</strong></td>
+                                <td><span class="tag tag-orange">Pendente</span></td>
+                                <td>Hoje, 12:20</td>
+                                <td>Instagram</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Connections Page -->
+            <div class="page" id="page-connections">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Conexões WhatsApp</h1>
+                        <p class="page-subtitle">Gerencie seus números conectados</p>
+                    </div>
+                    <button class="btn btn-primary"><i class="fas fa-plus"></i> Conectar Número</button>
+                </div>
+
+                <div class="agent-grid">
+                    <div class="agent-card">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                            <div class="agent-avatar" style="width:48px;height:48px;font-size:20px;background:var(--success);"><i class="fab fa-whatsapp"></i></div>
+                            <div>
+                                <div class="agent-name" style="font-size:16px;">+55 11 99999-1234</div>
+                                <div style="font-size:12px;color:var(--success);">● Conectado</div>
+                            </div>
+                        </div>
+                        <div class="agent-stats">
+                            <div class="agent-stat">
+                                <div class="agent-stat-value">1.234</div>
+                                <div class="agent-stat-label">Mensagens/dia</div>
+                            </div>
+                            <div class="agent-stat">
+                                <div class="agent-stat-value">98%</div>
+                                <div class="agent-stat-label">Qualidade</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="agent-card">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                            <div class="agent-avatar" style="width:48px;height:48px;font-size:20px;background:var(--success);"><i class="fab fa-whatsapp"></i></div>
+                            <div>
+                                <div class="agent-name" style="font-size:16px;">+55 21 98888-5678</div>
+                                <div style="font-size:12px;color:var(--success);">● Conectado</div>
+                            </div>
+                        </div>
+                        <div class="agent-stats">
+                            <div class="agent-stat">
+                                <div class="agent-stat-value">856</div>
+                                <div class="agent-stat-label">Mensagens/dia</div>
+                            </div>
+                            <div class="agent-stat">
+                                <div class="agent-stat-value">95%</div>
+                                <div class="agent-stat-label">Qualidade</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kanban Page -->
+            <div class="page" id="page-kanban">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Kanban</h1>
+                        <p class="page-subtitle">Visualize seus leads por etapa do funil</p>
+                    </div>
+                    <button class="btn btn-primary"><i class="fas fa-plus"></i> Novo Lead</button>
+                </div>
+
+                <div class="kanban-board">
+                    <div class="kanban-column">
+                        <div class="kanban-column-header">
+                            <div class="kanban-column-title">
+                                <span style="width:8px;height:8px;border-radius:50%;background:var(--primary);"></span>
+                                Novo Lead
+                                <span class="kanban-count">12</span>
+                            </div>
+                        </div>
+                        <div class="kanban-card">
+                            <div class="kanban-card-name">Carlos Souza</div>
+                            <div class="kanban-card-phone">+55 11 97777-1234</div>
+                            <div class="kanban-card-tags">
+                                <span class="tag tag-blue">Facebook</span>
+                            </div>
+                        </div>
+                        <div class="kanban-card">
+                            <div class="kanban-card-name">Fernanda Lima</div>
+                            <div class="kanban-card-phone">+55 21 96666-5678</div>
+                            <div class="kanban-card-tags">
+                                <span class="tag tag-purple">Instagram</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kanban-column">
+                        <div class="kanban-column-header">
+                            <div class="kanban-column-title">
+                                <span style="width:8px;height:8px;border-radius:50%;background:var(--info);"></span>
+                                Em Atendimento
+                                <span class="kanban-count">8</span>
+                            </div>
+                        </div>
+                        <div class="kanban-card">
+                            <div class="kanban-card-name">Pedro Costa</div>
+                            <div class="kanban-card-phone">+55 31 95555-9012</div>
+                            <div class="kanban-card-tags">
+                                <span class="tag tag-green">Quente</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kanban-column">
+                        <div class="kanban-column-header">
+                            <div class="kanban-column-title">
+                                <span style="width:8px;height:8px;border-radius:50%;background:var(--warning);"></span>
+                                Qualificado
+                                <span class="kanban-count">5</span>
+                            </div>
+                        </div>
+                        <div class="kanban-card">
+                            <div class="kanban-card-name">Ana Pereira</div>
+                            <div class="kanban-card-phone">+55 41 94444-3456</div>
+                            <div class="kanban-card-tags">
+                                <span class="tag tag-orange">Proposta</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kanban-column">
+                        <div class="kanban-column-header">
+                            <div class="kanban-column-title">
+                                <span style="width:8px;height:8px;border-radius:50%;background:var(--success);"></span>
+                                Pagou
+                                <span class="kanban-count">3</span>
+                            </div>
+                        </div>
+                        <div class="kanban-card">
+                            <div class="kanban-card-name">Roberto Alves</div>
+                            <div class="kanban-card-phone">+55 51 93333-7890</div>
+                            <div class="kanban-card-tags">
+                                <span class="tag tag-green">VIP</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div class="page" id="page-settings">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Configurações</h1>
+                        <p class="page-subtitle">Gerencie suas preferências</p>
+                    </div>
+                    <button class="btn btn-primary"><i class="fas fa-save"></i> Salvar</button>
+                </div>
+
+                <div style="display:grid;grid-template-columns:250px 1fr;gap:24px;">
+                    <div style="background:var(--bg-card);border-radius:12px;border:1px solid var(--border);padding:16px;">
+                        <div class="nav-item active" style="margin-bottom:4px;"><i class="fas fa-user"></i> Perfil</div>
+                        <div class="nav-item" style="margin-bottom:4px;"><i class="fas fa-bell"></i> Notificações</div>
+                        <div class="nav-item" style="margin-bottom:4px;"><i class="fas fa-shield-alt"></i> Segurança</div>
+                        <div class="nav-item" style="margin-bottom:4px;"><i class="fas fa-palette"></i> Aparência</div>
+                        <div class="nav-item" style="margin-bottom:4px;"><i class="fas fa-credit-card"></i> Faturamento</div>
+                        <div class="nav-item"><i class="fas fa-plug"></i> API</div>
+                    </div>
+
+                    <div style="background:var(--bg-card);border-radius:12px;border:1px solid var(--border);padding:24px;">
+                        <h3 style="font-size:18px;font-weight:600;margin-bottom:20px;">Perfil</h3>
+                        <div class="form-group">
+                            <label class="form-label">Nome da Empresa</label>
+                            <input type="text" class="form-input" value="Ozion Chat AI">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-input" value="admin@ozionchat.ai">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Telefone</label>
+                            <input type="tel" class="form-input" value="+55 11 99999-0000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Fuso Horário</label>
+                            <select class="form-select">
+                                <option>America/Sao_Paulo (GMT-3)</option>
+                                <option>America/New_York (GMT-5)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
