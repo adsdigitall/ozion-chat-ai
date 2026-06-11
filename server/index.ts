@@ -70,7 +70,7 @@ async function start() {
     console.log('✅ Supabase PostgreSQL connected');
   } catch (error: any) {
     console.error('❌ Supabase connection failed:', error.message);
-    console.log('⚠️  Continuing with SQLite fallback...');
+    console.log('⚠️  Continuing without database...');
   }
   
   app.listen(PORT, () => {
