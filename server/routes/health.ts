@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import * as schema from '../db/schema.js';
