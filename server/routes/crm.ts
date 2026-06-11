@@ -1,113 +1,112 @@
 // @ts-nocheck
 import { Router } from 'express';
-import { db } from '../db/index.js';
-import * as schema from '../db/schema.js';
-import { eq, like, and, desc } from 'drizzle-orm';
+import { getSupabase } from '../db/supabase.js';
 import crypto from 'crypto';
 
 const router = Router();
 
-router.get('/contacts', (req, res) => {
+router.get('/contacts', async (req, res) => {
   try {
     const tid = (req.headers['x-tenant-id'] as string) || 'default';
-    let rows = db.select().from(schema.contacts).where(eq(schema.contacts.tenantId, tid)).all();
-    const { search, tag, status, source, campaign } = req.query;
-    if (search) rows = rows.filter((c: any) => (c.name || '').toLowerCase().includes((search as string).toLowerCase()) || (c.phone || '').includes(search as string) || (c.email || '').toLowerCase().includes((search as string).toLowerCase()));
-    if (tag) rows = rows.filter((c: any) => JSON.parse(c.tags || '[]').includes(tag));
-    if (status) rows = rows.filter((c: any) => c.leadStatus === status);
-    if (source) rows = rows.filter((c: any) => c.leadSource === source);
-    if (campaign) rows = rows.filter((c: any) => c.campaignId === campaign);
-    res.json({ contacts: rows.map((c: any) => ({ ...c, tags: JSON.parse(c.tags || '[]'), customFields: JSON.parse(c.customFields || '{}') })), total: rows.length });
+    const sb = getSupabase();
+    let query = sb.from('contacts').select('*').eq('tenant_id', tid);
+    const { data: rows, error } = await query;
+    if (error) throw error;
+
+    let enriched = (rows || []).map((c: any) => ({
+      ...c,
+      tags: JSON.parse(c.tags || '[]'),
+      customFields: JSON.parse(c.customFields || '{}'),
+    }));
+
+    const { search, tag, status, source } = req.query;
+    if (search) enriched = enriched.filter((c: any) => (c.name || '').toLowerCase().includes((search as string).toLowerCase()) || (c.phone || '').includes(search as string));
+    if (tag) enriched = enriched.filter((c: any) => (JSON.parse(c.tags || '[]') || []).includes(tag));
+    if (status) enriched = enriched.filter((c: any) => c.leadStatus === status);
+    if (source) enriched = enriched.filter((c: any) => c.leadSource === source);
+
+    res.json({ contacts: enriched, total: enriched.length });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/contacts', (req, res) => {
+router.post('/contacts', async (req, res) => {
   try {
     const tid = (req.headers['x-tenant-id'] as string) || 'default';
+    const sb = getSupabase();
     const id = crypto.randomUUID();
-    const tags = req.body.tags ? (Array.isArray(req.body.tags) ? JSON.stringify(req.body.tags) : '[]') : '[]';
-    const customFields = req.body.customFields ? JSON.stringify(req.body.customFields) : '{}';
-    const row = { id, tenantId: tid, ...req.body, tags, customFields, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    db.insert(schema.contacts).values(row).run();
+    const tags = req.body.tags ? (Array.isArray(req.body.tags) ? req.body.tags : []) : [];
+    const customFields = req.body.customFields || {};
+    const row = { id, tenant_id: tid, name: req.body.name, phone: req.body.phone, email: req.body.email, lead_status: req.body.leadStatus || 'lead', lead_source: req.body.leadSource || 'organic', tags: JSON.stringify(tags), custom_fields: JSON.stringify(customFields), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    const { error } = await sb.from('contacts').insert(row);
+    if (error) throw error;
+    res.json({ ...row, tags, customFields });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/contacts/:id', async (req, res) => {
+  try {
+    const sb = getSupabase();
+    const updates: any = { updated_at: new Date().toISOString() };
+    if (req.body.name) updates.name = req.body.name;
+    if (req.body.phone) updates.phone = req.body.phone;
+    if (req.body.email) updates.email = req.body.email;
+    if (req.body.leadStatus) updates.lead_status = req.body.leadStatus;
+    if (req.body.leadSource) updates.lead_source = req.body.leadSource;
+    if (req.body.tags) updates.tags = JSON.stringify(req.body.tags);
+    if (req.body.customFields) updates.custom_fields = JSON.stringify(req.body.customFields);
+    
+    const { error } = await sb.from('contacts').update(updates).eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/contacts/:id', async (req, res) => {
+  try {
+    const sb = getSupabase();
+    const { error } = await sb.from('contacts').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/tags', async (req, res) => {
+  try {
+    const tid = (req.headers['x-tenant-id'] as string) || 'default';
+    const sb = getSupabase();
+    const { data, error } = await sb.from('tags').select('*').eq('tenant_id', tid);
+    if (error) throw error;
+    res.json(data || []);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/tags', async (req, res) => {
+  try {
+    const tid = (req.headers['x-tenant-id'] as string) || 'default';
+    const sb = getSupabase();
+    const id = crypto.randomUUID();
+    const row = { id, tenant_id: tid, name: req.body.name, color: req.body.color || '#6366f1', created_at: new Date().toISOString() };
+    const { error } = await sb.from('tags').insert(row);
+    if (error) throw error;
     res.json(row);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.put('/contacts/:id', (req, res) => {
+router.delete('/tags/:id', async (req, res) => {
   try {
-    const body = { ...req.body, updatedAt: new Date().toISOString() };
-    if (body.tags && Array.isArray(body.tags)) body.tags = JSON.stringify(body.tags);
-    if (body.customFields && typeof body.customFields === 'object') body.customFields = JSON.stringify(body.customFields);
-    db.update(schema.contacts).set(body).where(eq(schema.contacts.id, req.params.id)).run();
+    const sb = getSupabase();
+    const { error } = await sb.from('tags').delete().eq('id', req.params.id);
+    if (error) throw error;
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.delete('/contacts/:id', (req, res) => {
-  try {
-    db.delete(schema.contacts).where(eq(schema.contacts.id, req.params.id)).run();
-    res.json({ ok: true });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-router.post('/contacts/:id/tags', (req, res) => {
-  try {
-    const contact = db.select().from(schema.contacts).where(eq(schema.contacts.id, req.params.id)).get() as any;
-    if (!contact) return res.status(404).json({ error: 'Contact not found' });
-    const tags = JSON.parse(contact.tags || '[]');
-    if (!tags.includes(req.body.tag)) tags.push(req.body.tag);
-    db.update(schema.contacts).set({ tags: JSON.stringify(tags), updatedAt: new Date().toISOString() }).where(eq(schema.contacts.id, req.params.id)).run();
-    res.json({ ok: true, tags });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-router.delete('/contacts/:id/tags/:tag', (req, res) => {
-  try {
-    const contact = db.select().from(schema.contacts).where(eq(schema.contacts.id, req.params.id)).get() as any;
-    if (!contact) return res.status(404).json({ error: 'Contact not found' });
-    const tags = JSON.parse(contact.tags || '[]').filter((t: string) => t !== req.params.tag);
-    db.update(schema.contacts).set({ tags: JSON.stringify(tags), updatedAt: new Date().toISOString() }).where(eq(schema.contacts.id, req.params.id)).run();
-    res.json({ ok: true, tags });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-router.get('/tags', (req, res) => {
+router.get('/export', async (req, res) => {
   try {
     const tid = (req.headers['x-tenant-id'] as string) || 'default';
-    const rows = db.select().from(schema.tags).where(eq(schema.tags.tenantId, tid)).all();
-    res.json(rows);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-router.post('/tags', (req, res) => {
-  try {
-    const tid = (req.headers['x-tenant-id'] as string) || 'default';
-    const id = crypto.randomUUID();
-    const row = { id, tenantId: tid, ...req.body, createdAt: new Date().toISOString() };
-    db.insert(schema.tags).values(row).run();
-    res.json(row);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-router.put('/tags/:id', (req, res) => {
-  try {
-    db.update(schema.tags).set(req.body).where(eq(schema.tags.id, req.params.id)).run();
-    res.json({ ok: true });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-router.delete('/tags/:id', (req, res) => {
-  try {
-    db.delete(schema.tags).where(eq(schema.tags.id, req.params.id)).run();
-    res.json({ ok: true });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-router.get('/export', (req, res) => {
-  try {
-    const tid = (req.headers['x-tenant-id'] as string) || 'default';
-    const rows = db.select().from(schema.contacts).where(eq(schema.contacts.tenantId, tid)).all();
-    const csv = 'id,name,phone,email,lead_status,lead_source,tags,created_at\n' + rows.map((r: any) => `${r.id},${r.name || ''},${r.phone || ''},${r.email || ''},${r.leadStatus || ''},${r.leadSource || ''},${r.tags || '[]'},${r.createdAt}`).join('\n');
+    const sb = getSupabase();
+    const { data: rows } = await sb.from('contacts').select('*').eq('tenant_id', tid);
+    const csv = 'id,name,phone,email,lead_status,lead_source,tags,created_at\n' + (rows || []).map((r: any) => `${r.id},${r.name || ''},${r.phone || ''},${r.email || ''},${r.lead_status || ''},${r.lead_source || ''},${r.tags || '[]'},${r.created_at}`).join('\n');
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=contacts.csv');
     res.send(csv);
