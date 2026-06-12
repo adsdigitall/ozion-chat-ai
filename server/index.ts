@@ -24,6 +24,7 @@ import updatesRoutes from './routes/updates.js';
 import logsRoutes from './routes/logs.js';
 import plansRoutes from './routes/plans.js';
 import deployRoutes from './routes/deploy.js';
+import flowiseRoutes from './routes/flowise.js';
 import { getSupabase } from './db/supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -56,6 +57,7 @@ app.use('/api/updates', updatesRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/plans', plansRoutes);
 app.use('/api/deploy', deployRoutes);
+app.use('/api/flowise', flowiseRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

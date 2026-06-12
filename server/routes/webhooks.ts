@@ -6,6 +6,10 @@ import { processIncomingMessage, processStatusUpdate } from '../services/webhook
 
 const router = Router();
 
+const FLOWISE_URL = process.env.FLOWISE_URL || '';
+const FLOWISE_API_KEY = process.env.FLOWISE_API_KEY || '';
+const FLOWISE_CHATFLOW_ID = process.env.FLOWISE_CHATFLOW_ID || '';
+
 // GET /api/webhooks/whatsapp - Webhook verification
 router.get('/whatsapp', (req: Request, res: Response) => {
   const mode = req.query['hub.mode'];
@@ -57,8 +61,21 @@ router.post('/whatsapp', async (req: Request, res: Response) => {
             for (const message of value.messages) {
               const contact = value.contacts?.[0];
               if (contact) {
-                await processIncomingMessage(tenantId, metadata, message, contact);
+                const result = await processIncomingMessage(tenantId, metadata, message, contact);
                 console.log(`📨 Message from ${message.from}`);
+
+                // Process with Flowise if configured
+                if (FLOWISE_URL && FLOWISE_CHATFLOW_ID && message.text?.body) {
+                  try {
+                    const flowiseResponse = await callFlowise(message.text.body, message.from, tenantId);
+                    if (flowiseResponse) {
+                      await sendWhatsAppMessage(metadata.phone_number_id, message.from, flowiseResponse);
+                      console.log(`🤖 Flowise response sent to ${message.from}`);
+                    }
+                  } catch (flowiseError) {
+                    console.error('Flowise error:', flowiseError);
+                  }
+                }
               }
             }
           }
@@ -80,5 +97,51 @@ router.post('/whatsapp', async (req: Request, res: Response) => {
     res.sendStatus(200);
   }
 });
+
+// Call Flowise prediction API
+async function callFlowise(question: string, sessionId: string, tenantId: string): Promise<string | null> {
+  if (!FLOWISE_URL || !FLOWISE_CHATFLOW_ID) return null;
+
+  const headers: any = { 'Content-Type': 'application/json' };
+  if (FLOWISE_API_KEY) headers['Authorization'] = `Bearer ${FLOWISE_API_KEY}`;
+
+  const response = await fetch(`${FLOWISE_URL}/api/v1/prediction/${FLOWISE_CHATFLOW_ID}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      question,
+      streaming: false,
+      overrideConfig: {
+        sessionId: `whatsapp_${tenantId}_${sessionId}`,
+      },
+    }),
+  });
+
+  const data = await response.json();
+  return data.text || data.answer || null;
+}
+
+// Send WhatsApp message via Meta API
+async function sendWhatsAppMessage(phoneNumberId: string, to: string, text: string): Promise<void> {
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!accessToken) {
+    console.warn('No WhatsApp access token configured');
+    return;
+  }
+
+  await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'text',
+      text: { body: text },
+    }),
+  });
+}
 
 export default router;
