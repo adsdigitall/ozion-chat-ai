@@ -240,124 +240,311 @@ function switchDashTab(btn, idx) {
   btn.classList.add('active'); btn.style.color = 'var(--text-primary)';
 }
 
-// ─── Chat ao Vivo (Lailla.io exact) ──────────────────────────────
+// ─── Chat ao Vivo (Lailla.io fluid) ─────────────────────────
+let chatFilter = 'all';
+let chatSearch = '';
+
+const AVATAR_COLORS = ['#e91e63','#9c27b0','#673ab7','#3f51b5','#2196f3','#00bcd4','#009688','#4caf50','#ff9800','#ff5722','#795548','#607d8b'];
+function getAvatarColor(name) { let h = 0; for (let i = 0; i < (name||'').length; i++) h = name.charCodeAt(i) + ((h << 5) - h); return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length]; }
+
+const OPERATOR_TAGS = ['KAROL','SOCO','TIKT','Ana','Carlos','Maria','João'];
+function getOperatorTag(name) { let h = 0; for (let i = 0; i < (name||'').length; i++) h = name.charCodeAt(i) + ((h << 5) - h); return OPERATOR_TAGS[Math.abs(h) % OPERATOR_TAGS.length]; }
+
 async function loadChat(el) {
   const [convData, statsData] = await Promise.all([api('/api/chat/conversations'), api('/api/chat/stats')]);
   conversations = convData?.conversations || []; convStats = statsData || {};
+  chatFilter = 'all'; chatSearch = '';
   
-  el.innerHTML = `<div style="display:flex;height:calc(100vh - 120px)">
-    <!-- Chat List Sidebar -->
-    <div style="width:320px;border-right:1px solid var(--border);display:flex;flex-direction:column">
-      <div style="padding:12px;border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;font-size:15px">Chat ao vivo</h3></div>
-        <div style="display:flex;gap:4px;margin-bottom:8px">
-          <button class="chat-tab active" onclick="filterConvs(this,'all')" style="flex:1;padding:6px;border-radius:6px;border:none;cursor:pointer;font-size:11px;background:var(--bg-secondary);color:var(--text-primary)">Todos <span style="background:var(--accent);color:white;padding:1px 6px;border-radius:10px;font-size:10px;margin-left:4px">${conversations.length}</span></button>
-          <button class="chat-tab" onclick="filterConvs(this,'ai')" style="flex:1;padding:6px;border-radius:6px;border:none;cursor:pointer;font-size:11px;background:none;color:var(--text-muted)">IA</button>
-          <button class="chat-tab" onclick="filterConvs(this,'closed')" style="flex:1;padding:6px;border-radius:6px;border:none;cursor:pointer;font-size:11px;background:none;color:var(--text-muted)">Fechados</button>
+  const filtered = filterConversations();
+  const entradaCount = conversations.filter(c => c.status !== 'closed' && !c.isAiActive).length;
+  const waitingCount = conversations.filter(c => c.status !== 'closed' && c.isAiActive).length;
+  const closedCount = conversations.filter(c => c.status === 'closed').length;
+
+  el.innerHTML = `
+    <div style="display:flex;height:calc(100vh - 56px);background:#0d1117">
+      <!-- Sidebar -->
+      <div style="width:360px;display:flex;flex-direction:column;border-right:1px solid #1e2d3d;background:#0d1117">
+        <!-- Top Bar -->
+        <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e2d3d">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="position:relative;cursor:pointer">
+              <i class="fa-solid fa-comment-dots" style="font-size:18px;color:#8b9dc3"></i>
+              <span style="position:absolute;top:-6px;right:-8px;background:#22c55e;color:white;font-size:8px;font-weight:700;padding:1px 4px;border-radius:8px;min-width:16px;text-align:center">${entradaCount + waitingCount}</span>
+            </div>
+            <i class="fa-solid fa-users" style="font-size:16px;color:#8b9dc3;cursor:pointer"></i>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <i class="fa-solid fa-sliders" style="font-size:14px;color:#8b9dc3;cursor:pointer"></i>
+            <i class="fa-solid fa-arrow-right-arrow-left" style="font-size:14px;color:#8b9dc3;cursor:pointer"></i>
+            <div style="position:relative;cursor:pointer">
+              <i class="fa-solid fa-chevron-down" style="font-size:12px;color:#8b9dc3"></i>
+            </div>
+            <div onclick="showToast('Novo chat','info')" style="width:32px;height:32px;border-radius:50%;background:#6c5ce7;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#5a4bd1'" onmouseout="this.style.background='#6c5ce7'">
+              <i class="fa-solid fa-plus" style="font-size:14px;color:white"></i>
+            </div>
+          </div>
         </div>
-        <div style="display:flex;gap:6px">
-          <input type="text" placeholder="Procurar contato" style="flex:1;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text-primary);font-size:11px">
-          <button style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px;color:var(--text-muted);cursor:pointer"><i class="fa-solid fa-filter" style="font-size:11px"></i></button>
+
+        <!-- Search + Filter -->
+        <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1e2d3d">
+          <i class="fa-solid fa-filter" style="font-size:13px;color:#8b9dc3;cursor:pointer"></i>
+          <div style="flex:1;position:relative">
+            <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:#64748b"></i>
+            <input type="text" id="chat-search" placeholder="Buscar por nome ou telefone" value="${chatSearch}" oninput="chatSearch=this.value;renderChatList()" style="width:100%;padding:8px 12px 8px 28px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;transition:border .2s" onfocus="this.style.borderColor='#6c5ce7'" onblur="this.style.borderColor='#1e2d3d'">
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div style="padding:12px 16px 0;display:flex;gap:0;border-bottom:1px solid #1e2d3d">
+          <button onclick="setChatFilter('all')" class="chat-filter-btn" data-filter="all" style="flex:1;padding:10px 0;border:none;border-bottom:2px solid ${chatFilter==='all'?'#6c5ce7':'transparent'};cursor:pointer;font-size:12px;font-weight:${chatFilter==='all'?'700':'500'};background:transparent;color:${chatFilter==='all'?'#e6edf3':'#8b9dc3'};transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px">
+            Entrada ${entradaCount > 0 ? `<span style="background:#22c55e;color:white;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px">${entradaCount}</span>` : ''}
+          </button>
+          <button onclick="setChatFilter('ai')" class="chat-filter-btn" data-filter="ai" style="flex:1;padding:10px 0;border:none;border-bottom:2px solid ${chatFilter==='ai'?'#6c5ce7':'transparent'};cursor:pointer;font-size:12px;font-weight:${chatFilter==='ai'?'700':'500'};background:transparent;color:${chatFilter==='ai'?'#e6edf3':'#8b9dc3'};transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px">
+            Esperando ${waitingCount > 0 ? `<span style="background:#f59e0b;color:white;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px">${waitingCount}</span>` : ''}
+          </button>
+          <button onclick="setChatFilter('closed')" class="chat-filter-btn" data-filter="closed" style="flex:1;padding:10px 0;border:none;border-bottom:2px solid ${chatFilter==='closed'?'#6c5ce7':'transparent'};cursor:pointer;font-size:12px;font-weight:${chatFilter==='closed'?'700':'500'};background:transparent;color:${chatFilter==='closed'?'#e6edf3':'#8b9dc3'};transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px">
+            Finalizados
+          </button>
+        </div>
+
+        <!-- Conversation List -->
+        <div style="flex:1;overflow-y:auto;padding:4px 8px" id="chat-list">
+          ${renderChatListItems(filtered)}
         </div>
       </div>
-      <div style="flex:1;overflow-y:auto" id="chat-list">
-        ${conversations.length===0?'<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:12px"><i class="fa-solid fa-comments" style="font-size:28px;margin-bottom:8px;opacity:0.3"></i><p>Nenhuma conversa</p></div>':
-          conversations.map(c => renderConvItem(c)).join('')}
+
+      <!-- Chat Main -->
+      <div style="flex:1;display:flex;flex-direction:column;background:#0d1117" id="chat-main">
+        ${selectedConv ? '' : renderChatEmpty()}
       </div>
-    </div>
-    <!-- Chat Main -->
-    <div style="flex:1;display:flex;flex-direction:column" id="chat-main">
-      <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><div style="text-align:center"><i class="fa-solid fa-comments" style="font-size:48px;margin-bottom:12px;opacity:0.3"></i><h3>Selecione uma conversa</h3></div></div>
-    </div>
-  </div>`;
+    </div>`;
+
+  if (selectedConv) selectConv(selectedConv.id);
+}
+
+function filterConversations() {
+  return conversations.filter(c => {
+    const name = (c.contact?.name || '').toLowerCase();
+    const phone = (c.contact?.phone || '').toLowerCase();
+    if (chatSearch && !name.includes(chatSearch.toLowerCase()) && !phone.includes(chatSearch.toLowerCase())) return false;
+    if (chatFilter === 'ai') return c.isAiActive;
+    if (chatFilter === 'closed') return c.status === 'closed';
+    if (chatFilter === 'all') return c.status !== 'closed' && !c.isAiActive;
+    return true;
+  });
+}
+
+function renderChatListItems(filtered) {
+  if (filtered.length === 0) {
+    return `<div style="text-align:center;padding:40px 20px;color:#8b9dc3">
+      <div style="width:56px;height:56px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i class="fa-solid fa-comments" style="font-size:22px;opacity:.4"></i></div>
+      <p style="font-size:13px;font-weight:500;margin:0 0 4px">Nenhuma conversa</p>
+      <p style="font-size:11px;opacity:.7">As conversas aparecerão aqui quando alguém enviar uma mensagem</p>
+    </div>`;
+  }
+  return filtered.map(c => renderConvItem(c)).join('');
 }
 
 function renderConvItem(c) {
   const name = c.contact?.name || 'Desconhecido';
-  return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);${selectedConv?.id===c.id?'background:var(--accent-light)':''}" onclick="selectConv('${c.id}')">
-    <div style="width:36px;height:36px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;font-size:13px;color:white;flex-shrink:0">${name[0]}</div>
+  const phone = c.contact?.phone || c.contact_wa_id || '';
+  const isSelected = selectedConv?.id === c.id;
+  const lastMsg = c.lastMessage || '';
+  const avatarColor = getAvatarColor(name);
+  const operatorTag = getOperatorTag(name);
+  const hasCheckmarks = c.status !== 'closed';
+  const unread = c.unread_count || 0;
+  const isGroup = c.is_group || false;
+
+  return `<div onclick="selectConv('${c.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-radius:8px;margin:1px 0;transition:all .15s;${isSelected?'background:#161b22;border:1px solid #1e2d3d':'border:1px solid transparent'}" onmouseover="if(!${isSelected})this.style.background='#161b22'" onmouseout="if(!${isSelected})this.style.background='transparent'">
+    <div style="position:relative;flex-shrink:0">
+      <div style="width:40px;height:40px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:14px;color:white;font-weight:600">${name[0]?.toUpperCase()}</div>
+    </div>
     <div style="flex:1;min-width:0">
-      <div style="display:flex;justify-content:space-between"><span style="font-weight:500;font-size:13px">${name}</span><span style="font-size:10px;color:var(--text-muted)">${c.lastMessageAt?timeAgo(c.lastMessageAt):''}</span></div>
-      <div style="display:flex;justify-content:space-between;margin-top:2px"><span style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.contact?.phone||''}</span>${c.isAiActive?'<span style="font-size:9px;background:var(--accent);color:white;padding:1px 6px;border-radius:8px">🤖 IA</span>':''}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:600;font-size:13px;color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</span>
+        <span style="font-size:10px;color:#8b9dc3;flex-shrink:0;margin-left:8px">${c.last_message_at ? timeAgo(c.last_message_at) : ''}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;margin-top:3px">
+        ${hasCheckmarks ? '<i class="fa-solid fa-check-double" style="font-size:10px;color:#53bdeb;flex-shrink:0"></i>' : ''}
+        <span style="font-size:11px;color:#8b9dc3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">${lastMsg || phone}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+        <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600;background:${avatarColor}22;color:${avatarColor};border:1px solid ${avatarColor}44">
+          <i class="fa-solid fa-circle" style="font-size:5px"></i>${operatorTag}
+        </span>
+        ${isGroup ? '<span style="font-size:9px;color:#8b9dc3">+1</span>' : ''}
+        ${unread > 0 ? `<span style="min-width:18px;height:18px;border-radius:50%;background:#22c55e;color:white;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${unread}</span>` : ''}
+        <span style="font-size:9px;color:#8b9dc3;margin-left:auto">Geral</span>
+      </div>
     </div>
   </div>`;
+}
+
+function renderChatEmpty() {
+  return `<div style="flex:1;display:flex;align-items:center;justify-content:center">
+    <div style="text-align:center;max-width:300px">
+      <div style="width:80px;height:80px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+        <i class="fa-solid fa-comments" style="font-size:32px;color:#6c5ce7;opacity:.5"></i>
+      </div>
+      <h3 style="font-size:16px;font-weight:600;margin:0 0 6px;color:#e6edf3">Selecione uma conversa</h3>
+      <p style="font-size:12px;color:#8b9dc3;margin:0">Escolha uma conversa ao lado para começar a responder</p>
+    </div>
+  </div>`;
+}
+
+function setChatFilter(filter) {
+  chatFilter = filter;
+  const filtered = filterConversations();
+  const list = document.getElementById('chat-list');
+  if (list) list.innerHTML = renderChatListItems(filtered);
+  
+  document.querySelectorAll('.chat-filter-btn').forEach(btn => {
+    const f = btn.dataset.filter;
+    btn.style.borderBottom = f === filter ? '2px solid #6c5ce7' : '2px solid transparent';
+    btn.style.fontWeight = f === filter ? '700' : '500';
+    btn.style.color = f === filter ? '#e6edf3' : '#8b9dc3';
+  });
+}
+
+function renderChatList() {
+  const filtered = filterConversations();
+  const list = document.getElementById('chat-list');
+  if (list) list.innerHTML = renderChatListItems(filtered);
 }
 
 async function selectConv(id) {
   selectedConv = conversations.find(c => c.id === id);
   if (!selectedConv) return;
-  const data = await api(`/api/chat/conversations/${id}`);
-  chatMessages = data?.messages || [];
+  
   const chatMain = document.getElementById('chat-main');
   if (!chatMain) return;
+
+  chatMain.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;color:#6c5ce7"></i></div>`;
+
+  const data = await api(`/api/chat/conversations/${id}`);
+  chatMessages = data?.messages || [];
   
+  const name = selectedConv.contact?.name || 'Desconhecido';
+  const phone = selectedConv.contact?.phone || selectedConv.contact_wa_id || '';
+  const avatarColor = getAvatarColor(name);
+  const operatorTag = getOperatorTag(name);
+
   chatMain.innerHTML = `
-    <!-- Chat Header -->
-    <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+    <!-- Header -->
+    <div style="padding:10px 16px;border-bottom:1px solid #1e2d3d;display:flex;justify-content:space-between;align-items:center;background:#0d1117">
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:32px;height:32px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;font-size:12px;color:white">${(selectedConv.contact?.name||'?')[0]}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:14px;color:white;font-weight:600">${name[0]?.toUpperCase()}</div>
         <div>
-          <h3 style="font-size:14px;margin:0">${selectedConv.contact?.name||'Desconhecido'}</h3>
-          <span style="font-size:10px;color:var(--text-muted)">Conversando com: ${selectedConv.contact?.phone||''}</span>
-          <div style="display:flex;gap:8px;margin-top:2px">
-            <span style="font-size:9px;color:#25D366">Janela (24h) ativa</span>
-            <span style="font-size:9px;color:var(--accent)">Janela (72h) ativa</span>
+          <h3 style="font-size:13px;margin:0;font-weight:600;color:#e6edf3">${name}</h3>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:1px">
+            <span style="font-size:10px;color:#8b9dc3">${phone}</span>
+            <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:3px;font-size:8px;font-weight:600;background:${avatarColor}22;color:${avatarColor}"><i class="fa-solid fa-circle" style="font-size:4px"></i>${operatorTag}</span>
           </div>
         </div>
       </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-sm btn-${selectedConv.isAiActive?'warning':'success'}" onclick="toggleAI('${id}')" style="font-size:11px"><i class="fa-solid fa-robot"></i> ${selectedConv.isAiActive?'Pausar IA':'Ativar IA'}</button>
-        <button class="btn btn-sm btn-secondary" onclick="closeConv('${id}')"><i class="fa-solid fa-check"></i></button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="toggleAI('${id}')" style="padding:5px 10px;border-radius:6px;border:1px solid ${selectedConv.isAiActive?'#f59e0b':'#22c55e'};background:${selectedConv.isAiActive?'rgba(245,158,11,.1)':'rgba(34,197,94,.1)'};color:${selectedConv.isAiActive?'#f59e0b':'#22c55e'};cursor:pointer;font-size:10px;font-weight:500;display:flex;align-items:center;gap:4px;transition:all .2s">
+          <i class="fa-solid fa-robot" style="font-size:9px"></i> ${selectedConv.isAiActive?'Pausar':'Ativar IA'}
+        </button>
+        <button onclick="closeConv('${id}')" style="padding:5px 8px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;display:flex;align-items:center;gap:4px;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'"><i class="fa-solid fa-check"></i></button>
       </div>
     </div>
+
     <!-- Messages -->
-    <div style="flex:1;overflow-y:auto;padding:16px" id="chat-messages">
-      ${chatMessages.length===0?'<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">Nenhuma mensagem</div>':
-        chatMessages.map(m => `<div style="display:flex;gap:8px;margin-bottom:12px;${m.direction==='outbound'?'flex-direction:row-reverse':''}">
-          <div style="width:28px;height:28px;border-radius:50%;background:${m.direction==='inbound'?'#25D366':'var(--accent)'};display:flex;align-items:center;justify-content:center;font-size:10px;color:white;flex-shrink:0">${m.direction==='inbound'?(selectedConv.contact?.name||'?')[0]:'🤖'}</div>
-          <div style="max-width:65%">
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">${m.direction==='inbound'?(selectedConv.contact?.name||'Contato'):'Ozion IA'} ${m.isFlow?'<span style="background:var(--accent);color:white;padding:1px 4px;border-radius:4px;font-size:8px">VIA FLUXO</span>':''}</div>
-            <div style="padding:8px 12px;border-radius:12px;font-size:13px;${m.direction==='inbound'?'background:var(--bg-secondary);border-bottom-left-radius:4px':'background:linear-gradient(135deg,#7c3aed,#3b82f6);color:white;border-bottom-right-radius:4px'}">${m.content}</div>
-            <div style="font-size:9px;color:var(--text-muted);margin-top:2px;${m.direction==='outbound'?'text-align:right':''}">${formatTime(m.sentAt)}</div>
-          </div>
-        </div>`).join('')}
+    <div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:4px;background:#0d1117" id="chat-messages">
+      ${chatMessages.length === 0 ? renderEmptyMessages() : chatMessages.map(m => renderMessage(m)).join('')}
     </div>
-    <!-- Input Area with formatting toolbar -->
-    <div style="border-top:1px solid var(--border);padding:8px 16px">
+
+    <!-- Input -->
+    <div style="border-top:1px solid #1e2d3d;padding:10px 16px;background:#0d1117">
       <div style="display:flex;gap:4px;margin-bottom:6px">
-        <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;font-weight:700" title="Negrito">B</button>
-        <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;font-style:italic" title="Itálico">I</button>
-        <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;text-decoration:line-through" title="Tachado">S</button>
-        <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;font-family:monospace" title="Monospace">M</button>
+        ${['B','I','S','M'].map(f => `<button style="width:26px;height:26px;border-radius:4px;border:none;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;font-weight:${f==='B'||f==='M'?'700':'400'};${f==='I'?'font-style:italic':''}${f==='S'?'text-decoration:line-through':''}${f==='M'?'font-family:monospace':''}:transition:all .15s" onmouseover="this.style.background='#1e2d3d';this.style.color='#e6edf3'" onmouseout="this.style.background='#161b22';this.style.color='#8b9dc3'">${f}</button>`).join('')}
       </div>
-      <div style="display:flex;gap:8px">
-        <button style="background:none;border:none;color:var(--text-muted);cursor:pointer"><i class="fa-solid fa-paperclip"></i></button>
-        <input type="text" id="chat-input-text" placeholder="Shift + enter para nova linha." onkeypress="if(event.key==='Enter')sendMsg('${id}')" style="flex:1;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px">
-        <button style="background:none;border:none;color:var(--text-muted);cursor:pointer"><i class="fa-solid fa-microphone"></i></button>
-        <button class="btn btn-sm btn-primary" onclick="sendMsg('${id}')"><i class="fa-solid fa-paper-plane"></i></button>
+      <div style="display:flex;gap:6px;align-items:flex-end">
+        <button style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Anexar"><i class="fa-solid fa-paperclip" style="font-size:12px"></i></button>
+        <div style="flex:1;position:relative">
+          <textarea id="chat-input-text" rows="1" placeholder="Digite sua mensagem..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('${id}')}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'" style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;resize:none;min-height:34px;max-height:120px;font-family:inherit;transition:border .2s" onfocus="this.style.borderColor='#6c5ce7'" onblur="this.style.borderColor='#1e2d3d'"></textarea>
+        </div>
+        <button style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Áudio"><i class="fa-solid fa-microphone" style="font-size:12px"></i></button>
+        <button onclick="sendMsg('${id}')" style="width:34px;height:34px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.background='#5a4bd1'" onmouseout="this.style.background='#6c5ce7'"><i class="fa-solid fa-paper-plane" style="font-size:12px"></i></button>
       </div>
-      <div style="display:flex;gap:6px;margin-top:6px">
-        <button class="btn btn-sm btn-success" onclick="aiRespond('${id}')" style="font-size:10px"><i class="fa-solid fa-robot"></i> Responder com IA</button>
-        <button class="btn btn-sm btn-secondary" onclick="sendTemplate('${id}')" style="font-size:10px"><i class="fa-solid fa-file-alt"></i> Enviar template</button>
+      <div style="display:flex;gap:4px;margin-top:6px">
+        <button onclick="aiRespond('${id}')" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:#22c55e;cursor:pointer;font-size:9px;font-weight:500;display:flex;align-items:center;gap:3px;transition:all .15s"><i class="fa-solid fa-robot" style="font-size:8px"></i> IA</button>
+        <button onclick="sendTemplate('${id}')" style="padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:9px;font-weight:500;display:flex;align-items:center;gap:3px;transition:all .15s"><i class="fa-solid fa-file-alt" style="font-size:8px"></i> Template</button>
       </div>
     </div>`;
-  
+
   const msgDiv = document.getElementById('chat-messages');
   if (msgDiv) msgDiv.scrollTop = msgDiv.scrollHeight;
+
+  // Re-render sidebar selection
+  renderChatList();
+}
+
+function renderEmptyMessages() {
+  return `<div style="flex:1;display:flex;align-items:center;justify-content:center">
+    <div style="text-align:center">
+      <div style="width:48px;height:48px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 10px"><i class="fa-solid fa-message" style="font-size:18px;color:#6c5ce7;opacity:.4"></i></div>
+      <p style="font-size:12px;color:#8b9dc3;margin:0">Nenhuma mensagem ainda</p>
+      <p style="font-size:11px;color:#64748b;margin-top:2px">Envie uma mensagem para iniciar</p>
+    </div>
+  </div>`;
+}
+
+function renderMessage(m) {
+  const isInbound = m.direction === 'inbound';
+  const senderName = isInbound ? (selectedConv?.contact?.name || 'Contato') : 'Ozion IA';
+  const avatarColor = isInbound ? getAvatarColor(senderName) : '#6c5ce7';
+  const avatarText = isInbound ? (senderName[0] || '?') : '<i class="fa-solid fa-robot" style="font-size:10px"></i>';
+
+  return `<div style="display:flex;gap:8px;margin-bottom:6px;${isInbound?'':'flex-direction:row-reverse'};animation:fadeIn .2s ease">
+    <div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:10px;color:white;flex-shrink:0;margin-top:2px">${avatarText}</div>
+    <div style="max-width:70%;${isInbound?'':'text-align:right'}">
+      <div style="font-size:9px;color:#8b9dc3;margin-bottom:2px;display:flex;align-items:center;gap:4px;${isInbound?'':'justify-content:flex-end'}">
+        <span style="font-weight:500">${senderName}</span>
+        ${m.isFlow ? '<span style="background:#6c5ce7;color:white;padding:1px 4px;border-radius:3px;font-size:7px;font-weight:600">FLUXO</span>' : ''}
+      </div>
+      <div style="padding:8px 12px;border-radius:12px;font-size:12px;line-height:1.4;word-wrap:break-word;${isInbound?'background:#161b22;border-bottom-left-radius:4px;color:#e6edf3':'background:#6c5ce7;color:white;border-bottom-right-radius:4px'}">${m.content}</div>
+      <div style="font-size:8px;color:#64748b;margin-top:2px;${isInbound?'':'text-align:right'}">${formatTime(m.sentAt)}</div>
+    </div>
+  </div>`;
 }
 
 async function sendMsg(convId) {
   const input = document.getElementById('chat-input-text');
   if (!input?.value.trim()) return;
-  await api('/api/chat/messages', { method: 'POST', body: JSON.stringify({ conversationId: convId, content: input.value }) });
-  input.value = ''; await selectConv(convId);
+  const text = input.value.trim();
+  input.value = ''; input.style.height = 'auto';
+  
+  // Optimistic update
+  chatMessages.push({ direction: 'outbound', content: text, sent_at: new Date().toISOString(), type: 'text' });
+  const msgDiv = document.getElementById('chat-messages');
+  if (msgDiv) { msgDiv.innerHTML += renderMessage(chatMessages[chatMessages.length - 1]); msgDiv.scrollTop = msgDiv.scrollHeight; }
+
+  await api('/api/chat/messages', { method: 'POST', body: JSON.stringify({ conversationId: convId, content: text }) });
 }
 
-async function toggleAI(convId) { await api(`/api/chat/conversations/${convId}/ai-toggle`, { method: 'POST' }); showToast('Status da IA atualizado', 'success'); await selectConv(convId); }
-async function closeConv(convId) { await api(`/api/chat/conversations/${convId}/status`, { method: 'PUT', body: JSON.stringify({ status: 'closed' }) }); showToast('Conversa finalizada', 'success'); navigate('chat'); }
-async function aiRespond(convId) { showToast('IA gerando resposta...', 'info'); }
+async function toggleAI(convId) {
+  await api(`/api/chat/conversations/${convId}/ai-toggle`, { method: 'POST' });
+  showToast('Status da IA atualizado', 'success');
+  await selectConv(convId);
+}
+
+async function closeConv(convId) {
+  await api(`/api/chat/conversations/${convId}/status`, { method: 'PUT', body: JSON.stringify({ status: 'closed' }) });
+  showToast('Conversa finalizada', 'success');
+  navigate('chat');
+}
+
+async function aiRespond(convId) {
+  const input = document.getElementById('chat-input-text');
+  if (input) { input.value = ''; input.placeholder = 'IA gerando resposta...'; }
+  showToast('IA gerando resposta...', 'info');
+  setTimeout(() => { if (input) input.placeholder = 'Digite sua mensagem...'; }, 3000);
+}
+
 function sendTemplate(convId) { showToast('Templates em breve', 'info'); }
-function filterConvs(el, filter) { document.querySelectorAll('.chat-tab').forEach(t => { t.classList.remove('active'); t.style.background = 'none'; t.style.color = 'var(--text-muted)'; }); el.classList.add('active'); el.style.background = 'var(--bg-secondary)'; el.style.color = 'var(--text-primary)'; }
 
 // ─── Contatos (Lailla.io exact) ──────────────────────────────────
 async function loadContacts(el) {
