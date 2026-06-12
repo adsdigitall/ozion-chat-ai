@@ -123,6 +123,44 @@ function appHTML() {
       <div class="topbar"><div class="topbar-title" id="topbar-title">Dashboard</div></div>
       <div class="content" id="content"></div>
     </div>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav">
+      <div class="mobile-nav-items">
+        <div class="mobile-nav-item${currentPage==='dashboard'?' active':''}" onclick="navigate('dashboard')">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>Dashboard</span>
+        </div>
+        <div class="mobile-nav-item${currentPage==='chat'?' active':''}" onclick="navigate('chat')">
+          <i class="fa-solid fa-comments"></i>
+          <span>Chat</span>
+        </div>
+        <div class="mobile-nav-item${currentPage==='contacts'?' active':''}" onclick="navigate('contacts')">
+          <i class="fa-solid fa-address-book"></i>
+          <span>Contatos</span>
+        </div>
+        <div class="mobile-nav-item${currentPage==='flows'?' active':''}" onclick="navigate('flows')">
+          <i class="fa-solid fa-diagram-project"></i>
+          <span>Fluxos</span>
+        </div>
+        <div class="mobile-nav-item${['agents','voice','campaigns','integrations','settings','flowise'].includes(currentPage)?' active':''}" onclick="navigate('agents')">
+          <i class="fa-solid fa-ellipsis"></i>
+          <span>Mais</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Top Bar -->
+    <div class="mobile-topbar">
+      <div class="mobile-topbar-left">
+        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6c5ce7,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:14px;color:white;font-weight:700">O</div>
+        <span class="mobile-topbar-title">Ozion</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <i class="fa-solid fa-bell" style="font-size:16px;color:#8b9dc3;cursor:pointer"></i>
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6c5ce7,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:10px;color:white;cursor:pointer" onclick="logout()">A</div>
+      </div>
+    </div>
   </div>`;
 }
 
@@ -261,9 +299,9 @@ async function loadChat(el) {
   const closedCount = conversations.filter(c => c.status === 'closed').length;
 
   el.innerHTML = `
-    <div style="display:flex;height:calc(100vh - 56px);background:#0d1117">
+    <div class="chat-layout" style="display:flex;height:calc(100vh - 56px);background:#0d1117;position:relative;overflow:hidden">
       <!-- Sidebar -->
-      <div style="width:360px;display:flex;flex-direction:column;border-right:1px solid #1e2d3d;background:#0d1117">
+      <div class="chat-sidebar" id="chat-sidebar" style="width:360px;display:flex;flex-direction:column;border-right:1px solid #1e2d3d;background:#0d1117;flex-shrink:0">
         <!-- Top Bar -->
         <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e2d3d">
           <div style="display:flex;align-items:center;gap:12px">
@@ -314,7 +352,7 @@ async function loadChat(el) {
       </div>
 
       <!-- Chat Main -->
-      <div style="flex:1;display:flex;flex-direction:column;background:#0d1117" id="chat-main">
+      <div class="chat-main" id="chat-main" style="flex:1;display:flex;flex-direction:column;background:#0d1117;min-width:0">
         ${selectedConv ? '' : renderChatEmpty()}
       </div>
     </div>`;
@@ -418,7 +456,12 @@ async function selectConv(id) {
   if (!selectedConv) return;
   
   const chatMain = document.getElementById('chat-main');
+  const chatSidebar = document.getElementById('chat-sidebar');
   if (!chatMain) return;
+
+  // Mobile: hide sidebar, show chat
+  if (chatSidebar) chatSidebar.classList.add('hidden');
+  chatMain.classList.add('active');
 
   chatMain.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;color:#6c5ce7"></i></div>`;
 
@@ -434,6 +477,9 @@ async function selectConv(id) {
     <!-- Header -->
     <div style="padding:10px 16px;border-bottom:1px solid #1e2d3d;display:flex;justify-content:space-between;align-items:center;background:#0d1117">
       <div style="display:flex;align-items:center;gap:10px">
+        <div class="mobile-back" onclick="goBackChat()" style="display:none">
+          <i class="fa-solid fa-arrow-left"></i>
+        </div>
         <div style="width:36px;height:36px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:14px;color:white;font-weight:600">${name[0]?.toUpperCase()}</div>
         <div>
           <h3 style="font-size:13px;margin:0;font-weight:600;color:#e6edf3">${name}</h3>
@@ -534,7 +580,8 @@ async function toggleAI(convId) {
 async function closeConv(convId) {
   await api(`/api/chat/conversations/${convId}/status`, { method: 'PUT', body: JSON.stringify({ status: 'closed' }) });
   showToast('Conversa finalizada', 'success');
-  navigate('chat');
+  goBackChat();
+  loadChat(document.getElementById('content'));
 }
 
 async function aiRespond(convId) {
@@ -545,6 +592,14 @@ async function aiRespond(convId) {
 }
 
 function sendTemplate(convId) { showToast('Templates em breve', 'info'); }
+
+function goBackChat() {
+  const chatSidebar = document.getElementById('chat-sidebar');
+  const chatMain = document.getElementById('chat-main');
+  if (chatSidebar) chatSidebar.classList.remove('hidden');
+  if (chatMain) chatMain.classList.remove('active');
+  selectedConv = null;
+}
 
 // ─── Contatos (Lailla.io exact) ──────────────────────────────────
 async function loadContacts(el) {
