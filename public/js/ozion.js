@@ -436,183 +436,539 @@ async function createContact() {
 }
 function editContact(id) { showToast('Edição em breve', 'info'); }
 
-// ─── Fluxos (Lailla.io exact) ────────────────────────────────────
+// ─── Fluxos (Lailla.io FULL) ─────────────────────────────────
+let flowFolders = [];
+let flowFilter = { search: '', status: '', connection: '', trigger: '' };
+let flowBulkSelected = [];
+let flowCurrentFolder = null;
+
+const TRIGGER_LABELS = {
+  'message_received': 'Mensagem recebida',
+  'keyword': 'Palavra-chave',
+  'campaign': 'Disparo',
+  'kiwify': 'Kiwify',
+  'hotmart': 'Hotmart',
+  'perfectpay': 'Perfect Pay',
+  'asaas': 'Asaas',
+  'stripe': 'Stripe',
+  'mercadopago': 'MercadoPago',
+  'webhook': 'Webhook'
+};
+
+const CONNECTION_LABELS = {
+  'whatsapp_business': 'WhatsApp Business',
+  'api_oficial': 'API Oficial',
+  'ctwa': 'CTWA'
+};
+
 async function loadFlows(el) {
-  allFlows = await api('/api/flows') || [];
+  const [flowsData, foldersData] = await Promise.all([
+    api('/api/flows'), api('/api/flows/folders')
+  ]);
+  allFlows = flowsData || [];
+  flowFolders = foldersData || [];
+  flowBulkSelected = [];
+
+  const filteredFlows = filterFlows();
+  const folderFlows = flowCurrentFolder ? filteredFlows.filter(f => f.folder_id === flowCurrentFolder) : filteredFlows.filter(f => !f.folder_id);
+  const activeFlows = allFlows.filter(f => f.is_active).length;
+
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div><h2 style="margin:0;font-size:20px">Fluxos de conversa</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">${allFlows.length} fluxos (todas as pastas)</p></div>
+      <div>
+        <h2 style="margin:0;font-size:20px">Fluxos de conversa</h2>
+        <p style="color:var(--text-muted);margin-top:2px;font-size:12px">${allFlows.length} fluxos (${activeFlows} ativos)</p>
+      </div>
       <div style="display:flex;gap:6px">
-        <button class="btn btn-sm btn-secondary"><i class="fa-solid fa-folder-plus"></i> Nova Pasta</button>
-        <button class="btn btn-sm btn-secondary"><i class="fa-solid fa-file-import"></i> Importar Fluxo</button>
-        <button class="btn btn-sm btn-primary" onclick="createFlow()"><i class="fa-solid fa-plus"></i> Novo fluxo</button>
+        <button class="btn btn-sm btn-secondary" onclick="showCreateFolderModal()"><i class="fa-solid fa-folder-plus"></i> Nova Pasta</button>
+        <button class="btn btn-sm btn-secondary" onclick="importFlowFile()"><i class="fa-solid fa-file-import"></i> Importar</button>
+        <button class="btn btn-sm btn-primary" onclick="showCreateFlowModal()"><i class="fa-solid fa-plus"></i> Novo fluxo</button>
       </div>
     </div>
 
-    <!-- Filters (Lailla.io exact) -->
+    <!-- Search + Filters -->
     <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
-      <input type="text" placeholder="Pesquisar..." style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text-primary);font-size:11px;width:160px">
-      <select style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text-primary);font-size:11px"><option>Status: todos</option><option>Ativos</option><option>Inativos</option></select>
-      <select style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text-primary);font-size:11px"><option>Conexão: todas</option><option>WhatsApp Business</option><option>API Oficial</option></select>
-      <select style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text-primary);font-size:11px"><option>Gatilhos: todos</option><option>Mensagem recebida</option><option>Palavra-chave</option><option>Disparo</option><option>Kiwify</option><option>Hotmart</option><option>Perfect Pay</option><option>Asaas</option></select>
-      <span style="font-size:11px;color:var(--text-muted);margin-left:8px">AÇÕES EM MASSA</span>
-      <select style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text-primary);font-size:11px"><option>Escolha uma ação…</option><option>Deletar (inativos)</option><option>Ativar</option><option>Desativar</option><option>Mover para pasta</option><option>Exportar (.zip)</option></select>
+      <input type="text" id="flow-search" placeholder="Pesquisar..." value="${flowFilter.search}" oninput="flowFilter.search=this.value;renderFlowList()" style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text-primary);font-size:11px;width:160px">
+      <select id="flow-filter-status" onchange="flowFilter.status=this.value;renderFlowList()" style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text-primary);font-size:11px">
+        <option value="">Status: todos</option>
+        <option value="active" ${flowFilter.status==='active'?'selected':''}>Ativos</option>
+        <option value="draft" ${flowFilter.status==='draft'?'selected':''}>Rascunho</option>
+        <option value="inactive" ${flowFilter.status==='inactive'?'selected':''}>Inativos</option>
+      </select>
+      <select id="flow-filter-connection" onchange="flowFilter.connection=this.value;renderFlowList()" style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text-primary);font-size:11px">
+        <option value="">Conexão: todas</option>
+        <option value="whatsapp_business">WhatsApp Business</option>
+        <option value="api_oficial">API Oficial</option>
+      </select>
+      <select id="flow-filter-trigger" onchange="flowFilter.trigger=this.value;renderFlowList()" style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text-primary);font-size:11px">
+        <option value="">Gatilhos: todos</option>
+        ${Object.entries(TRIGGER_LABELS).map(([k,v]) => `<option value="${k}" ${flowFilter.trigger===k?'selected':''}>${v}</option>`).join('')}
+      </select>
     </div>
 
-    <!-- Folder breadcrumb -->
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px"><i class="fa-solid fa-folder"></i> <span style="cursor:pointer;color:var(--accent)">Minhas pastas</span></div>
+    <!-- Bulk Actions Bar -->
+    <div id="flow-bulk-bar" style="display:none;align-items:center;gap:8px;margin-bottom:12px;padding:10px 16px;background:var(--accent-light);border:1px solid var(--accent);border-radius:8px;font-size:12px">
+      <span id="flow-bulk-count" style="color:var(--accent);font-weight:600"></span>
+      <button class="btn btn-sm btn-success" onclick="bulkFlowAction('activate')"><i class="fa-solid fa-check"></i> Ativar</button>
+      <button class="btn btn-sm btn-secondary" onclick="bulkFlowAction('deactivate')"><i class="fa-solid fa-pause"></i> Desativar</button>
+      <button class="btn btn-sm btn-secondary" onclick="showBulkMoveModal()"><i class="fa-solid fa-folder-open"></i> Mover</button>
+      <button class="btn btn-sm btn-danger" onclick="bulkFlowAction('delete')"><i class="fa-solid fa-trash"></i> Excluir</button>
+      <button class="btn btn-sm btn-secondary" onclick="bulkExportFlows()" style="margin-left:auto"><i class="fa-solid fa-download"></i> Exportar</button>
+    </div>
+
+    <!-- Folder Breadcrumb -->
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;display:flex;align-items:center;gap:6px">
+      <i class="fa-solid fa-folder"></i>
+      <span style="cursor:pointer;color:${!flowCurrentFolder?'var(--accent)':'var(--text-muted)'};font-weight:${!flowCurrentFolder?'600':'400'}" onclick="flowCurrentFolder=null;renderFlowList()">Minhas pastas</span>
+      ${flowCurrentFolder ? (() => {
+        const folder = flowFolders.find(f => f.id === flowCurrentFolder);
+        return folder ? `<i class="fa-solid fa-chevron-right" style="font-size:8px"></i><span style="color:var(--accent);font-weight:600">${folder.name}</span>` : '';
+      })() : ''}
+    </div>
+
+    <!-- Folder Grid -->
+    ${flowFolders.length > 0 ? `
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      ${flowFolders.map(f => {
+        const count = allFlows.filter(fl => fl.folder_id === f.id).length;
+        return `<div onclick="flowCurrentFolder='${f.id}';renderFlowList()" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <i class="fa-solid fa-folder" style="color:#f59e0b;font-size:18px"></i>
+          <div><div style="font-weight:500;font-size:12px">${f.name}</div><div style="font-size:10px;color:var(--text-muted)">${count} fluxos</div></div>
+          <button onclick="event.stopPropagation();deleteFolder('${f.id}')" style="margin-left:auto;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:10px" title="Excluir pasta"><i class="fa-solid fa-trash"></i></button>
+        </div>`;
+      }).join('')}
+    </div>` : ''}
 
     <!-- Flow List -->
     <div class="card"><div class="card-body" style="padding:0">
-      ${allFlows.length===0?`<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fa-solid fa-diagram-project" style="font-size:48px;margin-bottom:12px;opacity:0.3"></i><p>Nenhum fluxo criado</p><button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="createFlow()">Criar Primeiro Fluxo</button></div>`:
-        allFlows.map(f => `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)">
-          <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⚡</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:500;font-size:13px">${f.name||'Fluxo sem nome'}</div>
-            <div style="font-size:11px;color:var(--text-muted)">Gatilho: ${f.trigger||'Ao receber qualquer mensagem'} • ${f.connection||'WhatsApp Business'}</div>
-          </div>
-          <span style="font-size:10px;color:var(--text-muted)">${f.lastExecuted?timeAgo(f.lastExecuted):'---'}</span>
-          <div style="position:relative;display:inline-block;width:36px;height:20px"><input type="checkbox" ${f.is_active?'checked':''} onchange="toggleFlow('${f.id}')" style="opacity:0;width:0;height:0"><span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:${f.is_active?'var(--accent)':'var(--border)'};border-radius:20px;transition:.3s"></span></div>
-          <button class="btn btn-sm btn-secondary" onclick="editFlow('${f.id}')" style="padding:4px 8px"><i class="fa-solid fa-ellipsis"></i></button>
-        </div>`).join('')}
-    </div></div>`;
+      <div id="flow-list-items">
+        ${renderFlowListItems(folderFlows)}
+      </div>
+    </div></div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="flow-import-input" accept=".json" style="display:none" onchange="handleFlowImport(event)">
+  `;
 }
 
-async function createFlow() { const name = prompt('Nome do fluxo:'); if (!name) return; await api('/api/flows', { method: 'POST', body: JSON.stringify({ name }) }); showToast('Fluxo criado!', 'success'); loadFlows(document.getElementById('content')); }
-async function editFlow(id) { showFlowEditor(id); }
-async function toggleFlow(id) { await api(`/api/flows/${id}/toggle`, { method: 'POST' }); }
+function renderFlowList() {
+  const filteredFlows = filterFlows();
+  const folderFlows = flowCurrentFolder ? filteredFlows.filter(f => f.folder_id === flowCurrentFolder) : filteredFlows.filter(f => !f.folder_id);
+  const container = document.getElementById('flow-list-items');
+  if (container) container.innerHTML = renderFlowListItems(folderFlows);
+  updateBulkBar();
+}
 
-// ─── Flowise Editor (iframe embed) ──────────────────────────────
-function showFlowEditor(flowId) {
-  const flowiseUrl = FLOWISE_URL || 'https://flowise-xxxx.up.railway.app';
-  const el = document.getElementById('content');
-  
-  el.innerHTML = `
-    <div style="display:flex;flex-direction:column;height:calc(100vh - 120px)">
-      <!-- Header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:12px">
-          <button class="btn btn-sm btn-secondary" onclick="loadFlows(document.getElementById('content'))">
-            <i class="fa-solid fa-arrow-left"></i> Voltar
-          </button>
-          <h3 style="margin:0;font-size:15px">Editor de Fluxos</h3>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span id="flowise-status" style="font-size:11px;color:var(--text-muted)">Verificando conexão...</span>
-          <button class="btn btn-sm btn-primary" onclick="saveFlowiseFlow('${flowId}')">
-            <i class="fa-solid fa-save"></i> Salvar
-          </button>
+function filterFlows() {
+  return allFlows.filter(f => {
+    if (flowFilter.search && !(f.name||'').toLowerCase().includes(flowFilter.search.toLowerCase()) && !(f.description||'').toLowerCase().includes(flowFilter.search.toLowerCase())) return false;
+    if (flowFilter.status) {
+      if (flowFilter.status === 'active' && !f.is_active) return false;
+      if (flowFilter.status === 'draft' && f.status !== 'draft') return false;
+      if (flowFilter.status === 'inactive' && f.is_active) return false;
+    }
+    if (flowFilter.connection && f.connection !== flowFilter.connection) return false;
+    if (flowFilter.trigger && f.trigger !== flowFilter.trigger) return false;
+    return true;
+  });
+}
+
+function renderFlowListItems(flows) {
+  if (flows.length === 0) {
+    return `<div style="text-align:center;padding:40px;color:var(--text-muted)">
+      <i class="fa-solid fa-diagram-project" style="font-size:48px;margin-bottom:12px;opacity:0.3"></i>
+      <p>${allFlows.length === 0 ? 'Nenhum fluxo criado' : 'Nenhum fluxo encontrado com esses filtros'}</p>
+      ${allFlows.length === 0 ? '<button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="showCreateFlowModal()">Criar Primeiro Fluxo</button>' : ''}
+    </div>`;
+  }
+
+  return flows.map(f => {
+    const triggerLabel = TRIGGER_LABELS[f.trigger] || f.trigger || 'Ao receber qualquer mensagem';
+    const connLabel = CONNECTION_LABELS[f.connection] || f.connection || 'WhatsApp Business';
+    const isSelected = flowBulkSelected.includes(f.id);
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);${isSelected?'background:var(--accent-light)':''};transition:background .15s" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='${isSelected?'var(--accent-light)':''}'">
+      <input type="checkbox" ${isSelected?'checked':''} onchange="toggleFlowSelect('${f.id}')" style="cursor:pointer;accent-color:var(--accent)">
+      <div onclick="editFlow('${f.id}')" style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;cursor:pointer">⚡</div>
+      <div style="flex:1;min-width:0;cursor:pointer" onclick="editFlow('${f.id}')">
+        <div style="font-weight:500;font-size:13px">${f.name||'Fluxo sem nome'}</div>
+        <div style="font-size:11px;color:var(--text-muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px">
+          <span><i class="fa-solid fa-bolt" style="font-size:9px"></i> ${triggerLabel}</span>
+          <span><i class="fa-solid fa-link" style="font-size:9px"></i> ${connLabel}</span>
+          ${f.keywords ? `<span style="font-size:10px;color:var(--accent)"><i class="fa-solid fa-key" style="font-size:8px"></i> ${f.keywords.split(',').slice(0,2).join(', ')}</span>` : ''}
         </div>
       </div>
-      
-      <!-- Flowise iframe -->
-      <div style="flex:1;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
-        <iframe id="flowise-iframe" 
-                src="${flowiseUrl}/chatflow/${flowId}" 
-                style="width:100%;height:100%;border:none;background:var(--bg-secondary)"
-                onload="checkFlowiseConnection()" 
-                onerror="handleFlowiseError()">
-        </iframe>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:10px;color:var(--text-muted)">${f.updated_at ? timeAgo(f.updated_at) : '---'}</span>
+        <div class="flow-toggle" onclick="toggleFlow('${f.id}')" style="position:relative;width:36px;height:20px;cursor:pointer">
+          <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:${f.is_active?'var(--accent)':'var(--border)'};border-radius:20px;transition:all .3s"></div>
+          <div style="position:absolute;top:2px;${f.is_active?'left:18px':'left:2px'};width:16px;height:16px;border-radius:50%;background:white;transition:all .3s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>
+        </div>
+        <div style="position:relative">
+          <button onclick="toggleFlowMenu('${f.id}')" class="btn btn-sm btn-secondary" style="padding:4px 8px"><i class="fa-solid fa-ellipsis"></i></button>
+          <div id="flow-menu-${f.id}" style="display:none;position:absolute;right:0;top:100%;z-index:100;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.2);min-width:180px;padding:4px">
+            <div onclick="editFlow('${f.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;border-radius:4px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='none'"><i class="fa-solid fa-pen" style="width:16px;color:var(--accent)"></i> Editar</div>
+            <div onclick="duplicateFlow('${f.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;border-radius:4px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='none'"><i class="fa-solid fa-copy" style="width:16px;color:#3b82f6"></i> Duplicar</div>
+            <div onclick="exportFlow('${f.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;border-radius:4px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='none'"><i class="fa-solid fa-download" style="width:16px;color:#22c55e"></i> Exportar JSON</div>
+            <div onclick="showMoveFlowModal('${f.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;border-radius:4px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='none'"><i class="fa-solid fa-folder-open" style="width:16px;color:#f59e0b"></i> Mover para pasta</div>
+            <div style="height:1px;background:var(--border);margin:4px 0"></div>
+            <div onclick="deleteFlow('${f.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;border-radius:4px;color:#ef4444;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='none'"><i class="fa-solid fa-trash" style="width:16px"></i> Excluir</div>
+          </div>
+        </div>
       </div>
     </div>`;
-  
+  }).join('');
+}
+
+// ─── Flow Toggle ─────────────────────────────────────────────
+async function toggleFlow(id) {
+  const result = await api(`/api/flows/${id}/toggle`, { method: 'POST' });
+  if (result?.is_active !== undefined) {
+    const flow = allFlows.find(f => f.id === id);
+    if (flow) flow.is_active = result.is_active;
+    renderFlowList();
+    showToast(result.is_active ? 'Fluxo ativado!' : 'Fluxo desativado', 'success');
+  }
+}
+
+// ─── Flow Menu ───────────────────────────────────────────────
+let openFlowMenu = null;
+function toggleFlowMenu(id) {
+  if (openFlowMenu) { const el = document.getElementById('flow-menu-'+openFlowMenu); if (el) el.style.display = 'none'; }
+  const menu = document.getElementById('flow-menu-'+id);
+  if (menu) { menu.style.display = menu.style.display === 'block' ? 'none' : 'block'; openFlowMenu = id; }
+}
+document.addEventListener('click', (e) => {
+  if (openFlowMenu && !e.target.closest(`#flow-menu-${openFlowMenu}`) && !e.target.closest('.flow-toggle')) {
+    const el = document.getElementById('flow-menu-'+openFlowMenu); if (el) el.style.display = 'none'; openFlowMenu = null;
+  }
+});
+
+// ─── Flow Selection / Bulk ───────────────────────────────────
+function toggleFlowSelect(id) {
+  const idx = flowBulkSelected.indexOf(id);
+  if (idx >= 0) flowBulkSelected.splice(idx, 1); else flowBulkSelected.push(id);
+  updateBulkBar();
+  renderFlowList();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('flow-bulk-bar');
+  const count = document.getElementById('flow-bulk-count');
+  if (bar && count) {
+    if (flowBulkSelected.length > 0) {
+      bar.style.display = 'flex';
+      count.textContent = `${flowBulkSelected.length} selecionado(s)`;
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+}
+
+async function bulkFlowAction(action) {
+  if (!flowBulkSelected.length) return;
+  if (action === 'delete' && !confirm(`Excluir ${flowBulkSelected.length} fluxo(s)?`)) return;
+  await api('/api/flows/bulk', { method: 'POST', body: JSON.stringify({ action, ids: flowBulkSelected }) });
+  showToast(`${flowBulkSelected.length} fluxo(s) processado(s)`, 'success');
+  loadFlows(document.getElementById('content'));
+}
+
+async function bulkExportFlows() {
+  if (!flowBulkSelected.length) return;
+  for (const id of flowBulkSelected) { await exportFlow(id); }
+  showToast(`${flowBulkSelected.length} fluxo(s) exportado(s)`, 'success');
+}
+
+// ─── Create Flow Modal ───────────────────────────────────────
+function showCreateFlowModal(folderId) {
+  const modal = document.getElementById('modal-overlay');
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:500px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0;font-size:16px">Criar Novo Fluxo</h3>
+        <button onclick="closeModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <div style="display:grid;gap:12px">
+        <div class="form-group"><label style="font-size:12px;font-weight:500">Nome *</label><input type="text" id="cf-name" placeholder="Ex: Atendimento pós-venda" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:500">Descrição</label><textarea id="cf-desc" rows="2" placeholder="Descreva o que este fluxo faz" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px;resize:vertical"></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><label style="font-size:12px;font-weight:500">Gatilho</label><select id="cf-trigger" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text-primary);font-size:12px">${Object.entries(TRIGGER_LABELS).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>
+          <div class="form-group"><label style="font-size:12px;font-weight:500">Conexão</label><select id="cf-connection" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text-primary);font-size:12px">${Object.entries(CONNECTION_LABELS).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>
+        </div>
+        <div class="form-group"><label style="font-size:12px;font-weight:500">Palavras-chave (separar por vírgula)</label><input type="text" id="cf-keywords" placeholder="ex: preço, valor, comprar" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+        <button class="btn btn-sm btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-sm btn-primary" onclick="submitCreateFlow(${folderId||'null'})"><i class="fa-solid fa-plus"></i> Criar</button>
+      </div>
+    </div>`;
+  openModal();
+}
+
+async function submitCreateFlow(folderId) {
+  const name = document.getElementById('cf-name').value.trim();
+  if (!name) { showToast('Digite o nome do fluxo', 'error'); return; }
+  const data = {
+    name,
+    description: document.getElementById('cf-desc').value,
+    trigger: document.getElementById('cf-trigger').value,
+    connection: document.getElementById('cf-connection').value,
+    keywords: document.getElementById('cf-keywords').value,
+    folder_id: folderId || null
+  };
+  await api('/api/flows', { method: 'POST', body: JSON.stringify(data) });
+  closeModal();
+  showToast('Fluxo criado!', 'success');
+  loadFlows(document.getElementById('content'));
+}
+
+// ─── Edit Flow Modal ─────────────────────────────────────────
+async function editFlow(id) {
+  const flow = allFlows.find(f => f.id === id);
+  if (!flow) return showFlowEditor(id);
+
+  const modal = document.getElementById('modal-overlay');
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:600px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0;font-size:16px">Editar Fluxo</h3>
+        <button onclick="closeModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <div style="display:grid;gap:12px">
+        <div class="form-group"><label style="font-size:12px;font-weight:500">Nome *</label><input type="text" id="ef-name" value="${flow.name||''}" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:500">Descrição</label><textarea id="ef-desc" rows="2" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px;resize:vertical">${flow.description||''}</textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><label style="font-size:12px;font-weight:500">Gatilho</label><select id="ef-trigger" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text-primary);font-size:12px">${Object.entries(TRIGGER_LABELS).map(([k,v]) => `<option value="${k}" ${flow.trigger===k?'selected':''}>${v}</option>`).join('')}</select></div>
+          <div class="form-group"><label style="font-size:12px;font-weight:500">Conexão</label><select id="ef-connection" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text-primary);font-size:12px">${Object.entries(CONNECTION_LABELS).map(([k,v]) => `<option value="${k}" ${flow.connection===k?'selected':''}>${v}</option>`).join('')}</select></div>
+        </div>
+        <div class="form-group"><label style="font-size:12px;font-weight:500">Palavras-chave</label><input type="text" id="ef-keywords" value="${flow.keywords||''}" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px"></div>
+        <div style="display:flex;gap:8px">
+          <label style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px">
+            <input type="checkbox" id="ef-active" ${flow.is_active?'checked':''} style="accent-color:var(--accent)"> Ativo
+          </label>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:16px">
+        <button class="btn btn-sm btn-primary" onclick="openFlowEditor('${id}')"><i class="fa-solid fa-diagram-project"></i> Abrir Editor Visual</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm btn-secondary" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-sm btn-primary" onclick="submitEditFlow('${id}')"><i class="fa-solid fa-save"></i> Salvar</button>
+        </div>
+      </div>
+    </div>`;
+  openModal();
+}
+
+async function submitEditFlow(id) {
+  const data = {
+    name: document.getElementById('ef-name').value.trim(),
+    description: document.getElementById('ef-desc').value,
+    trigger: document.getElementById('ef-trigger').value,
+    connection: document.getElementById('ef-connection').value,
+    keywords: document.getElementById('ef-keywords').value,
+    is_active: document.getElementById('ef-active').checked
+  };
+  if (!data.name) { showToast('Nome é obrigatório', 'error'); return; }
+  await api(`/api/flows/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  closeModal();
+  showToast('Fluxo atualizado!', 'success');
+  loadFlows(document.getElementById('content'));
+}
+
+// ─── Flow Actions ────────────────────────────────────────────
+async function duplicateFlow(id) {
+  await api(`/api/flows/${id}/duplicate`, { method: 'POST' });
+  showToast('Fluxo duplicado!', 'success');
+  loadFlows(document.getElementById('content'));
+}
+
+async function deleteFlow(id) {
+  if (!confirm('Excluir este fluxo permanentemente?')) return;
+  await api(`/api/flows/${id}`, { method: 'DELETE' });
+  showToast('Fluxo excluído', 'success');
+  loadFlows(document.getElementById('content'));
+}
+
+async function exportFlow(id) {
+  const data = await api(`/api/flows/${id}/export`);
+  if (!data) { showToast('Erro ao exportar', 'error'); return; }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${data.flow?.name || 'flow'}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Flow exportado!', 'success');
+}
+
+function importFlowFile() { document.getElementById('flow-import-input')?.click(); }
+async function handleFlowImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  try {
+    const data = JSON.parse(text);
+    await api('/api/flows/import', { method: 'POST', body: JSON.stringify(data) });
+    showToast('Flow importado!', 'success');
+    loadFlows(document.getElementById('content'));
+  } catch { showToast('Arquivo JSON inválido', 'error'); }
+  event.target.value = '';
+}
+
+// ─── Folder Operations ───────────────────────────────────────
+function showCreateFolderModal() {
+  const modal = document.getElementById('modal-overlay');
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:400px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0;font-size:16px">Nova Pasta</h3>
+        <button onclick="closeModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <div class="form-group"><label style="font-size:12px;font-weight:500">Nome da pasta *</label><input type="text" id="cfolder-name" placeholder="Ex: Atendimento" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+        <button class="btn btn-sm btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-sm btn-primary" onclick="submitCreateFolder()"><i class="fa-solid fa-plus"></i> Criar</button>
+      </div>
+    </div>`;
+  openModal();
+  setTimeout(() => document.getElementById('cfolder-name')?.focus(), 100);
+}
+
+async function submitCreateFolder() {
+  const name = document.getElementById('cfolder-name').value.trim();
+  if (!name) { showToast('Digite o nome da pasta', 'error'); return; }
+  await api('/api/flows/folders', { method: 'POST', body: JSON.stringify({ name }) });
+  closeModal();
+  showToast('Pasta criada!', 'success');
+  loadFlows(document.getElementById('content'));
+}
+
+async function deleteFolder(id) {
+  if (!confirm('Excluir esta pasta? Os fluxos dentro dela não serão excluídos.')) return;
+  await api(`/api/flows/folders/${id}`, { method: 'DELETE' });
+  if (flowCurrentFolder === id) flowCurrentFolder = null;
+  showToast('Pasta excluída', 'success');
+  loadFlows(document.getElementById('content'));
+}
+
+function showMoveFlowModal(flowId) {
+  const modal = document.getElementById('modal-overlay');
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:400px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0;font-size:16px">Mover para pasta</h3>
+        <button onclick="closeModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <div style="display:grid;gap:6px">
+        <div onclick="moveFlow('${flowId}',null)" style="padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><i class="fa-solid fa-inbox" style="color:var(--accent)"></i> Sem pasta (raiz)</div>
+        ${flowFolders.map(f => `<div onclick="moveFlow('${flowId}','${f.id}')" style="padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><i class="fa-solid fa-folder" style="color:#f59e0b"></i> ${f.name}</div>`).join('')}
+      </div>
+    </div>`;
+  openModal();
+}
+
+async function moveFlow(flowId, folderId) {
+  await api(`/api/flows/${flowId}`, { method: 'PUT', body: JSON.stringify({ folder_id: folderId }) });
+  closeModal();
+  showToast('Fluxo movido!', 'success');
+  loadFlows(document.getElementById('content'));
+}
+
+async function showBulkMoveModal() {
+  if (!flowBulkSelected.length) return;
+  const modal = document.getElementById('modal-overlay');
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:400px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0;font-size:16px">Mover ${flowBulkSelected.length} fluxo(s)</h3>
+        <button onclick="closeModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <div style="display:grid;gap:6px">
+        <div onclick="bulkMoveFlows(null)" style="padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><i class="fa-solid fa-inbox" style="color:var(--accent)"></i> Sem pasta (raiz)</div>
+        ${flowFolders.map(f => `<div onclick="bulkMoveFlows('${f.id}')" style="padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><i class="fa-solid fa-folder" style="color:#f59e0b"></i> ${f.name}</div>`).join('')}
+      </div>
+    </div>`;
+  openModal();
+}
+
+async function bulkMoveFlows(folderId) {
+  await api('/api/flows/bulk', { method: 'POST', body: JSON.stringify({ action: 'move', ids: flowBulkSelected, folder_id: folderId }) });
+  closeModal();
+  showToast(`${flowBulkSelected.length} fluxo(s) movido(s)`, 'success');
+  loadFlows(document.getElementById('content'));
+}
+
+// ─── Flowise Editor ──────────────────────────────────────────
+function openFlowEditor(flowId) {
+  closeModal();
+  showFlowEditor(flowId);
+}
+
+function showFlowEditor(flowId) {
+  const flowiseUrl = FLOWISE_URL || 'https://flowise-production-233b.up.railway.app';
+  const flow = allFlows.find(f => f.id === flowId);
+  const el = document.getElementById('content');
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;height:calc(100vh - 120px)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-sm btn-secondary" onclick="loadFlows(document.getElementById('content'))"><i class="fa-solid fa-arrow-left"></i> Voltar</button>
+          <div>
+            <h3 style="margin:0;font-size:15px">${flow?.name || 'Editor de Fluxos'}</h3>
+            <span style="font-size:10px;color:var(--text-muted)">ID: ${flowId}</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="flowise-status" style="font-size:11px;color:var(--text-muted)">Verificando...</span>
+          <button class="btn btn-sm btn-secondary" onclick="showFlowiseConfig()"><i class="fa-solid fa-cog"></i></button>
+        </div>
+      </div>
+      <div style="flex:1;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <iframe id="flowise-iframe" src="${flowiseUrl}/chatflow/${flowId}" style="width:100%;height:100%;border:none;background:var(--bg-secondary)" onload="checkFlowiseConnection()" onerror="handleFlowiseError()"></iframe>
+      </div>
+    </div>`;
   checkFlowiseConnection();
 }
 
 async function checkFlowiseConnection() {
   const statusEl = document.getElementById('flowise-status');
   if (!statusEl) return;
-  
   try {
     const status = await api('/api/flowise/status');
-    if (status?.connected) {
-      statusEl.innerHTML = '<span style="color:#22c55e"><i class="fa-solid fa-check-circle"></i> Conectado</span>';
-    } else {
-      statusEl.innerHTML = '<span style="color:#ef4444"><i class="fa-solid fa-times-circle"></i> Não conectado</span>';
-    }
-  } catch {
-    statusEl.innerHTML = '<span style="color:#ef4444"><i class="fa-solid fa-times-circle"></i> Erro</span>';
-  }
+    statusEl.innerHTML = status?.connected
+      ? '<span style="color:#22c55e"><i class="fa-solid fa-check-circle"></i> Flowise conectado</span>'
+      : '<span style="color:#ef4444"><i class="fa-solid fa-times-circle"></i> Não conectado</span>';
+  } catch { statusEl.innerHTML = '<span style="color:#ef4444"><i class="fa-solid fa-times-circle"></i> Erro</span>'; }
 }
 
 function handleFlowiseError() {
   const statusEl = document.getElementById('flowise-status');
-  if (statusEl) {
-    statusEl.innerHTML = '<span style="color:#ef4444"><i class="fa-solid fa-exclamation-triangle"></i> Erro ao carregar</span>';
-  }
+  if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444"><i class="fa-solid fa-exclamation-triangle"></i> Erro ao carregar</span>';
 }
 
-async function saveFlowiseFlow(flowId) {
-  showToast('Salvando flow...', 'info');
-  const iframe = document.getElementById('flowise-iframe');
-  if (iframe) {
-    iframe.contentWindow.postMessage({ type: 'save' }, '*');
-  }
-  showToast('Flow salvo!', 'success');
-}
-
-// ─── Flowise Config ────────────────────────────────────────────
+// ─── Flowise Config ──────────────────────────────────────────
 function showFlowiseConfig() {
   const el = document.getElementById('content');
   el.innerHTML = `
     <div style="max-width:600px">
-      <h2 style="margin:0 0 8px;font-size:20px">Configurar Flowise</h2>
-      <p style="color:var(--text-muted);margin-bottom:20px;font-size:12px">Configure a conexão com o Flowise para o editor de fluxos visual</p>
-      
-      <div class="card">
-        <div class="card-header"><h3>🔗 Conexão Flowise</h3></div>
-        <div class="card-body">
-          <div class="form-group">
-            <label>URL do Flowise</label>
-            <input type="url" id="flowise-url" value="${FLOWISE_URL || ''}" placeholder="https://flowise.up.railway.app">
-            <p style="font-size:10px;color:var(--text-muted);margin-top:4px">URL do seu servidor Flowise no Railway</p>
-          </div>
-          <div class="form-group">
-            <label>API Key (opcional)</label>
-            <input type="password" id="flowise-apikey" placeholder="Chave de API do Flowise">
-          </div>
-          <button class="btn btn-primary" onclick="testFlowiseConnection()">
-            <i class="fa-solid fa-plug"></i> Testar Conexão
-          </button>
-        </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <button class="btn btn-sm btn-secondary" onclick="loadFlows(document.getElementById('content'))"><i class="fa-solid fa-arrow-left"></i> Voltar</button>
+        <h2 style="margin:0;font-size:18px">Configurar Flowise</h2>
       </div>
-      
-      <div class="card" style="margin-top:16px">
-        <div class="card-header"><h3>📖 Como configurar</h3></div>
-        <div class="card-body" style="font-size:12px;color:var(--text-muted)">
-          <ol style="margin:0;padding-left:20px">
-            <li style="margin-bottom:8px">Acesse <a href="https://railway.app" target="_blank" style="color:var(--accent)">railway.app</a> e crie um projeto</li>
-            <li style="margin-bottom:8px">Deploy o Flowise no Railway</li>
-            <li style="margin-bottom:8px">Configure as variáveis de ambiente do Flowise (veja abaixo)</li>
-            <li style="margin-bottom:8px">Copie a URL gerada pelo Railway</li>
-            <li>Cole a URL acima e teste a conexão</li>
-          </ol>
-          
-          <div style="margin-top:12px;padding:10px;background:var(--bg-secondary);border-radius:8px">
-            <p style="margin:0 0 6px;font-weight:600">Variáveis de ambiente para o Flowise:</p>
-            <code style="font-size:10px;display:block;white-space:pre-wrap">DATABASE_TYPE=postgres
-DATABASE_HOST=db.dpwqqszrhizqdncifkee.supabase.co
-DATABASE_PORT=5432
-DATABASE_NAME=postgres
-DATABASE_USER=postgres
-DATABASE_PASSWORD=sua_senha
-DATABASE_SSL=true
-FLOWISE_SECRET=sua_chave_secreta</code>
-          </div>
-        </div>
-      </div>
+      <div class="card"><div class="card-header"><h3>Conexão Flowise</h3></div><div class="card-body">
+        <div class="form-group"><label style="font-size:12px">URL do Flowise</label><input type="url" id="flowise-url" value="${FLOWISE_URL||'https://flowise-production-233b.up.railway.app'}" placeholder="https://flowise.up.railway.app" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px"></div>
+        <button class="btn btn-sm btn-primary" onclick="testFlowiseConnectionFromConfig()"><i class="fa-solid fa-plug"></i> Testar Conexão</button>
+      </div></div>
     </div>`;
 }
 
-async function testFlowiseConnection() {
+async function testFlowiseConnectionFromConfig() {
   showToast('Testando conexão...', 'info');
   const status = await api('/api/flowise/status');
-  if (status?.connected) {
-    showToast('Conexão com Flowise OK!', 'success');
-  } else {
-    showToast('Erro ao conectar com Flowise', 'error');
-  }
+  showToast(status?.connected ? 'Conexão OK!' : 'Erro ao conectar', status?.connected ? 'success' : 'error');
 }
+
+function closeModal() { const m = document.getElementById('modal-overlay'); if (m) { m.style.display = 'none'; m.classList.remove('show'); } }
+function openModal() { const m = document.getElementById('modal-overlay'); if (m) { m.style.display = 'flex'; m.classList.add('show'); } }
 
 // ─── Voice Studio (Lailla.io exact) ──────────────────────────────
 async function loadVoice(el) {
