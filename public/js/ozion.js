@@ -699,8 +699,11 @@ function renderChatList() {
 }
 
 async function selectConv(id) {
+  // Leave previous conversation room
+  if (selectedConv && selectedConv.id !== id) leaveConversation(selectedConv.id);
   selectedConv = conversations.find(c => c.id === id);
   if (!selectedConv) return;
+  joinConversation(id);
   
   const chatMain = document.getElementById('chat-main');
   const chatSidebar = document.getElementById('chat-sidebar');
@@ -764,7 +767,7 @@ async function selectConv(id) {
         <button onclick="showAttachMenu()" style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Anexar"><i class="fa-solid fa-paperclip" style="font-size:12px"></i></button>
         <button onclick="toggleEmojiPicker()" style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Emoji"><i class="fa-solid fa-face-smile" style="font-size:12px"></i></button>
         <div style="flex:1;position:relative">
-          <textarea id="chat-input-text" rows="1" placeholder="Digite sua mensagem..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('${id}')}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'" style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;resize:none;min-height:34px;max-height:120px;font-family:inherit;transition:border .2s" onfocus="this.style.borderColor='#6c5ce7'" onblur="this.style.borderColor='#1e2d3d'"></textarea>
+          <textarea id="chat-input-text" rows="1" placeholder="Digite sua mensagem..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('${id}')}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';onChatInputTyping()" style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;resize:none;min-height:34px;max-height:120px;font-family:inherit;transition:border .2s" onfocus="this.style.borderColor='#6c5ce7'" onblur="this.style.borderColor='#1e2d3d'"></textarea>
         </div>
         <button onclick="toggleAudioRecording()" style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Áudio"><i class="fa-solid fa-microphone" style="font-size:12px"></i></button>
         <button onclick="sendMsg('${id}')" style="width:34px;height:34px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.background='#5a4bd1'" onmouseout="this.style.background='#6c5ce7'"><i class="fa-solid fa-paper-plane" style="font-size:12px"></i></button>
@@ -826,6 +829,15 @@ async function sendMsg(convId) {
   if (msgDiv) { msgDiv.innerHTML += renderMessage(chatMessages[chatMessages.length - 1]); msgDiv.scrollTop = msgDiv.scrollHeight; }
 
   await api('/api/chat/messages', { method: 'POST', body: JSON.stringify({ conversationId: convId, content: text }) });
+  emitStopTyping(convId);
+}
+
+let _typingTimeout = null;
+function onChatInputTyping() {
+  if (!_typingTimeout && selectedConv) {
+    emitTyping(selectedConv.id);
+    _typingTimeout = setTimeout(() => { _typingTimeout = null; }, 3000);
+  }
 }
 
 async function toggleAI(convId) {
@@ -881,6 +893,7 @@ function sendTemplateMsg(convId, text) {
 }
 
 function goBackChat() {
+  if (selectedConv) leaveConversation(selectedConv.id);
   const chatSidebar = document.getElementById('chat-sidebar');
   const chatMain = document.getElementById('chat-main');
   if (chatSidebar) chatSidebar.classList.remove('hidden');
@@ -3902,27 +3915,115 @@ async function renderSettingsWhatsApp(el) {
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div><h3 style="margin:0;font-size:15px">WhatsApp</h3><p style="color:var(--text-muted);font-size:11px;margin:2px 0 0">Conexões e configurações WhatsApp Business</p></div>
-      <button class="btn btn-primary btn-sm" onclick="navigate('whatsapp')"><i class="fa-solid fa-plus"></i> Nova conexão</button>
+      <button class="btn btn-primary btn-sm" onclick="showConnectWhatsApp()"><i class="fa-solid fa-plus"></i> Nova conexão</button>
     </div>
+
+    <!-- Evolution API Config -->
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="width:36px;height:36px;border-radius:8px;background:#25d36620;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-server" style="color:#25d366;font-size:16px"></i></div>
+        <div><div style="font-weight:600;font-size:13px">Evolution API</div><div style="font-size:11px;color:var(--text-muted)">Motor de conexão WhatsApp (multi-device)</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group"><label>URL da Evolution API</label><input type="url" id="evo-api-url" placeholder="https://evo.yourdomain.com" value="${localStorage.getItem('evo_api_url')||''}" style="width:100%;padding:8px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px"></div>
+        <div class="form-group"><label>API Key</label><input type="password" id="evo-api-key" placeholder="Sua API key da Evolution" value="${localStorage.getItem('evo_api_key')||''}" style="width:100%;padding:8px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="saveEvolutionConfig()"><i class="fa-solid fa-save"></i> Salvar</button>
+        <button class="btn btn-sm btn-outline" onclick="testEvolutionConnection()"><i class="fa-solid fa-plug"></i> Testar conexão</button>
+      </div>
+    </div>
+
+    <!-- Connections List -->
     <div style="display:grid;gap:12px">
       ${creds.length>0?creds.map(c=>`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:14px">
         <div style="width:44px;height:44px;border-radius:10px;background:#25d36620;display:flex;align-items:center;justify-content:center"><i class="fa-brands fa-whatsapp" style="color:#25d366;font-size:20px"></i></div>
-        <div style="flex:1"><div style="font-weight:600;font-size:13px">${c.phone_number||c.display_phone_number||'—'}</div><div style="font-size:11px;color:var(--text-muted)">WABA ID: ${(c.waba_id||'—').slice(0,20)}...</div></div>
-        <span style="padding:3px 8px;border-radius:6px;font-size:10px;background:rgba(34,197,94,.12);color:#22c55e">Ativo</span>
-        <button onclick="navigate('whatsapp')" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;font-size:10px"><i class="fa-solid fa-gear"></i></button>
+        <div style="flex:1"><div style="font-weight:600;font-size:13px">${c.phone_number||c.display_phone_number||c.instance_name||'—'}</div><div style="font-size:11px;color:var(--text-muted)">Instância: ${c.instance_name||'—'} • ${c.integration||'Baileys'}</div></div>
+        <span style="padding:3px 8px;border-radius:6px;font-size:10px;background:${c.status==='open'?'rgba(34,197,94,.12)':'rgba(239,68,68,.12)'};color:${c.status==='open'?'#22c55e':'#ef4444'}">${c.status==='open'?'Conectado':'Desconectado'}</span>
+        <div style="display:flex;gap:4px">
+          <button onclick="showWhatsAppQR('${c.instance_name}')" title="QR Code" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;font-size:10px"><i class="fa-solid fa-qrcode"></i></button>
+          <button onclick="disconnectWhatsApp('${c.id}')" title="Desconectar" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#ef4444;cursor:pointer;font-size:10px"><i class="fa-solid fa-link-slash"></i></button>
+        </div>
       </div>`).join(''):`
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:40px;text-align:center">
         <i class="fa-brands fa-whatsapp" style="font-size:48px;color:#25d366;margin-bottom:12px;display:block"></i>
         <h3 style="margin:0 0 8px;font-size:14px">Nenhuma conexão WhatsApp</h3>
-        <p style="color:var(--text-muted);font-size:12px;margin:0 0 16px">Conecte um número WhatsApp Business para começar a receber mensagens.</p>
-        <button class="btn btn-primary btn-sm" onclick="navigate('whatsapp')"><i class="fa-solid fa-link"></i> Conectar agora</button>
+        <p style="color:var(--text-muted);font-size:12px;margin:0 0 16px">Configure a Evolution API acima e clique em "Nova conexão" para começar.</p>
       </div>`}
     </div>
+
+    <!-- Message Config -->
     <div style="margin-top:20px" class="card"><div class="card-header"><h3><i class="fa-solid fa-gear" style="margin-right:6px;color:var(--accent)"></i>Configurações de Mensagens</h3></div><div class="card-body">
       <div class="form-group"><label>Mensagem de saudação</label><textarea rows="2" placeholder="Olá! Como podemos ajudar?" id="wa-greeting" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px;resize:vertical;font-family:inherit"></textarea></div>
       <div class="form-group"><label>Mensagem de ausência</label><textarea rows="2" placeholder="No momento não estamos disponíveis..." id="wa-away" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px;resize:vertical;font-family:inherit"></textarea></div>
       <button class="btn btn-primary btn-sm" onclick="showToast('Configurações salvas!','success')"><i class="fa-solid fa-save"></i> Salvar</button>
     </div></div>`;
+}
+
+function saveEvolutionConfig(){
+  const url=document.getElementById('evo-api-url')?.value;
+  const key=document.getElementById('evo-api-key')?.value;
+  if(url)localStorage.setItem('evo_api_url',url);
+  if(key)localStorage.setItem('evo_api_key',key);
+  showToast('Evolution API configurada!','success');
+}
+
+async function testEvolutionConnection(){
+  const url=localStorage.getItem('evo_api_url');
+  const key=localStorage.getItem('evo_api_key');
+  if(!url||!key)return showToast('Configure a URL e API Key primeiro','error');
+  try{
+    const res=await fetch(url+'/instance/fetchInstances',{headers:{'apikey':key}});
+    if(res.ok){const data=await res.json();showToast(`Conectado! ${Array.isArray(data)?data.length:0} instâncias`,'success');}
+    else showToast('Falha na conexão: '+res.status,'error');
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+function showConnectWhatsApp(){
+  showModal({title:'Nova Conexão WhatsApp',body:`
+    <div class="form-group"><label>Nome da instância</label><input type="text" id="evo-instance-name" placeholder="minha-empresa" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Número WhatsApp (com DDD)</label><input type="text" id="evo-phone" placeholder="5511999999999" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div style="padding:10px;background:#22c55e22;border:1px solid #22c55e;border-radius:8px;font-size:11px;color:#22c55e;margin-bottom:12px"><i class="fa-solid fa-info-circle"></i> Configure a Evolution API na aba acima antes de conectar.</div>`,
+  footer:`
+    <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+    <button onclick="connectWhatsApp()" style="padding:8px 16px;border-radius:8px;border:none;background:#25d366;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-brands fa-whatsapp"></i> Conectar</button>`});
+}
+
+async function connectWhatsApp(){
+  const name=document.getElementById('evo-instance-name')?.value;
+  const phone=document.getElementById('evo-phone')?.value;
+  if(!name||!phone)return showToast('Preencha todos os campos','error');
+  showToast('Criando instância...','info');
+  // Save to backend
+  const result=await api('/api/whatsapp/credentials',{method:'POST',body:JSON.stringify({instance_name:name,phone_number:phone,integration:'WHATSAPP-BAILEYS'})});
+  if(result?.id){showToast('Instância criada! Escaneie o QR Code.','success');document.querySelector('.modal-overlay.show')?.remove();showWhatsAppQR(name);}
+  else showToast(result?.error||'Erro ao criar instância','error');
+}
+
+function showWhatsAppQR(instance){
+  showModal({title:'WhatsApp QR Code',body:`<div style="text-align:center;padding:20px"><div id="qr-code-container" style="width:256px;height:256px;margin:0 auto;background:white;border-radius:8px;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;color:#6c5ce7"></i></div><p style="font-size:12px;color:var(--text-muted);margin-top:12px">Escaneie com o WhatsApp no celular</p></div>`,footer:''});
+  // Poll for QR code
+  setTimeout(async()=>{
+    try{
+      const url=localStorage.getItem('evo_api_url');
+      const key=localStorage.getItem('evo_api_key');
+      if(url&&key){
+        const res=await fetch(url+'/instance/connect/'+instance,{headers:{'apikey':key}});
+        const data=await res.json();
+        const container=document.getElementById('qr-code-container');
+        if(container&&data.base64){container.innerHTML=`<img src="data:image/png;base64,${data.base64}" style="width:100%;height:100%;object-fit:contain">`;}
+        else if(container){container.innerHTML='<div style="text-align:center;color:#333"><i class="fa-solid fa-check-circle" style="font-size:48px;color:#22c55e"></i><p>Verificando conexão...</p></div>';}
+      }
+    }catch(e){console.error('QR error:',e);}
+  },2000);
+}
+
+async function disconnectWhatsApp(id){
+  confirmModal({title:'Desconectar WhatsApp',message:'Desconectar este número? As mensagens pendentes serão perdidas.',danger:true,onConfirm:async()=>{
+    await api('/api/whatsapp/credentials/'+id,{method:'DELETE'});
+    showToast('Desconectado!','success');
+    renderSettingsWhatsApp(document.getElementById('settings-content'));
+  }});
 }
 
 // ─── Tab 7: Templates ───────────────────────────────────────────
@@ -4282,19 +4383,66 @@ async function impersonateCustomer(id) {
         showToast('Acessando como cliente...', 'success');
 render();
 
-// ─── Auto-polling for chat conversations (every 8s) ─────────────
-setInterval(async () => {
-  if (currentPage === 'chat' && !selectedConv) {
-    try {
-      const data = await api('/api/chat/conversations');
-      if (data?.conversations) {
-        conversations = data.conversations;
-        const list = document.getElementById('chat-list');
-        if (list) { const filtered = filterConversations(); list.innerHTML = renderChatListItems(filtered); }
+// ─── WebSocket (Socket.io) for real-time updates ────────────────
+let socket = null;
+function initSocket() {
+  if (socket) return;
+  const token = localStorage.getItem('ozion_token');
+  if (!token) return;
+  try {
+    socket = io(window.location.origin, { path: '/ws', auth: { token }, transports: ['websocket', 'polling'] });
+    socket.on('connect', () => console.log('🔌 WebSocket conectado'));
+    socket.on('disconnect', () => console.log('🔌 WebSocket desconectado'));
+    socket.on('conversation:message', (data) => {
+      if (currentPage === 'chat' && selectedConv?.id === data.conversationId) {
+        // Message in current conversation — refresh
+        selectConv(data.conversationId);
+      } else if (currentPage === 'chat') {
+        // New message in another conversation — update list
+        refreshChatList();
       }
-    } catch (e) { /* silent */ }
-  }
-}, 8000);
+    });
+    socket.on('conversation:new', () => { if (currentPage === 'chat') refreshChatList(); });
+    socket.on('conversation:update', () => { if (currentPage === 'chat') refreshChatList(); });
+    socket.on('conversation:transfer', (data) => {
+      showToast(`Conversa transferida: ${data.reason}`, 'info');
+      if (currentPage === 'chat') refreshChatList();
+    });
+    socket.on('notification', (data) => {
+      showToast(data.message || data.title, 'info');
+    });
+    socket.on('typing:start', (data) => {
+      if (currentPage === 'chat' && selectedConv?.id === data.conversationId) {
+        const el = document.getElementById('typing-indicator');
+        if (el) el.style.display = 'flex';
+      }
+    });
+    socket.on('typing:stop', (data) => {
+      if (currentPage === 'chat' && selectedConv?.id === data.conversationId) {
+        const el = document.getElementById('typing-indicator');
+        if (el) el.style.display = 'none';
+      }
+    });
+  } catch (e) { console.warn('WebSocket init error:', e); }
+}
+function joinConversation(convId) { if (socket) socket.emit('join:conversation', convId); }
+function leaveConversation(convId) { if (socket) socket.emit('leave:conversation', convId); }
+function emitTyping(convId) { if (socket) socket.emit('typing:start', convId); }
+function emitStopTyping(convId) { if (socket) socket.emit('typing:stop', convId); }
+
+async function refreshChatList() {
+  try {
+    const data = await api('/api/chat/conversations');
+    if (data?.conversations) {
+      conversations = data.conversations;
+      const list = document.getElementById('chat-list');
+      if (list) { const filtered = filterConversations(); list.innerHTML = renderChatListItems(filtered); }
+    }
+  } catch (e) { /* silent */ }
+}
+
+// Init socket on login
+if (currentUser) initSocket();
       } else {
         showToast(result?.error || 'Erro ao acessar', 'error');
       }

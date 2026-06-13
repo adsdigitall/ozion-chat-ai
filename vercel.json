@@ -12,7 +12,13 @@
     "FLOWISE_URL": "",
     "FLOWISE_API_KEY": "",
     "FLOWISE_CHATFLOW_ID": "",
-    "WHATSAPP_ACCESS_TOKEN": ""
+    "WHATSAPP_ACCESS_TOKEN": "",
+    "EVOLUTION_API_URL": "",
+    "EVOLUTION_API_KEY": "",
+    "ELEVENLABS_API_KEY": "",
+    "GROQ_API_KEY": "",
+    "OPENAI_API_KEY": "",
+    "DEEPSEEK_API_KEY": ""
   },
   "routes": [
     {
