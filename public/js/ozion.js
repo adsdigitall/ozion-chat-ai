@@ -1123,18 +1123,11 @@ function toggleChatFilterPanel() {
 function applyFilter(f) { chatFilter = f; toggleChatFilterPanel(); setChatFilter(f); }
 function applyOperatorFilter(op) { chatOperatorFilter = op; toggleChatFilterPanel(); showToast(`Filtro operador: ${op}`, 'info'); }
 function applyAllFilters() { toggleChatFilterPanel(); renderChatList(); showToast('Filtros aplicados', 'success'); }
-}
-
-function applyFilter(f) {
-  setChatFilter(f);
-  toggleChatFilterPanel();
-}
 
 // ─── CRM (Lista + Kanban + Pipeline) ───────────────────────────
 let crmView = 'list';
 let crmSearch = '';
 let crmTagFilter = '';
-let allContacts = [];
 let customFields = [];
 const PIPELINE_STAGES = [
   { id: 'lead', name: 'Lead', color: '#6c5ce7' },
@@ -1975,7 +1968,7 @@ function showCreateFlowModal(folderId) {
         <button class="btn btn-sm btn-primary" onclick="submitCreateFlow(${folderId||'null'})"><i class="fa-solid fa-plus"></i> Criar</button>
       </div>
     </div>`;
-  openModal();
+  flowiseModalOpen();
 }
 
 async function submitCreateFlow(folderId) {
@@ -2029,7 +2022,7 @@ async function editFlow(id) {
         </div>
       </div>
     </div>`;
-  openModal();
+  flowiseModalOpen();
 }
 
 async function submitEditFlow(id) {
@@ -2103,7 +2096,7 @@ function showCreateFolderModal() {
         <button class="btn btn-sm btn-primary" onclick="submitCreateFolder()"><i class="fa-solid fa-plus"></i> Criar</button>
       </div>
     </div>`;
-  openModal();
+  flowiseModalOpen();
   setTimeout(() => document.getElementById('cfolder-name')?.focus(), 100);
 }
 
@@ -2137,7 +2130,7 @@ function showMoveFlowModal(flowId) {
         ${flowFolders.map(f => `<div onclick="moveFlow('${flowId}','${f.id}')" style="padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><i class="fa-solid fa-folder" style="color:#f59e0b"></i> ${f.name}</div>`).join('')}
       </div>
     </div>`;
-  openModal();
+  flowiseModalOpen();
 }
 
 async function moveFlow(flowId, folderId) {
@@ -2161,7 +2154,7 @@ async function showBulkMoveModal() {
         ${flowFolders.map(f => `<div onclick="bulkMoveFlows('${f.id}')" style="padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"><i class="fa-solid fa-folder" style="color:#f59e0b"></i> ${f.name}</div>`).join('')}
       </div>
     </div>`;
-  openModal();
+  flowiseModalOpen();
 }
 
 async function bulkMoveFlows(folderId) {
@@ -2241,8 +2234,7 @@ async function testFlowiseConnectionFromConfig() {
   showToast(status?.connected ? 'Conexão OK!' : 'Erro ao conectar', status?.connected ? 'success' : 'error');
 }
 
-function closeModal() { const m = document.getElementById('modal-overlay'); if (m) { m.style.display = 'none'; m.classList.remove('show'); } }
-function openModal() { const m = document.getElementById('modal-overlay'); if (m) { m.style.display = 'flex'; m.classList.add('show'); } }
+function flowiseModalOpen() { const m = document.getElementById('modal-overlay'); if (m) { m.style.display = 'flex'; m.classList.add('show'); } }
 
 // ─── Voice Studio (Full) ────────────────────────────────────────
 const VOICE_PRESETS = [
@@ -3584,7 +3576,7 @@ async function renderSystemTab(el) {
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
         ${['Meta Cloud API','Webhooks WhatsApp','Database','Storage','Auth','Webhooks'].map(c => {
-          const h = health.find((x:any) => x.component?.toLowerCase().includes(c.toLowerCase().split(' ')[0]));
+          const h = health.find(x => x.component?.toLowerCase().includes(c.toLowerCase().split(' ')[0]));
           const online = h ? 'online' : 'unknown';
           return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px">
             <div style="width:8px;height:8px;border-radius:50%;background:${online==='online'?'#22c55e':online==='degraded'?'#f59e0b':'#6b7280'}"></div>
@@ -3791,6 +3783,5 @@ function showCreateChangelog() {
 function timeAgo(date) { const s = Math.floor((Date.now() - new Date(date)) / 1000); if (s < 60) return 'agora'; if (s < 3600) return Math.floor(s/60) + 'min'; if (s < 86400) return Math.floor(s/3600) + 'h'; return Math.floor(s/86400) + 'd'; }
 function formatTime(date) { if (!date) return ''; return new Date(date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
 function formatDate(date) { if (!date) return ''; return new Date(date).toLocaleDateString('pt-BR'); }
-function showToast(msg, type = 'info') { const t = document.createElement('div'); t.className = `toast toast-${type}`; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3000); }
 
 render();
