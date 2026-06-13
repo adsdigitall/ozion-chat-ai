@@ -317,7 +317,7 @@ async function loadChat(el) {
             <div style="position:relative;cursor:pointer">
               <i class="fa-solid fa-chevron-down" style="font-size:12px;color:#8b9dc3"></i>
             </div>
-            <div onclick="showToast('Novo chat','info')" style="width:32px;height:32px;border-radius:50%;background:#6c5ce7;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#5a4bd1'" onmouseout="this.style.background='#6c5ce7'">
+            <div onclick="showNewChatModal()" style="width:32px;height:32px;border-radius:50%;background:#6c5ce7;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#5a4bd1'" onmouseout="this.style.background='#6c5ce7'">
               <i class="fa-solid fa-plus" style="font-size:14px;color:white"></i>
             </div>
           </div>
@@ -325,7 +325,7 @@ async function loadChat(el) {
 
         <!-- Search + Filter -->
         <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1e2d3d">
-          <i class="fa-solid fa-filter" style="font-size:13px;color:#8b9dc3;cursor:pointer"></i>
+          <i class="fa-solid fa-filter" onclick="toggleChatFilterPanel()" style="font-size:13px;color:#8b9dc3;cursor:pointer"></i>
           <div style="flex:1;position:relative">
             <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:#64748b"></i>
             <input type="text" id="chat-search" placeholder="Buscar por nome ou telefone" value="${chatSearch}" oninput="chatSearch=this.value;renderChatList()" style="width:100%;padding:8px 12px 8px 28px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;transition:border .2s" onfocus="this.style.borderColor='#6c5ce7'" onblur="this.style.borderColor='#1e2d3d'">
@@ -599,6 +599,99 @@ function goBackChat() {
   if (chatSidebar) chatSidebar.classList.remove('hidden');
   if (chatMain) chatMain.classList.remove('active');
   selectedConv = null;
+}
+
+function showNewChatModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay show';
+  modal.id = 'new-chat-modal';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <h3>Novo Chat</h3>
+        <button class="modal-close" onclick="document.getElementById('new-chat-modal').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nome do contato</label>
+          <input type="text" id="new-chat-name" placeholder="Nome completo">
+        </div>
+        <div class="form-group">
+          <label>Telefone (com DDD)</label>
+          <input type="text" id="new-chat-phone" placeholder="+5511999999999">
+        </div>
+        <div class="form-group">
+          <label>Mensagem inicial</label>
+          <textarea id="new-chat-msg" rows="3" placeholder="Olá! Como posso ajudar?"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('new-chat-modal').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="createNewChat()"><i class="fa-solid fa-paper-plane"></i> Iniciar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function createNewChat() {
+  const name = document.getElementById('new-chat-name')?.value;
+  const phone = document.getElementById('new-chat-phone')?.value;
+  const msg = document.getElementById('new-chat-msg')?.value;
+  if (!name || !phone) { showToast('Preencha nome e telefone', 'error'); return; }
+  await api('/api/crm/contacts', { method: 'POST', body: JSON.stringify({ name, phone }) });
+  document.getElementById('new-chat-modal')?.remove();
+  showToast('Chat criado!', 'success');
+  loadChat(document.getElementById('content'));
+}
+
+let chatFilterPanelOpen = false;
+function toggleChatFilterPanel() {
+  chatFilterPanelOpen = !chatFilterPanelOpen;
+  let panel = document.getElementById('chat-filter-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'chat-filter-panel';
+    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:flex-end;justify-content:center;';
+    panel.onclick = (e) => { if (e.target === panel) toggleChatFilterPanel(); };
+    panel.innerHTML = `
+      <div style="background:#1a1f35;border-radius:16px 16px 0 0;width:100%;max-width:500px;padding:24px;animation:slideUp .3s ease">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <h3 style="margin:0;font-size:16px;color:#e6edf3">Filtros</h3>
+          <button onclick="toggleChatFilterPanel()" style="background:none;border:none;color:#8b9dc3;cursor:pointer;font-size:20px">&times;</button>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="font-size:12px;color:#8b9dc3;display:block;margin-bottom:8px">Status</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span onclick="applyFilter('all')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:${chatFilter==='all'?'#6c5ce7':'#161b22'};color:${chatFilter==='all'?'white':'#8b9dc3'};border:1px solid ${chatFilter==='all'?'#6c5ce7':'#1e2d3d'}">Todos</span>
+            <span onclick="applyFilter('all')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:#161b22;color:#8b9dc3;border:1px solid #1e2d3d">Entrada</span>
+            <span onclick="applyFilter('ai')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:#161b22;color:#8b9dc3;border:1px solid #1e2d3d">Esperando</span>
+            <span onclick="applyFilter('closed')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:#161b22;color:#8b9dc3;border:1px solid #1e2d3d">Finalizados</span>
+          </div>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="font-size:12px;color:#8b9dc3;display:block;margin-bottom:8px">Operador</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${['Todos','KAROL','SOCO','TIKT','Ana','Carlos'].map(op => `<span style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:#161b22;color:#8b9dc3;border:1px solid #1e2d3d">${op}</span>`).join('')}
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px;color:#8b9dc3;display:block;margin-bottom:8px">Período</label>
+          <div style="display:flex;gap:8px">
+            <input type="date" style="flex:1;padding:8px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px">
+            <input type="date" style="flex:1;padding:8px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px">
+          </div>
+        </div>
+        <button onclick="toggleChatFilterPanel()" style="width:100%;margin-top:20px;padding:12px;border:none;border-radius:8px;background:#6c5ce7;color:white;font-size:13px;font-weight:600;cursor:pointer">Aplicar Filtros</button>
+      </div>`;
+    document.body.appendChild(panel);
+  } else {
+    panel.remove();
+  }
+}
+
+function applyFilter(f) {
+  setChatFilter(f);
+  toggleChatFilterPanel();
 }
 
 // ─── Contatos (Lailla.io exact) ──────────────────────────────────
