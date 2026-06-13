@@ -1,8 +1,8 @@
 {
   "version": 2,
   "name": "ozion-chat-ai",
-  "outputDirectory": "public",
   "installCommand": "npm install",
+  "outputDirectory": "public",
   "env": {
     "NODE_ENV": "production",
     "SUPABASE_URL": "https://dpwqqszrhizqdncifkee.supabase.co",
@@ -18,5 +18,11 @@
     "GROQ_API_KEY": "",
     "OPENAI_API_KEY": "",
     "DEEPSEEK_API_KEY": ""
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "server/index.ts"
+    }
+  ]
 }
