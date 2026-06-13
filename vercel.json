@@ -1,8 +1,8 @@
 {
   "version": 2,
   "name": "ozion-chat-ai",
-  "cleanUrls": true,
-  "trailingSlash": false,
+  "buildCommand": "echo 'Build complete'",
+  "outputDirectory": "public",
   "env": {
     "NODE_ENV": "production",
     "SUPABASE_URL": "https://dpwqqszrhizqdncifkee.supabase.co",
