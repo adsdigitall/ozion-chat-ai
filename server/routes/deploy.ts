@@ -1,230 +1,210 @@
-// @ts-nocheck
 import { Router } from 'express';
-import { db } from '../db/index.js';
-import * as schema from '../db/schema.js';
-import * as deploySchema from '../db/schema-deploy.js';
-import { eq, desc } from 'drizzle-orm';
-import crypto from 'crypto';
-import { execSync } from 'child_process';
+import { getSupabase } from '../db/supabase.js';
 
 const router = Router();
 
-// ─── Changelog ─────────────────────────────────────────────────
-router.get('/changelog', (req, res) => {
+router.get('/changelog', async (req, res) => {
   try {
-    const rows = db.select().from(deploySchema.changelogs).orderBy(desc(deploySchema.changelogs.createdAt)).all();
-    res.json(rows);
+    const sb = getSupabase();
+    const { data, error } = await sb.from('changelogs').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/changelog', (req, res) => {
+router.post('/changelog', async (req, res) => {
   try {
-    const id = crypto.randomUUID();
-    const row = { id, ...req.body, createdAt: new Date().toISOString() };
-    db.insert(deploySchema.changelogs).values(row).run();
+    const sb = getSupabase();
+    const row = { id: crypto.randomUUID(), ...req.body, created_at: new Date().toISOString() };
+    const { error } = await sb.from('changelogs').insert(row);
+    if (error) throw error;
     res.json(row);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.put('/changelog/:id', (req, res) => {
+router.put('/changelog/:id', async (req, res) => {
   try {
-    db.update(deploySchema.changelogs).set({ ...req.body }).where(eq(deploySchema.changelogs.id, req.params.id)).run();
+    const sb = getSupabase();
+    await sb.from('changelogs').update(req.body).eq('id', req.params.id);
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.delete('/changelog/:id', (req, res) => {
+router.delete('/changelog/:id', async (req, res) => {
   try {
-    db.delete(deploySchema.changelogs).where(eq(deploySchema.changelogs.id, req.params.id)).run();
+    const sb = getSupabase();
+    await sb.from('changelogs').delete().eq('id', req.params.id);
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/changelog/:id/publish', (req, res) => {
+router.post('/changelog/:id/publish', async (req, res) => {
   try {
-    db.update(deploySchema.changelogs).set({ isPublished: true, publishedAt: new Date().toISOString() }).where(eq(deploySchema.changelogs.id, req.params.id)).run();
+    const sb = getSupabase();
+    await sb.from('changelogs').update({ is_published: true, published_at: new Date().toISOString() }).eq('id', req.params.id);
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Backups ───────────────────────────────────────────────────
-router.get('/backups', (req, res) => {
+router.get('/backups', async (req, res) => {
   try {
-    const rows = db.select().from(deploySchema.backups).orderBy(desc(deploySchema.backups.createdAt)).all();
-    res.json(rows);
+    const sb = getSupabase();
+    const { data, error } = await sb.from('backups').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/backups/create', (req, res) => {
+router.post('/backups/create', async (req, res) => {
   try {
+    const sb = getSupabase();
     const id = crypto.randomUUID();
     const { type, modules: mods } = req.body;
     const modulesList = mods || ['database', 'flows', 'agents', 'config'];
-    
-    // Start backup
-    db.insert(deploySchema.backups).values({
+    const { error } = await sb.from('backups').insert({
       id,
-      name: `backup-${type}-${Date.now()}`,
+      name: `backup-${type || 'full'}-${Date.now()}`,
       type: type || 'full',
       status: 'running',
       modules: JSON.stringify(modulesList),
       metadata: JSON.stringify({ requestedBy: 'admin', startedAt: new Date().toISOString() }),
-      createdAt: new Date().toISOString(),
-    }).run();
+      created_at: new Date().toISOString(),
+    });
+    if (error) throw error;
 
-    // Simulate backup completion
-    setTimeout(() => {
-      db.update(deploySchema.backups).set({
+    setTimeout(async () => {
+      await sb.from('backups').update({
         status: 'completed',
         size: Math.floor(Math.random() * 5000000) + 100000,
-        completedAt: new Date().toISOString(),
-      }).where(eq(deploySchema.backups.id, id)).run();
+        completed_at: new Date().toISOString(),
+      }).eq('id', id);
     }, 2000);
 
     res.json({ id, status: 'running', message: 'Backup iniciado' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/backups/:id/restore', (req, res) => {
+router.post('/backups/:id/restore', async (req, res) => {
   try {
-    const existing = db.select().from(deploySchema.backups).where(eq(deploySchema.backups.id, req.params.id)).get() as any;
-    if (!existing) return res.status(404).json({ error: 'Backup não encontrado' });
-    
-    db.update(deploySchema.backups).set({ status: 'restored' }).where(eq(deploySchema.backups.id, req.params.id)).run();
+    const sb = getSupabase();
+    await sb.from('backups').update({ status: 'restored' }).eq('id', req.params.id);
     res.json({ ok: true, message: 'Backup restaurado com sucesso' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.delete('/backups/:id', (req, res) => {
+router.delete('/backups/:id', async (req, res) => {
   try {
-    db.delete(deploySchema.backups).where(eq(deploySchema.backups.id, req.params.id)).run();
+    const sb = getSupabase();
+    await sb.from('backups').delete().eq('id', req.params.id);
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Modules ───────────────────────────────────────────────────
-router.get('/modules', (req, res) => {
+router.get('/modules', async (req, res) => {
   try {
-    const rows = db.select().from(deploySchema.modules).all();
-    if (rows.length === 0) {
+    const sb = getSupabase();
+    const { data: existing } = await sb.from('modules').select('*');
+    if (!existing || existing.length === 0) {
       const defaultModules = [
-        { id: crypto.randomUUID(), name: 'crm', displayName: 'CRM', description: 'Gerenciamento de contatos e pipeline', version: '1.0.0', status: 'active', isCore: true },
-        { id: crypto.randomUUID(), name: 'chat', displayName: 'Chat ao Vivo', description: 'Chat em tempo real com clientes', version: '1.0.0', status: 'active', isCore: true },
-        { id: crypto.randomUUID(), name: 'flows', displayName: 'Flow Builder', description: 'Construtor de fluxos de automação', version: '1.0.0', status: 'active', isCore: true },
-        { id: crypto.randomUUID(), name: 'agents', displayName: 'Agentes IA', description: 'Agentes inteligentes com IA', version: '1.0.0', status: 'active', isCore: true },
-        { id: crypto.randomUUID(), name: 'voice', displayName: 'Voice Studio', description: 'Estúdio de clonagem de voz', version: '1.0.0', status: 'active', isCore: false },
-        { id: crypto.randomUUID(), name: 'ctwa', displayName: 'CTWA', description: 'Click-to-WhatsApp Ads tracking', version: '1.0.0', status: 'active', isCore: false },
-        { id: crypto.randomUUID(), name: 'sales', displayName: 'Vendas', description: 'Gestão de vendas e funil', version: '1.0.0', status: 'active', isCore: false },
-        { id: crypto.randomUUID(), name: 'analytics', displayName: 'Analytics', description: 'Análise e relatórios', version: '1.0.0', status: 'active', isCore: false },
-        { id: crypto.randomUUID(), name: 'integrations', displayName: 'Integrações', description: 'Integrações externas', version: '1.0.0', status: 'active', isCore: false },
+        { name: 'crm', display_name: 'CRM', description: 'Gerenciamento de contatos e pipeline', version: '1.0.0', status: 'active', is_core: true },
+        { name: 'chat', display_name: 'Chat ao Vivo', description: 'Chat em tempo real com clientes', version: '1.0.0', status: 'active', is_core: true },
+        { name: 'flows', display_name: 'Flow Builder', description: 'Construtor de fluxos de automação', version: '1.0.0', status: 'active', is_core: true },
+        { name: 'agents', display_name: 'Agentes IA', description: 'Agentes inteligentes com IA', version: '1.0.0', status: 'active', is_core: true },
+        { name: 'voice', display_name: 'Voice Studio', description: 'Estúdio de clonagem de voz', version: '1.0.0', status: 'active', is_core: false },
+        { name: 'ctwa', display_name: 'CTWA', description: 'Click-to-WhatsApp Ads tracking', version: '1.0.0', status: 'active', is_core: false },
+        { name: 'sales', display_name: 'Vendas', description: 'Gestão de vendas e funil', version: '1.0.0', status: 'active', is_core: false },
+        { name: 'analytics', display_name: 'Analytics', description: 'Análise e relatórios', version: '1.0.0', status: 'active', is_core: false },
+        { name: 'integrations', display_name: 'Integrações', description: 'Integrações externas', version: '1.0.0', status: 'active', is_core: false },
       ];
       for (const m of defaultModules) {
-        db.insert(deploySchema.modules).values({ ...m, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }).run();
+        await sb.from('modules').insert({ id: crypto.randomUUID(), ...m, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
       }
     }
-    const result = db.select().from(deploySchema.modules).all();
-    res.json(result);
+    const { data: result } = await sb.from('modules').select('*');
+    res.json(result || []);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.put('/modules/:name', (req, res) => {
+router.put('/modules/:name', async (req, res) => {
   try {
-    db.update(deploySchema.modules).set({ ...req.body, updatedAt: new Date().toISOString() }).where(eq(deploySchema.modules.name, req.params.name)).run();
+    const sb = getSupabase();
+    await sb.from('modules').update({ ...req.body, updated_at: new Date().toISOString() }).eq('name', req.params.name);
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Deploy ────────────────────────────────────────────────────
-router.get('/deployments', (req, res) => {
+router.get('/deployments', async (req, res) => {
   try {
-    const rows = db.select().from(deploySchema.deployments).orderBy(desc(deploySchema.deployments.createdAt)).all();
-    res.json(rows);
+    const sb = getSupabase();
+    const { data, error } = await sb.from('deployments').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/deploy', (req, res) => {
+router.post('/deploy', async (req, res) => {
   try {
-    const { environment, version, branch, commitHash, commitMessage } = req.body;
+    const sb = getSupabase();
     const id = crypto.randomUUID();
-
+    const { environment, version, branch, commitHash, commitMessage } = req.body;
     const row = {
       id,
       version: version || '1.0.0',
       environment: environment || 'production',
       status: 'building',
       branch: branch || 'main',
-      commitHash: commitHash || '',
-      commitMessage: commitMessage || '',
-      deployedBy: 'admin',
-      startedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
+      commit_hash: commitHash || '',
+      commit_message: commitMessage || '',
+      deployed_by: 'admin',
+      started_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     };
-    db.insert(deploySchema.deployments).values(row).run();
+    await sb.from('deployments').insert(row);
 
-    // Simulate deploy pipeline
-    setTimeout(() => {
-      db.update(deploySchema.deployments).set({ status: 'testing' }).where(eq(deploySchema.deployments.id, id)).run();
-    }, 3000);
-    setTimeout(() => {
-      db.update(deploySchema.deployments).set({ status: 'deploying' }).where(eq(deploySchema.deployments.id, id)).run();
-    }, 6000);
-    setTimeout(() => {
-      db.update(deploySchema.deployments).set({ status: 'completed', completedAt: new Date().toISOString() }).where(eq(deploySchema.deployments.id, id)).run();
-      // Update system version
-      db.update(schema.providerVersions).set({ currentVersion: version, updatedAt: new Date().toISOString() }).where(eq(schema.providerVersions.provider, 'ozion')).run();
+    setTimeout(async () => { await sb.from('deployments').update({ status: 'testing' }).eq('id', id); }, 3000);
+    setTimeout(async () => { await sb.from('deployments').update({ status: 'deploying' }).eq('id', id); }, 6000);
+    setTimeout(async () => {
+      await sb.from('deployments').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', id);
     }, 9000);
 
-    res.json({ id, status: 'building', message: `Deploy ${environment} iniciado` });
+    res.json({ id, status: 'building', message: `Deploy ${environment || 'production'} iniciado` });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/rollback', (req, res) => {
+router.post('/rollback', async (req, res) => {
   try {
+    const sb = getSupabase();
     const { deploymentId } = req.body;
-    const deployment = db.select().from(deploySchema.deployments).where(eq(deploySchema.deployments.id, deploymentId)).get() as any;
+    const { data: deployment } = await sb.from('deployments').select('*').eq('id', deploymentId).single();
     if (!deployment) return res.status(404).json({ error: 'Deploy não encontrado' });
 
     const id = crypto.randomUUID();
-    db.insert(deploySchema.deployments).values({
+    await sb.from('deployments').insert({
       id,
-      version: deployment.rollbackVersion || deployment.version,
+      version: deployment.rollback_version || deployment.version,
       environment: deployment.environment,
       status: 'deploying',
       branch: deployment.branch,
-      deployedBy: 'admin',
-      rollbackVersion: deployment.version,
-      startedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    }).run();
+      deployed_by: 'admin',
+      rollback_version: deployment.version,
+      started_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    });
 
-    setTimeout(() => {
-      db.update(deploySchema.deployments).set({ status: 'completed', completedAt: new Date().toISOString() }).where(eq(deploySchema.deployments.id, id)).run();
-    }, 5000);
-
+    setTimeout(async () => { await sb.from('deployments').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', id); }, 5000);
     res.json({ id, status: 'deploying', message: 'Rollback iniciado' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── System Info ───────────────────────────────────────────────
 router.get('/system', (req, res) => {
-  try {
-    let gitHash = 'unknown';
-    let gitBranch = 'unknown';
-    let lastCommit = 'unknown';
-    try { gitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim(); } catch {}
-    try { gitBranch = execSync('git branch --show-current', { encoding: 'utf-8' }).trim(); } catch {}
-    try { lastCommit = execSync('git log -1 --format="%s"', { encoding: 'utf-8' }).trim(); } catch {}
-
-    res.json({
-      version: '1.0.0',
-      environment: process.env.NODE_ENV || 'development',
-      git: { hash: gitHash, branch: gitBranch, lastCommit },
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
-      nodeVersion: process.version,
-      platform: process.platform,
-    });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  res.json({
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    nodeVersion: process.version,
+    platform: process.platform,
+  });
 });
 
 export default router;
