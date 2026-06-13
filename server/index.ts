@@ -27,7 +27,7 @@ import plansRoutes from './routes/plans.js';
 import deployRoutes from './routes/deploy.js';
 import flowiseRoutes from './routes/flowise.js';
 import tagsRoutes from './routes/tags.js';
-import evolutionRoutes from './routes/evolution.js';
+// import evolutionRoutes from './routes/evolution.js';
 import { getSupabase } from './db/supabase.js';
 import { authMiddleware } from './middleware/auth.js';
 
@@ -45,7 +45,7 @@ app.use(express.static(join(__dirname, '../public')));
 // Public routes
 app.use('/api/auth', authRoutes);
 app.use('/api/webhooks', webhookRoutes);
-app.use('/api/webhooks', evolutionRoutes);
+// app.use('/api/webhooks', evolutionRoutes);
 
 // Protected routes
 app.use('/api/health', authMiddleware, healthRoutes);
