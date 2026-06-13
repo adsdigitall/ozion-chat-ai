@@ -28,20 +28,13 @@ import deployRoutes from './routes/deploy.js';
 import flowiseRoutes from './routes/flowise.js';
 import tagsRoutes from './routes/tags.js';
 import evolutionRoutes from './routes/evolution.js';
-import { getSupabase } from './db/supabase.js';
 import { authMiddleware } from './middleware/auth.js';
-import { createServer } from 'http';
-import { initWebSocket } from './services/websocket.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const httpServer = createServer(app);
-
-// Initialize WebSocket
-initWebSocket(httpServer);
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
@@ -51,9 +44,9 @@ app.use(express.static(join(__dirname, '../public')));
 // Public routes
 app.use('/api/auth', authRoutes);
 app.use('/api/webhooks', webhookRoutes);
-app.use('/api/webhooks', evolutionRoutes); // Evolution API webhook (public)
+app.use('/api/webhooks', evolutionRoutes);
 
-// Protected routes - require authentication
+// Protected routes
 app.use('/api/health', authMiddleware, healthRoutes);
 app.use('/api/whatsapp', authMiddleware, whatsappRoutes);
 app.use('/api/messages', authMiddleware, messageRoutes);
@@ -75,27 +68,28 @@ app.use('/api/deploy', authMiddleware, deployRoutes);
 app.use('/api/flowise', authMiddleware, flowiseRoutes);
 app.use('/api/tags', authMiddleware, tagsRoutes);
 
-// Simple health check (no auth required)
-app.get('/api/ping', (req, res) => {
+app.get('/api/ping', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-async function start() {
-  // Test Supabase connection
-  try {
-    const supabase = getSupabase();
-    const { data, error } = await supabase.from('tenants').select('id').limit(1);
-    if (error) throw error;
-    console.log('✅ Supabase PostgreSQL connected');
-  } catch (error: any) {
-    console.error('❌ Supabase connection failed:', error.message);
-    console.log('⚠️  Continuing without database...');
-  }
-  
-  httpServer.listen(PORT, () => {
-    console.log(`🚀 Ozion Chat AI: http://localhost:${PORT}`);
-    console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
+export default app;
+
+// Local dev only — not used by Vercel
+if (!process.env.VERCEL) {
+  import('http').then(({ createServer }) => {
+    const httpServer = createServer(app);
+    import('./services/websocket.js').then(({ initWebSocket }) => {
+      initWebSocket(httpServer);
+      console.log('🔌 WebSocket initialized');
+    }).catch(() => {});
+    import('./db/supabase.js').then(({ getSupabase }) => {
+      getSupabase().from('tenants').select('id').limit(1).then(({ error }) => {
+        if (error) throw error;
+        console.log('✅ Supabase connected');
+      }).catch((e: any) => console.log('⚠️ Supabase:', e.message));
+    }).catch(() => {});
+    httpServer.listen(PORT, () => {
+      console.log(`🚀 Ozion Chat AI: http://localhost:${PORT}`);
+    });
   });
 }
-
-start();
