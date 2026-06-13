@@ -1,9 +1,6 @@
 {
   "version": 2,
   "name": "ozion-chat-ai",
-  "installCommand": "npm install",
-  "buildCommand": "echo 'Build complete'",
-  "outputDirectory": "public",
   "cleanUrls": true,
   "trailingSlash": false,
   "env": {
@@ -22,36 +19,14 @@
     "FLOWISE_CHATFLOW_ID": "",
     "WHATSAPP_ACCESS_TOKEN": ""
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api"
+      "source": "/api/(.*)",
+      "destination": "/api"
     },
     {
-      "src": "/css/(.*)",
-      "dest": "public/css/$1"
-    },
-    {
-      "src": "/js/(.*)",
-      "dest": "public/js/$1"
-    },
-    {
-      "src": "/(.*\\.(css|js|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))",
-      "dest": "public/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "public/index.html"
-    }
-  ],
-  "builds": [
-    {
-      "src": "api/index.ts",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }
