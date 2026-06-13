@@ -1,7 +1,6 @@
 {
   "version": 2,
   "name": "ozion-chat-ai",
-  "installCommand": "npm install",
   "outputDirectory": "public",
   "env": {
     "NODE_ENV": "production",
