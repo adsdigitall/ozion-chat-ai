@@ -3,6 +3,11 @@
   "name": "ozion-chat-ai",
   "installCommand": "npm install",
   "outputDirectory": "public",
+  "functions": {
+    "server/index.ts": {
+      "maxDuration": 30
+    }
+  },
   "env": {
     "NODE_ENV": "production",
     "SUPABASE_URL": "https://dpwqqszrhizqdncifkee.supabase.co",
@@ -19,10 +24,10 @@
     "OPENAI_API_KEY": "",
     "DEEPSEEK_API_KEY": ""
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "server/index.ts"
+      "src": "/api/(.*)",
+      "dest": "server/index.ts"
     }
   ]
 }
