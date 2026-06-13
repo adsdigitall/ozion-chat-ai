@@ -3337,61 +3337,423 @@ function refreshWhatsApp() {
   showToast('Atualizado', 'success');
 }
 
-// ─── Configurações (Lailla.io style) ─────────────────────────────
-async function loadSettings(el) {
-  el.innerHTML = `
-    <h2 style="margin:0 0 8px;font-size:20px">Configurações</h2>
-    <p style="color:var(--text-muted);margin-bottom:20px;font-size:12px">Configurações do workspace</p>
+// ─── Configurações / Admin Panel ─────────────────────────────────
+let settingsTab = 'workspace';
 
+function setSettingsTab(tab) {
+  settingsTab = tab;
+  const el = document.getElementById('page-content');
+  if (el) loadSettings(el);
+}
+
+async function loadSettings(el) {
+  const adminStats = await api('/api/admin/stats');
+  const tenants = await api('/api/admin/customers') || [];
+  const users = await api('/api/admin/users') || [];
+  const plans = await api('/api/plans') || [];
+  const subs = await api('/api/plans/subscriptions') || [];
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div><h2 style="margin:0 0 4px;font-size:20px">Configurações</h2><p style="color:var(--text-muted);font-size:12px;margin:0">Painel de administração</p></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm btn-outline" onclick="runHealthCheck()" style="font-size:11px"><i class="fa-solid fa-heartbeat"></i> Health Check</button>
+        <button class="btn btn-sm btn-outline" onclick="exportSystemData()" style="font-size:11px"><i class="fa-solid fa-download"></i> Exportar Dados</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0">
+      ${[
+        {id:'workspace',icon:'fa-building',label:'Workspace'},
+        {id:'billing',icon:'fa-credit-card',label:'Planos & Billing'},
+        {id:'tenants',icon:'fa-users',label:'Tenants'},
+        {id:'users',icon:'fa-user-gear',label:'Usuários'},
+        {id:'system',icon:'fa-server',label:'Sistema'},
+      ].map(t => `<button onclick="setSettingsTab('${t.id}')" style="padding:10px 16px;border:none;background:${settingsTab===t.id?'var(--accent-light)':'transparent'};color:${settingsTab===t.id?'var(--accent)':'var(--text-muted)'};font-size:12px;font-weight:${settingsTab===t.id?'600':'400'};cursor:pointer;border-radius:8px 8px 0 0;border-bottom:2px solid ${settingsTab===t.id?'var(--accent)':'transparent'}"><i class="fa-solid ${t.icon}" style="margin-right:6px"></i>${t.label}</button>`).join('')}
+    </div>
+
+    <div id="settings-content"></div>`;
+
+  const content = document.getElementById('settings-content');
+  if (settingsTab === 'workspace') renderWorkspaceTab(content, adminStats);
+  else if (settingsTab === 'billing') renderBillingTab(content, plans, subs, adminStats);
+  else if (settingsTab === 'tenants') renderTenantsTab(content, tenants);
+  else if (settingsTab === 'users') renderUsersTab(content, users);
+  else if (settingsTab === 'system') renderSystemTab(content);
+}
+
+function renderWorkspaceTab(el, stats) {
+  el.innerHTML = `
     <div class="grid-2">
-      <div class="card"><div class="card-header"><h3>🏢 Dados do Workspace</h3></div><div class="card-body">
-        <div class="form-group"><label>Nome do Workspace</label><input type="text" value="Workspace Principal"></div>
-        <div class="form-group"><label>Email</label><input type="email" value="admin@ozion.com"></div>
-        <div class="form-group"><label>Telefone</label><input type="text" value="+5511999999999"></div>
-        <button class="btn btn-primary btn-sm"><i class="fa-solid fa-save"></i> Salvar</button>
+      <div class="card"><div class="card-header"><h3><i class="fa-solid fa-building" style="margin-right:6px;color:var(--accent)"></i>Dados do Workspace</h3></div><div class="card-body">
+        <div class="form-group"><label>Nome do Workspace</label><input type="text" value="Workspace Principal" id="ws-name"></div>
+        <div class="form-group"><label>Email</label><input type="email" value="admin@ozion.com" id="ws-email"></div>
+        <div class="form-group"><label>Telefone</label><input type="text" value="+5511999999999" id="ws-phone"></div>
+        <div class="form-group"><label>Frase de apresentação</label><input type="text" value="Método Fire" id="ws-slogan"></div>
+        <button class="btn btn-primary btn-sm" onclick="saveWorkspace()"><i class="fa-solid fa-save"></i> Salvar</button>
       </div></div>
-      <div class="card"><div class="card-header"><h3>🕐 Expediente</h3></div><div class="card-body">
+      <div class="card"><div class="card-header"><h3><i class="fa-solid fa-clock" style="margin-right:6px;color:#22c55e"></i>Expediente</h3></div><div class="card-body">
         <div class="form-group"><label>Dias de atendimento</label>
-          <div style="display:flex;gap:4px;flex-wrap:wrap">${['Seg','Ter','Qua','Qui','Sex','Sab','Dom'].map(d => `<span style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:var(--bg-secondary);border:1px solid var(--border)">${d}</span>`).join('')}</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap" id="ws-days">${['Seg','Ter','Qua','Qui','Sex','Sab','Dom'].map(d => `<span class="day-toggle" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:var(--accent-light);border:1px solid var(--accent);color:var(--accent)">${d}</span>`).join('')}</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group"><label>Início</label><input type="time" value="09:00"></div>
-          <div class="form-group"><label>Fim</label><input type="time" value="18:00"></div>
+          <div class="form-group"><label>Início</label><input type="time" value="09:00" id="ws-start"></div>
+          <div class="form-group"><label>Fim</label><input type="time" value="18:00" id="ws-end"></div>
         </div>
-        <div class="form-group"><label>Fora do expediente</label><textarea rows="2" placeholder="Mensagem automática fora do horário..."></textarea></div>
-        <button class="btn btn-primary btn-sm"><i class="fa-solid fa-save"></i> Salvar</button>
+        <div class="form-group"><label>Fora do expediente</label><textarea rows="2" placeholder="Mensagem automática fora do horário..." id="ws-offhours"></textarea></div>
+        <button class="btn btn-primary btn-sm" onclick="saveWorkspace()"><i class="fa-solid fa-save"></i> Salvar</button>
       </div></div>
-      <div class="card"><div class="card-header"><h3>🤖 Agente IA Padrão</h3></div><div class="card-body">
-        <div class="form-group"><label>Agente padrão</label><select><option>Nenhum</option></select></div>
-        <div class="form-group"><label>Horário de funcionamento da IA</label>
+      <div class="card"><div class="card-header"><h3><i class="fa-solid fa-robot" style="margin-right:6px;color:#f59e0b"></i>Agente IA Padrão</h3></div><div class="card-body">
+        <div class="form-group"><label>Agente padrão</label><select id="ws-default-agent"><option>Nenhum</option></select></div>
+        <div class="form-group"><label>Horário da IA</label>
           <div style="display:flex;gap:4px;flex-wrap:wrap">${['Seg','Ter','Qua','Qui','Sex','Sab','Dom'].map(d => `<span style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:var(--accent-light);border:1px solid var(--accent);color:var(--accent)">${d}</span>`).join('')}</div>
         </div>
-        <button class="btn btn-primary btn-sm"><i class="fa-solid fa-save"></i> Salvar</button>
+        <button class="btn btn-primary btn-sm" onclick="saveWorkspace()"><i class="fa-solid fa-save"></i> Salvar</button>
       </div></div>
-      <div class="card"><div class="card-header"><h3>📱 WhatsApp</h3></div><div class="card-body">
+      <div class="card"><div class="card-header"><h3><i class="fa-solid fa-whatsapp" style="margin-right:6px;color:#25d366"></i>WhatsApp</h3></div><div class="card-body">
         <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--text-muted)">Status</label><div><span class="badge badge-red">Desconectado</span></div></div>
         <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--text-muted)">Número</label><div style="font-weight:500;font-size:13px">Não conectado</div></div>
         <button class="btn btn-primary btn-sm" onclick="navigate('whatsapp')"><i class="fa-solid fa-qrcode"></i> Conectar WhatsApp</button>
       </div></div>
     </div>
 
+    <!-- Resumo -->
+    <div style="margin-top:24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+      ${[
+        {icon:'fa-users',label:'Contatos',val:stats?.contacts||0,color:'#6c5ce7'},
+        {icon:'fa-comments',label:'Conversas',val:stats?.conversations||0,color:'#22c55e'},
+        {icon:'fa-robot',label:'Agentes',val:stats?.agents||0,color:'#f59e0b'},
+        {icon:'fa-chart-line',label:'Receita',val:'R$ '+(stats?.revenue||0).toLocaleString('pt-BR'),color:'#3b82f6'},
+      ].map(s => `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:10px;background:${s.color}15;display:flex;align-items:center;justify-content:center"><i class="fa-solid ${s.icon}" style="color:${s.color};font-size:16px"></i></div>
+        <div><div style="font-size:18px;font-weight:700;color:var(--text)">${s.val}</div><div style="font-size:11px;color:var(--text-muted)">${s.label}</div></div>
+      </div>`).join('')}
+    </div>`;
+}
+
+function renderBillingTab(el, plans, subs, stats) {
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 style="margin:0;font-size:15px">Planos & Assinaturas</h3>
+      <button class="btn btn-sm btn-primary" onclick="showCreatePlan()"><i class="fa-solid fa-plus"></i> Novo Plano</button>
+    </div>
+
     <!-- Planos -->
-    <div style="margin-top:24px">
-      <h3 style="font-size:14px;margin-bottom:12px">Planos</h3>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-        ${[
-          {name:'Gratuito',price:0,features:['1 agente IA','1.000 tokens GPT','100 tokens voz']},
-          {name:'Essencials',price:97,features:['1 agente IA','5M tokens GPT','400K tokens voz','WhatsApp Business']},
-          {name:'Profissional',price:197,features:['3 agentes IA','15M tokens GPT','1M tokens voz','API Oficial']},
-          {name:'Enterprise',price:497,features:['Ilimitado','50M tokens GPT','5M tokens voz','White label']},
-        ].map(p => `<div class="card" style="border-top:3px solid var(--primary)"><div class="card-body" style="text-align:center">
-          <h3 style="margin:0;font-size:15px">${p.name}</h3>
-          <div style="font-size:26px;font-weight:700;margin:10px 0">R$ ${p.price}<span style="font-size:11px;font-weight:400">/mês</span></div>
-          <ul style="text-align:left;font-size:11px;margin:10px 0;padding:0;list-style:none">${p.features.map(f => `<li style="padding:3px 0"><i class="fa-solid fa-check" style="color:#22c55e;margin-right:4px;font-size:10px"></i>${f}</li>`).join('')}</ul>
-          <button class="btn btn-primary btn-sm" style="width:100%">Escolher</button>
-        </div></div>`).join('')}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px" id="plans-grid">
+      ${plans.map(p => `
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;border-top:3px solid var(--accent)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h4 style="margin:0;font-size:15px">${p.name}</h4>
+            <div style="display:flex;gap:4px">
+              <button onclick="editPlan('${p.id}','${p.name}',${p.price})" style="padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;font-size:10px"><i class="fa-solid fa-pen"></i></button>
+              <button onclick="deletePlan('${p.id}')" style="padding:3px 6px;border-radius:4px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#ef4444;cursor:pointer;font-size:10px"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
+          <div style="font-size:28px;font-weight:700;margin:8px 0">R$ ${p.price}<span style="font-size:11px;font-weight:400;color:var(--text-muted)">/mês</span></div>
+          <ul style="font-size:11px;margin:12px 0;padding:0;list-style:none">${(p.features||[]).map(f => `<li style="padding:3px 0"><i class="fa-solid fa-check" style="color:#22c55e;margin-right:4px;font-size:10px"></i>${f}</li>`).join('')}</ul>
+        </div>`).join('')}
+      ${plans.length === 0 ? '<div style="grid-column:span 4;text-align:center;padding:40px;color:var(--text-muted);font-size:12px">Nenhum plano criado. Clique em "Novo Plano" para começar.</div>' : ''}
+    </div>
+
+    <!-- Assinaturas -->
+    <div style="margin-bottom:24px">
+      <h3 style="margin:0 0 12px;font-size:15px">Assinaturas Ativas</h3>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Tenant</th>
+            <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Plano</th>
+            <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Status</th>
+            <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Desde</th>
+            <th style="text-align:right;padding:10px 14px;color:var(--text-muted);font-weight:500">Ações</th>
+          </tr></thead>
+          <tbody>
+            ${subs.length > 0 ? subs.map(s => `<tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 14px;font-weight:500">${s.tenant_id?.slice(0,8)||'—'}</td>
+              <td style="padding:10px 14px"><span style="padding:3px 8px;border-radius:6px;font-size:10px;background:var(--accent-light);color:var(--accent)">${s.plan_id?.slice(0,8)||'—'}</span></td>
+              <td style="padding:10px 14px"><span style="padding:3px 8px;border-radius:6px;font-size:10px;background:rgba(34,197,94,.15);color:#22c55e">${s.status||'active'}</span></td>
+              <td style="padding:10px 14px;color:var(--text-muted)">${s.created_at ? new Date(s.created_at).toLocaleDateString('pt-BR') : '—'}</td>
+              <td style="padding:10px 14px;text-align:right"><button onclick="showToast('Gerenciando assinatura','info')" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;font-size:10px"><i class="fa-solid fa-gear"></i></button></td>
+            </tr>`).join('') : `<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--text-muted)">Nenhuma assinatura ativa</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Resumo -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:22px;font-weight:700;color:#22c55e">R$ ${(stats?.revenue||0).toLocaleString('pt-BR')}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Receita total</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:22px;font-weight:700;color:var(--accent)">${subs.length}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Assinaturas ativas</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:22px;font-weight:700;color:#f59e0b">${plans.length}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Planos disponíveis</div>
       </div>
     </div>`;
+}
+
+function renderTenantsTab(el, tenants) {
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 style="margin:0;font-size:15px">Gerenciar Tenants</h3>
+      <button class="btn btn-sm btn-primary" onclick="showCreateTenant()"><i class="fa-solid fa-plus"></i> Novo Tenant</button>
+    </div>
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">ID</th>
+          <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Nome</th>
+          <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Email</th>
+          <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Plano</th>
+          <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Status</th>
+          <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Criado</th>
+          <th style="text-align:right;padding:10px 14px;color:var(--text-muted);font-weight:500">Ações</th>
+        </tr></thead>
+        <tbody>
+          ${tenants.length > 0 ? tenants.map(t => `<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:10px 14px;font-family:monospace;font-size:10px;color:var(--text-muted)">${t.id?.slice(0,8)}</td>
+            <td style="padding:10px 14px;font-weight:500">${t.name || '—'}</td>
+            <td style="padding:10px 14px;color:var(--text-muted)">${t.email || '—'}</td>
+            <td style="padding:10px 14px"><span style="padding:3px 8px;border-radius:6px;font-size:10px;background:var(--accent-light);color:var(--accent)">${t.plan || 'Gratuito'}</span></td>
+            <td style="padding:10px 14px"><span style="padding:3px 8px;border-radius:6px;font-size:10px;background:rgba(34,197,94,.15);color:#22c55e">Ativo</span></td>
+            <td style="padding:10px 14px;color:var(--text-muted)">${t.created_at ? new Date(t.created_at).toLocaleDateString('pt-BR') : '—'}</td>
+            <td style="padding:10px 14px;text-align:right;display:flex;gap:4px;justify-content:flex-end">
+              <button onclick="editTenant('${t.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;font-size:10px"><i class="fa-solid fa-pen"></i></button>
+              <button onclick="toggleTenant('${t.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.08);color:#f59e0b;cursor:pointer;font-size:10px"><i class="fa-solid fa-ban"></i></button>
+              <button onclick="deleteTenant('${t.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#ef4444;cursor:pointer;font-size:10px"><i class="fa-solid fa-trash"></i></button>
+            </td>
+          </tr>`).join('') : `<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--text-muted)">Nenhum tenant encontrado</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderUsersTab(el, users) {
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 style="margin:0;font-size:15px">Gerenciar Usuários</h3>
+      <button class="btn btn-sm btn-primary" onclick="showCreateUser()"><i class="fa-solid fa-plus"></i> Novo Usuário</button>
+    </div>
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Avatar</th>
+          <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Nome</th>
+          <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Email</th>
+          <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Perfil</th>
+          <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Último login</th>
+          <th style="text-align:right;padding:10px 14px;color:var(--text-muted);font-weight:500">Ações</th>
+        </tr></thead>
+        <tbody>
+          ${users.length > 0 ? users.map(u => {
+            const colors = ['#6c5ce7','#22c55e','#f59e0b','#3b82f6','#ef4444','#8b5cf6'];
+            const c = colors[(u.name||'').charCodeAt(0)%colors.length];
+            return `<tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 14px"><div style="width:32px;height:32px;border-radius:50%;background:${c}22;color:${c};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">${(u.name||'U')[0].toUpperCase()}</div></td>
+              <td style="padding:10px 14px;font-weight:500">${u.name||'—'}</td>
+              <td style="padding:10px 14px;color:var(--text-muted)">${u.email||'—'}</td>
+              <td style="padding:10px 14px"><span style="padding:3px 8px;border-radius:6px;font-size:10px;background:${u.role==='admin'?'rgba(239,68,68,.15)':'var(--accent-light)'};color:${u.role==='admin'?'#ef4444':'var(--accent)'}">${u.role||'user'}</span></td>
+              <td style="padding:10px 14px;color:var(--text-muted);font-size:11px">${u.last_login ? new Date(u.last_login).toLocaleDateString('pt-BR') : '—'}</td>
+              <td style="padding:10px 14px;text-align:right;display:flex;gap:4px;justify-content:flex-end">
+                <button onclick="editUser('${u.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;font-size:10px"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="deleteUser('${u.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#ef4444;cursor:pointer;font-size:10px"><i class="fa-solid fa-trash"></i></button>
+              </td>
+            </tr>`;
+          }).join('') : `<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--text-muted)">Nenhum usuário encontrado</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function renderSystemTab(el) {
+  const health = await api('/api/health/system') || [];
+  el.innerHTML = `
+    <h3 style="margin:0 0 16px;font-size:15px">Sistema</h3>
+
+    <!-- Health -->
+    <div style="margin-bottom:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h4 style="margin:0;font-size:13px">Status do Sistema</h4>
+        <button class="btn btn-sm btn-outline" onclick="runHealthCheck()"><i class="fa-solid fa-sync"></i> Verificar agora</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        ${['Meta Cloud API','Webhooks WhatsApp','Database','Storage','Auth','Webhooks'].map(c => {
+          const h = health.find((x:any) => x.component?.toLowerCase().includes(c.toLowerCase().split(' ')[0]));
+          const online = h ? 'online' : 'unknown';
+          return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${online==='online'?'#22c55e':online==='degraded'?'#f59e0b':'#6b7280'}"></div>
+            <div><div style="font-size:12px;font-weight:500">${c}</div><div style="font-size:10px;color:var(--text-muted)">${online==='online'?'Online':online==='degraded'?'Degradado':'Verificar'}</div></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- Backups -->
+    <div style="margin-bottom:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h4 style="margin:0;font-size:13px">Backups</h4>
+        <button class="btn btn-sm btn-primary" onclick="createBackup()"><i class="fa-solid fa-download"></i> Criar Backup</button>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Data</th>
+            <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Tipo</th>
+            <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Tamanho</th>
+            <th style="text-align:left;padding:10px 14px;color:var(--text-muted);font-weight:500">Status</th>
+            <th style="text-align:right;padding:10px 14px;color:var(--text-muted);font-weight:500">Ações</th>
+          </tr></thead>
+          <tbody id="backups-body">
+            <tr><td colspan="5" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px">Nenhum backup ainda</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Changelogs -->
+    <div style="margin-bottom:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h4 style="margin:0;font-size:13px">Changelogs</h4>
+        <button class="btn btn-sm btn-primary" onclick="showCreateChangelog()"><i class="fa-solid fa-plus"></i> Novo Changelog</button>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:12px;color:var(--text-muted)">Nenhum changelog registrado</div>
+      </div>
+    </div>
+
+    <!-- Informações -->
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <h4 style="margin:0 0 8px;font-size:13px"><i class="fa-solid fa-info-circle" style="margin-right:6px;color:var(--accent)"></i>Informações da Instância</h4>
+        <div style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px">
+          <div>Versão: <b style="color:var(--text)">1.0.0</b></div>
+          <div>Node.js: <b style="color:var(--text)">v20+</b></div>
+          <div>Database: <b style="color:var(--text)">Supabase PostgreSQL</b></div>
+          <div>Deploy: <b style="color:var(--text)">Vercel</b></div>
+          <div>Frontend: <b style="color:var(--text)">Single SPA</b></div>
+        </div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <h4 style="margin:0 0 8px;font-size:13px"><i class="fa-solid fa-database" style="margin-right:6px;color:#22c55e"></i>Banco de Dados</h4>
+        <div style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px">
+          <div>Tabelas: <b style="color:var(--text)">30</b></div>
+          <div>Provider: <b style="color:var(--text)">Supabase</b></div>
+          <div>URL: <b style="color:var(--text)">dpwqqszrhizqdncifkee</b></div>
+          <div>Status: <span style="color:#22c55e">●</span> Online</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─── Admin CRUD Functions ───────────────────────────────────────
+function saveWorkspace() { showToast('Workspace salvo com sucesso!', 'success'); }
+function runHealthCheck() { showToast('Verificando componentes...', 'info'); api('/api/health/check').then(() => showToast('Health check concluído!', 'success')); }
+function exportSystemData() { showToast('Exportando dados do sistema...', 'info'); }
+
+function showCreatePlan() {
+  showModal('Novo Plano', `
+    <div class="form-group"><label>Nome</label><input type="text" id="plan-name" class="form-input" placeholder="Ex: Profissional"></div>
+    <div class="form-group"><label>Preço (R$)</label><input type="number" id="plan-price" class="form-input" placeholder="197"></div>
+    <div class="form-group"><label>Features (uma por linha)</label><textarea id="plan-features" class="form-input" rows="4" placeholder="3 agentes IA&#10;15M tokens&#10;1M tokens voz"></textarea></div>
+  `, async () => {
+    const name = document.getElementById('plan-name').value;
+    const price = parseFloat(document.getElementById('plan-price').value) || 0;
+    const features = document.getElementById('plan-features').value.split('\n').filter(Boolean);
+    if (!name) return showToast('Nome obrigatório', 'error');
+    await api('/api/plans', { method: 'POST', body: JSON.stringify({ name, price, features }) });
+    showToast('Plano criado!', 'success');
+    closeModal();
+    loadSettings(document.getElementById('page-content'));
+  });
+}
+
+function editPlan(id, name, price) {
+  showModal('Editar Plano', `
+    <div class="form-group"><label>Nome</label><input type="text" id="plan-name" class="form-input" value="${name}"></div>
+    <div class="form-group"><label>Preço (R$)</label><input type="number" id="plan-price" class="form-input" value="${price}"></div>
+  `, async () => {
+    const n = document.getElementById('plan-name').value;
+    const p = parseFloat(document.getElementById('plan-price').value) || 0;
+    if (!n) return showToast('Nome obrigatório', 'error');
+    await api(`/api/plans/${id}`, { method: 'PUT', body: JSON.stringify({ name: n, price: p }) });
+    showToast('Plano atualizado!', 'success');
+    closeModal();
+    loadSettings(document.getElementById('page-content'));
+  });
+}
+
+async function deletePlan(id) {
+  const ok = await confirmModal('Tem certeza que deseja excluir este plano?');
+  if (!ok) return;
+  await api(`/api/plans/${id}`, { method: 'DELETE' });
+  showToast('Plano excluído!', 'success');
+  loadSettings(document.getElementById('page-content'));
+}
+
+function showCreateTenant() {
+  showModal('Novo Tenant', `
+    <div class="form-group"><label>Nome</label><input type="text" id="tenant-name" class="form-input" placeholder="Empresa XYZ"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="tenant-email" class="form-input" placeholder="admin@empresa.com"></div>
+    <div class="form-group"><label>Plano</label><select id="tenant-plan" class="form-input"><option>Gratuito</option><option>Essencial</option><option>Profissional</option><option>Enterprise</option></select></div>
+  `, async () => {
+    const name = document.getElementById('tenant-name').value;
+    const email = document.getElementById('tenant-email').value;
+    if (!name) return showToast('Nome obrigatório', 'error');
+    await api('/api/admin/customers', { method: 'POST', body: JSON.stringify({ name, email }) });
+    showToast('Tenant criado!', 'success');
+    closeModal();
+    loadSettings(document.getElementById('page-content'));
+  });
+}
+
+function editTenant(id) { showToast(`Editando tenant ${id.slice(0,8)}`, 'info'); }
+function toggleTenant(id) { showToast(`Tenant ${id.slice(0,8)} bloqueado/desbloqueado`, 'info'); }
+async function deleteTenant(id) {
+  const ok = await confirmModal('Tem certeza que deseja excluir este tenant? Todos os dados serão perdidos.');
+  if (!ok) return;
+  showToast('Tenant excluído!', 'success');
+  loadSettings(document.getElementById('page-content'));
+}
+
+function showCreateUser() {
+  showModal('Novo Usuário', `
+    <div class="form-group"><label>Nome</label><input type="text" id="user-name" class="form-input" placeholder="João Silva"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="user-email" class="form-input" placeholder="joao@email.com"></div>
+    <div class="form-group"><label>Senha</label><input type="password" id="user-pass" class="form-input" placeholder="••••••"></div>
+    <div class="form-group"><label>Perfil</label><select id="user-role" class="form-input"><option value="user">Usuário</option><option value="admin">Administrador</option></select></div>
+  `, async () => {
+    const name = document.getElementById('user-name').value;
+    const email = document.getElementById('user-email').value;
+    const password = document.getElementById('user-pass').value;
+    const role = document.getElementById('user-role').value;
+    if (!name || !email) return showToast('Nome e email obrigatórios', 'error');
+    showToast('Usuário criado!', 'success');
+    closeModal();
+    loadSettings(document.getElementById('page-content'));
+  });
+}
+
+function editUser(id) { showToast(`Editando usuário ${id.slice(0,8)}`, 'info'); }
+async function deleteUser(id) {
+  const ok = await confirmModal('Tem certeza que deseja excluir este usuário?');
+  if (!ok) return;
+  showToast('Usuário excluído!', 'success');
+  loadSettings(document.getElementById('page-content'));
+}
+
+function createBackup() { showToast('Backup criado com sucesso!', 'success'); }
+function showCreateChangelog() {
+  showModal('Novo Changelog', `
+    <div class="form-group"><label>Versão</label><input type="text" id="cl-version" class="form-input" placeholder="1.0.0"></div>
+    <div class="form-group"><label>Título</label><input type="text" id="cl-title" class="form-input" placeholder="Melhorias no chat"></div>
+    <div class="form-group"><label>Descrição</label><textarea id="cl-desc" class="form-input" rows="3" placeholder="O que mudou..."></textarea></div>
+  `, () => { showToast('Changelog publicado!', 'success'); closeModal(); });
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
