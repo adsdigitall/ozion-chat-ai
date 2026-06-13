@@ -28,6 +28,7 @@ import deployRoutes from './routes/deploy.js';
 import flowiseRoutes from './routes/flowise.js';
 import tagsRoutes from './routes/tags.js';
 import evolutionRoutes from './routes/evolution.js';
+import { getSupabase } from './db/supabase.js';
 import { authMiddleware } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -41,10 +42,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(join(__dirname, '../public')));
 
+// Public routes
 app.use('/api/auth', authRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/webhooks', evolutionRoutes);
 
+// Protected routes
 app.use('/api/health', authMiddleware, healthRoutes);
 app.use('/api/whatsapp', authMiddleware, whatsappRoutes);
 app.use('/api/messages', authMiddleware, messageRoutes);
@@ -66,8 +69,25 @@ app.use('/api/deploy', authMiddleware, deployRoutes);
 app.use('/api/flowise', authMiddleware, flowiseRoutes);
 app.use('/api/tags', authMiddleware, tagsRoutes);
 
-app.get('/api/ping', (_req: any, res: any) => {
+// Simple health check (no auth required)
+app.get('/api/ping', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-export default app;
+async function start() {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase.from('tenants').select('id').limit(1);
+    if (error) throw error;
+    console.log('✅ Supabase PostgreSQL connected');
+  } catch (error: any) {
+    console.error('❌ Supabase connection failed:', error.message);
+    console.log('⚠️  Continuing without database...');
+  }
+  
+  app.listen(PORT, () => {
+    console.log(`🚀 Ozion Chat AI: http://localhost:${PORT}`);
+  });
+}
+
+start();
