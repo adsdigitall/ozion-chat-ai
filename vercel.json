@@ -1,6 +1,8 @@
 {
   "version": 2,
   "name": "ozion-chat-ai",
+  "installCommand": "npm install",
+  "buildCommand": "echo 'Build complete'",
   "outputDirectory": "public",
   "env": {
     "NODE_ENV": "production",
@@ -12,6 +14,38 @@
     "ELEVENLABS_API_KEY": "",
     "GROQ_API_KEY": "",
     "OPENAI_API_KEY": "",
-    "DEEPSEEK_API_KEY": ""
-  }
+    "DEEPSEEK_API_KEY": "",
+    "FLOWISE_URL": "",
+    "FLOWISE_API_KEY": "",
+    "FLOWISE_CHATFLOW_ID": "",
+    "WHATSAPP_ACCESS_TOKEN": ""
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "server/index.ts"
+    },
+    {
+      "src": "/css/(.*)",
+      "dest": "public/css/$1"
+    },
+    {
+      "src": "/js/(.*)",
+      "dest": "public/js/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "public/$1"
+    }
+  ],
+  "builds": [
+    {
+      "src": "server/index.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ]
 }
