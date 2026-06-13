@@ -34,8 +34,12 @@
       "dest": "public/js/$1"
     },
     {
-      "src": "/(.*)",
+      "src": "/(.*\\.(css|js|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))",
       "dest": "public/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "public/index.html"
     }
   ],
   "builds": [
