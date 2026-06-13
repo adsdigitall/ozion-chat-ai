@@ -2,7 +2,6 @@
   "version": 2,
   "name": "ozion-chat-ai",
   "installCommand": "npm install",
-  "buildCommand": "echo 'skip'",
   "outputDirectory": "public",
   "env": {
     "NODE_ENV": "production",
@@ -15,11 +14,5 @@
     "GROQ_API_KEY": "",
     "OPENAI_API_KEY": "",
     "DEEPSEEK_API_KEY": ""
-  },
-  "builds": [
-    {
-      "src": "server/index.ts",
-      "use": "@vercel/node"
-    }
-  ]
+  }
 }

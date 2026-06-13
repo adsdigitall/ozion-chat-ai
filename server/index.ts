@@ -67,10 +67,6 @@ app.get('/api/ping', (_req: any, res: any) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-export default app;
-
-if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`🚀 Ozion Chat AI: http://localhost:${PORT}`);
-  });
-}
+app.listen(PORT, () => {
+  console.log(`🚀 Ozion Chat AI: http://localhost:${PORT}`);
+});
