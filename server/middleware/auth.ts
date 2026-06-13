@@ -57,20 +57,23 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     }
 
     // Check if customer is suspended (if user belongs to a customer)
+    // Handle gracefully if customers table doesn't have the expected structure
     if (user.customer_id) {
-      const { data: customer } = await supabase
-        .from('customers')
-        .select('status')
-        .eq('id', user.customer_id)
-        .single();
-      
-      if (customer && customer.status === 'suspended') {
-        return res.status(403).json({ error: 'Conta suspensa. Entre em contato com o suporte.' });
-      }
-      
-      if (customer && customer.status === 'cancelled') {
-        return res.status(403).json({ error: 'Conta cancelada. Entre em contato com o suporte.' });
-      }
+      try {
+        const { data: customer } = await supabase
+          .from('customers')
+          .select('status')
+          .eq('id', user.customer_id)
+          .single();
+        
+        if (customer && customer.status === 'suspended') {
+          return res.status(403).json({ error: 'Conta suspensa. Entre em contato com o suporte.' });
+        }
+        
+        if (customer && customer.status === 'cancelled') {
+          return res.status(403).json({ error: 'Conta cancelada. Entre em contato com o suporte.' });
+        }
+      } catch (e) {}
     }
 
     req.user = user;
