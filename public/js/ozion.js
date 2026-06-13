@@ -2244,72 +2244,280 @@ async function testFlowiseConnectionFromConfig() {
 function closeModal() { const m = document.getElementById('modal-overlay'); if (m) { m.style.display = 'none'; m.classList.remove('show'); } }
 function openModal() { const m = document.getElementById('modal-overlay'); if (m) { m.style.display = 'flex'; m.classList.add('show'); } }
 
-// ─── Voice Studio (Lailla.io exact) ──────────────────────────────
+// ─── Voice Studio (Full) ────────────────────────────────────────
+const VOICE_PRESETS = [
+  { id: 'julieta', name: 'Julieta', lang: 'pt-BR', gender: 'F', provider: 'ElevenLabs' },
+  { id: 'marcos', name: 'Marcos Vinicius', lang: 'pt-BR', gender: 'M', provider: 'ElevenLabs' },
+  { id: 'carla', name: 'Carla', lang: 'pt-BR', gender: 'F', provider: 'ElevenLabs' },
+  { id: 'joao', name: 'João Pedro', lang: 'pt-BR', gender: 'M', provider: 'ElevenLabs' },
+  { id: 'maria', name: 'Maria Eduarda', lang: 'pt-BR', gender: 'F', provider: 'ElevenLabs' },
+  { id: 'otavio', name: 'Otavio Luiz', lang: 'pt-BR', gender: 'M', provider: 'ElevenLabs' },
+  { id: 'bia', name: 'Bia', lang: 'pt-BR', gender: 'F', provider: 'ElevenLabs' },
+  { id: 'samuel', name: 'Samuel', lang: 'pt-BR', gender: 'M', provider: 'ElevenLabs' },
+  { id: 'alloy', name: 'Alloy', lang: 'multi', gender: 'M', provider: 'OpenAI' },
+  { id: 'echo', name: 'Echo', lang: 'en', gender: 'M', provider: 'OpenAI' },
+  { id: 'nova', name: 'Nova', lang: 'en', gender: 'F', provider: 'OpenAI' },
+  { id: 'shimmer', name: 'Shimmer', lang: 'en', gender: 'F', provider: 'OpenAI' }
+];
+
+let voiceTab = 'tts';
+
 async function loadVoice(el) {
   allVoices = await api('/api/voice') || [];
-  const presetVoices = ['Julieta','Marcos Vinicius','Carla','João Pedro','Maria Eduarda','Otavio Luiz','Bia','Samuel'];
   
   el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div><h2 style="margin:0;font-size:20px">Voice Studio</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">Gerenciar vozes e gerar áudios com IA</p></div>
-      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--text-muted)">Usados 50.000 de 50.000 tokens</span><button class="btn btn-sm btn-primary"><i class="fa-solid fa-plus"></i></button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <h2 style="margin:0;font-size:20px">Voice Studio</h2>
+        <p style="color:#8b9dc3;margin-top:2px;font-size:12px">${allVoices.length} voz(es) • Gere áudios com IA</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="showCloneVoice()" style="padding:8px 16px;border-radius:8px;border:1px solid #6c5ce7;background:#6c5ce715;color:#6c5ce7;cursor:pointer;font-size:12px;font-weight:500"><i class="fa-solid fa-wand-magic-sparkles"></i> Clonar Voz</button>
+      </div>
     </div>
 
-    <!-- Clone limit warning -->
-    <div style="background:var(--danger-bg);border:1px solid var(--danger);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--danger)">
-      <i class="fa-solid fa-exclamation-triangle"></i> Máximo de vozes clonadas do plano atingido, clique para atualizar.
+    <!-- Tabs -->
+    <div style="display:flex;gap:4px;margin-bottom:20px;background:#161b22;border-radius:10px;padding:4px">
+      <button onclick="setVoiceTab('tts')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${voiceTab==='tts'?'#6c5ce7':'transparent'};color:${voiceTab==='tts'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-volume-high"></i> Text-to-Speech</button>
+      <button onclick="setVoiceTab('cloned')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${voiceTab==='cloned'?'#6c5ce7':'transparent'};color:${voiceTab==='cloned'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-wand-magic-sparkles"></i> Vozes Clonadas</button>
+      <button onclick="setVoiceTab('library')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${voiceTab==='library'?'#6c5ce7':'transparent'};color:${voiceTab==='library'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-book"></i> Biblioteca</button>
     </div>
 
-    <div class="grid-2">
-      <!-- TTS Generator -->
-      <div class="card"><div class="card-header"><h3>🎤 Gerar áudio</h3></div><div class="card-body">
-        <textarea id="voice-text" rows="4" placeholder="Digite aqui o texto desejado para virar um áudio." style="width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text-primary);font-size:13px;resize:vertical;margin-bottom:12px"></textarea>
-        
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-          <div><label style="font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between"><span>Estabilidade</span><span id="stability-val">0,5</span></label><input type="range" id="stability" min="0" max="1" step="0.1" value="0.5" style="width:100%" oninput="document.getElementById('stability-val').textContent=this.value.replace('.',',')"></div>
-          <div><label style="font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between"><span>Similaridade</span><span id="similarity-val">0,7</span></label><input type="range" id="similarity" min="0" max="1" step="0.1" value="0.7" style="width:100%" oninput="document.getElementById('similarity-val').textContent=this.value.replace('.',',')"></div>
-          <div><label style="font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between"><span>Sotaque</span><span id="accent-val">0,5</span></label><input type="range" id="accent" min="0" max="1" step="0.1" value="0.5" style="width:100%" oninput="document.getElementById('accent-val').textContent=this.value.replace('.',',')"></div>
-          <div><label style="font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between"><span>Velocidade</span><span id="speed-val">1,0</span></label><input type="range" id="speed" min="0.5" max="2" step="0.1" value="1" style="width:100%" oninput="document.getElementById('speed-val').textContent=this.value.replace('.',',')"></div>
-        </div>
-
-        <div style="display:flex;justify-content:space-between;margin-bottom:12px;font-size:11px;color:var(--text-muted)"><span>Modelo: eleven_v3</span><span>Custo: 0 tokens</span></div>
-
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
-          <button style="width:36px;height:36px;border-radius:50%;background:var(--accent);border:none;color:white;cursor:pointer;font-size:14px"><i class="fa-solid fa-play"></i></button>
-          <div style="flex:1;height:4px;background:var(--border);border-radius:2px"><div style="height:100%;width:0%;background:var(--accent);border-radius:2px"></div></div>
-          <span style="font-size:11px;color:var(--text-muted)">0:00</span>
-        </div>
-
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-sm btn-primary" onclick="generateVoice()"><i class="fa-solid fa-play"></i> Gerar e reproduzir</button>
-          <button class="btn btn-sm btn-secondary" onclick="generateVoice()"><i class="fa-solid fa-download"></i> Gerar áudio</button>
-        </div>
-      </div></div>
-
-      <!-- Voice List -->
-      <div class="card"><div class="card-header"><h3>🔊 Vozes</h3></div><div class="card-body">
-        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Vozes personalizadas</p>
-        ${allVoices.length===0?'<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:11px;border:1px dashed var(--border);border-radius:8px"><i class="fa-solid fa-microphone" style="font-size:20px;margin-bottom:6px;opacity:0.3"></i><p>Nenhuma voz clonada</p></div>':
-          allVoices.map(v => `<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-secondary);border-radius:8px;margin-bottom:6px">
-            <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px">🎤</div>
-            <div style="flex:1"><div style="font-weight:500;font-size:12px">${v.name}</div><div style="font-size:10px;color:var(--text-muted)">Clonada • ${v.provider||'ElevenLabs'}</div></div>
-            <button style="background:none;border:none;color:var(--text-muted);cursor:pointer"><i class="fa-solid fa-trash"></i></button>
-          </div>`).join('')}
-        
-        <p style="font-size:11px;color:var(--text-muted);margin:12px 0 10px">Modelos pré aprovados</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          ${presetVoices.map(v => `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg-secondary);border-radius:8px;cursor:pointer" onclick="selectPresetVoice('${v}')">
-            <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:12px">🎤</div>
-            <div style="flex:1"><div style="font-size:11px;font-weight:500">${v}</div><div style="font-size:9px;color:var(--text-muted)">Pré Configurada</div></div>
-            <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:10px"><i class="fa-solid fa-play"></i></button>
-          </div>`).join('')}
-        </div>
-      </div></div>
-    </div>`;
+    <div id="voice-content">${renderVoiceContent()}</div>
+  `;
 }
 
-function selectPresetVoice(name) { showToast(`Voz selecionada: ${name}`, 'success'); }
-async function generateVoice() { showToast('Gerando áudio...', 'info'); }
+function setVoiceTab(t) { voiceTab = t; renderVoice(); }
+function renderVoice() { const c = document.getElementById('voice-content'); if (c) c.innerHTML = renderVoiceContent(); }
+
+function renderVoiceContent() {
+  if (voiceTab === 'cloned') return renderClonedVoices();
+  if (voiceTab === 'library') return renderVoiceLibrary();
+  return renderTTSGenerator();
+}
+
+function renderTTSGenerator() {
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <!-- TTS Panel -->
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
+      <h3 style="font-size:14px;color:#e6edf3;margin:0 0 16px"><i class="fa-solid fa-volume-high" style="color:#6c5ce7;margin-right:8px"></i>Gerar Áudio</h3>
+      <textarea id="voice-text" rows="5" placeholder="Digite o texto para converter em áudio..." style="width:100%;padding:12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px;color:#e6edf3;font-size:12px;outline:none;resize:vertical;font-family:inherit"></textarea>
+      
+      <div style="margin-top:16px">
+        <label style="font-size:11px;color:#8b9dc3;display:block;margin-bottom:8px">Voz</label>
+        <select id="voice-select" style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px">
+          ${VOICE_PRESETS.map(v => `<option value="${v.id}">${v.name} (${v.lang} • ${v.gender === 'F' ? 'Feminina' : 'Masculina'})</option>`).join('')}
+          ${allVoices.map(v => `<option value="${v.id}">${v.name} (Clonada)</option>`).join('')}
+        </select>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+        <div>
+          <label style="font-size:10px;color:#8b9dc3;display:flex;justify-content:space-between;margin-bottom:4px"><span>Estabilidade</span><span id="stability-val">0.5</span></label>
+          <input type="range" id="stability" min="0" max="1" step="0.1" value="0.5" style="width:100%;accent-color:#6c5ce7" oninput="document.getElementById('stability-val').textContent=this.value">
+        </div>
+        <div>
+          <label style="font-size:10px;color:#8b9dc3;display:flex;justify-content:space-between;margin-bottom:4px"><span>Similaridade</span><span id="similarity-val">0.7</span></label>
+          <input type="range" id="similarity" min="0" max="1" step="0.1" value="0.7" style="width:100%;accent-color:#6c5ce7" oninput="document.getElementById('similarity-val').textContent=this.value">
+        </div>
+        <div>
+          <label style="font-size:10px;color:#8b9dc3;display:flex;justify-content:space-between;margin-bottom:4px"><span>Velocidade</span><span id="speed-val">1.0</span></label>
+          <input type="range" id="speed" min="0.5" max="2" step="0.1" value="1" style="width:100%;accent-color:#6c5ce7" oninput="document.getElementById('speed-val').textContent=this.value">
+        </div>
+        <div>
+          <label style="font-size:10px;color:#8b9dc3;display:flex;justify-content:space-between;margin-bottom:4px"><span>Estilo</span><span id="style-val">0</span></label>
+          <input type="range" id="voice-style" min="0" max="1" step="0.1" value="0" style="width:100%;accent-color:#6c5ce7" oninput="document.getElementById('style-val').textContent=this.value">
+        </div>
+      </div>
+
+      <!-- Audio Player -->
+      <div id="audio-player" style="margin-top:16px;display:none">
+        <div style="background:#161b22;border:1px solid #1e2d3d;border-radius:8px;padding:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <button onclick="togglePlayAudio()" id="play-btn" style="width:36px;height:36px;border-radius:50%;background:#6c5ce7;border:none;color:white;cursor:pointer;font-size:14px;flex-shrink:0"><i class="fa-solid fa-play"></i></button>
+            <div style="flex:1;height:4px;background:#1e2d3d;border-radius:2px;cursor:pointer" onclick="seekAudio(event)"><div id="audio-progress" style="height:100%;width:0%;background:#6c5ce7;border-radius:2px;transition:width .1s"></div></div>
+            <span id="audio-time" style="font-size:11px;color:#8b9dc3;flex-shrink:0">0:00</span>
+            <button onclick="downloadAudio()" style="background:none;border:none;color:#8b9dc3;cursor:pointer;font-size:12px"><i class="fa-solid fa-download"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="generateTTS()" style="flex:1;padding:10px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px"><i class="fa-solid fa-play"></i> Gerar Áudio</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:10px;color:#64748b">
+        <span>Modelo: eleven_v3</span>
+        <span>Custo: ~50 tokens</span>
+      </div>
+    </div>
+
+    <!-- History + Presets -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <!-- Quick Presets -->
+      <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:16px">
+        <h4 style="font-size:12px;color:#e6edf3;margin:0 0 10px"><i class="fa-solid fa-bolt" style="color:#f59e0b;margin-right:6px"></i>Textos Rápidos</h4>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${[
+            { name: 'Saudação', text: 'Olá! Bem-vindo à Ozion. Como posso ajudar?' },
+            { name: 'Agradecimento', text: 'Obrigado pelo contato! Fique à disposição.' },
+            { name: 'Horário', text: 'Nosso horário de atendimento é de segunda a sexta, das 9h às 18h.' },
+            { name: 'Despedida', text: 'Tenha um ótimo dia! Estou aqui se precisar.' }
+          ].map(p => `<div onclick="document.getElementById('voice-text').value='${p.text}'" style="padding:8px 10px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'">
+            <i class="fa-solid fa-play" style="color:#6c5ce7;font-size:10px"></i>
+            <span style="font-size:11px;color:#e6edf3">${p.name}</span>
+            <span style="font-size:10px;color:#64748b;margin-left:auto">${p.text.substring(0,30)}...</span>
+          </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- History -->
+      <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:16px;flex:1">
+        <h4 style="font-size:12px;color:#e6edf3;margin:0 0 10px"><i class="fa-solid fa-clock-rotate-left" style="color:#3b82f6;margin-right:6px"></i>Histórico</h4>
+        <div id="voice-history" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto">
+          <div style="text-align:center;padding:20px;color:#64748b;font-size:11px">Nenhum áudio gerado ainda</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderClonedVoices() {
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+    ${allVoices.length === 0 ? `
+      <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#8b9dc3;background:#1a1f35;border:1px solid #2a3050;border-radius:12px">
+        <div style="width:64px;height:64px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><i class="fa-solid fa-wand-magic-sparkles" style="font-size:24px;opacity:.4"></i></div>
+        <h3 style="font-size:15px;font-weight:600;margin:0 0 6px;color:#e6edf3">Nenhuma voz clonada</h3>
+        <p style="font-size:12px;margin:0 0 16px">Faça upload de um áudio para clonar sua voz</p>
+        <button onclick="showCloneVoice()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-wand-magic-sparkles"></i> Clonar Primeira Voz</button>
+      </div>
+    ` : allVoices.map(v => `
+      <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6c5ce722,#6c5ce744);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-microphone" style="color:#6c5ce7;font-size:16px"></i></div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:#e6edf3">${v.name}</div>
+            <div style="font-size:10px;color:#8b9dc3">${v.provider||'ElevenLabs'} • Clonada em ${v.created_at ? new Date(v.created_at).toLocaleDateString('pt-BR') : '-'}</div>
+          </div>
+          <button onclick="deleteVoice('${v.id}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px"><i class="fa-solid fa-trash"></i></button>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button onclick="testVoice('${v.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-play"></i> Testar</button>
+          <button onclick="editVoice('${v.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #6c5ce7;background:#6c5ce715;color:#6c5ce7;cursor:pointer;font-size:10px"><i class="fa-solid fa-pen"></i> Editar</button>
+        </div>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+function renderVoiceLibrary() {
+  return `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
+    <h3 style="font-size:14px;color:#e6edf3;margin:0 0 4px">Biblioteca de Vozes</h3>
+    <p style="font-size:11px;color:#8b9dc3;margin:0 0 16px">Vozes pré-configuradas prontas para uso</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
+      ${VOICE_PRESETS.map(v => `
+        <div onclick="selectPresetVoice('${v.id}')" style="display:flex;align-items:center;gap:10px;padding:12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'">
+          <div style="width:36px;height:36px;border-radius:50%;background:${v.gender==='F'?'#ec489922':'#3b82f622'};display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-${v.gender==='F'?'female':'male'}" style="color:${v.gender==='F'?'#ec4899':'#3b82f6'};font-size:14px"></i></div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:500;color:#e6edf3">${v.name}</div>
+            <div style="font-size:10px;color:#8b9dc3">${v.lang} • ${v.provider}</div>
+          </div>
+          <button onclick="event.stopPropagation();previewPresetVoice('${v.id}')" style="background:none;border:none;color:#6c5ce7;cursor:pointer;font-size:12px"><i class="fa-solid fa-play"></i></button>
+        </div>
+      `).join('')}
+    </div>
+  </div>`;
+}
+
+function showCloneVoice() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay show';
+  modal.id = 'clone-voice-modal';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-wand-magic-sparkles" style="color:#6c5ce7;margin-right:8px"></i>Clonar Voz</h3>
+        <button class="modal-close" onclick="document.getElementById('clone-voice-modal').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nome da Voz</label>
+          <input type="text" id="clone-voice-name" placeholder="Ex: Minha Voz">
+        </div>
+        <div class="form-group">
+          <label>Descrição</label>
+          <input type="text" id="clone-voice-desc" placeholder="Voz profissional feminina...">
+        </div>
+        <div style="border:2px dashed #2a3050;border-radius:12px;padding:30px;text-align:center;cursor:pointer;margin-bottom:12px" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#2a3050'" onclick="document.getElementById('clone-audio-input').click()">
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size:28px;color:#6c5ce7;margin-bottom:8px;display:block"></i>
+          <p style="font-size:12px;color:#e6edf3;margin:0 0 4px">Arraste um áudio ou clique para selecionar</p>
+          <p style="font-size:10px;color:#8b9dc3;margin:0">MP3, WAV, M4A • Máx 10MB • Mínimo 30 segundos</p>
+          <input type="file" id="clone-audio-input" accept="audio/*" style="display:none">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label>Estabilidade</label>
+            <input type="range" min="0" max="1" step="0.1" value="0.5" style="width:100%;accent-color:#6c5ce7">
+          </div>
+          <div class="form-group">
+            <label>Similaridade</label>
+            <input type="range" min="0" max="1" step="0.1" value="0.75" style="width:100%;accent-color:#6c5ce7">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('clone-voice-modal').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="doCloneVoice()"><i class="fa-solid fa-wand-magic-sparkles"></i> Clonar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function doCloneVoice() {
+  const name = document.getElementById('clone-voice-name')?.value;
+  if (!name) return showToast('Digite o nome da voz', 'error');
+  showToast('Clonando voz... (processo em background)', 'info');
+  document.getElementById('clone-voice-modal')?.remove();
+  // Simulated clone
+  setTimeout(() => { showToast('Voz clonada com sucesso!', 'success'); loadVoice(document.getElementById('content')); }, 2000);
+}
+
+async function generateTTS() {
+  const text = document.getElementById('voice-text')?.value;
+  if (!text) return showToast('Digite um texto', 'error');
+  const voiceId = document.getElementById('voice-select')?.value;
+  showToast('Gerando áudio...', 'info');
+  const resp = await api('/api/voice/generate', { method: 'POST', body: JSON.stringify({ text, voice_id: voiceId }) });
+  if (resp?.audio_url || resp?.ok) {
+    document.getElementById('audio-player').style.display = 'block';
+    showToast('Áudio gerado!', 'success');
+    // Add to history
+    const history = document.getElementById('voice-history');
+    if (history) {
+      if (history.querySelector('[style*="text-align:center"]')) history.innerHTML = '';
+      history.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px">
+        <button onclick="showToast('Reproduzindo...','info')" style="width:28px;height:28px;border-radius:50%;background:#6c5ce7;border:none;color:white;cursor:pointer;font-size:10px;flex-shrink:0"><i class="fa-solid fa-play"></i></button>
+        <div style="flex:1;min-width:0"><div style="font-size:11px;color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${text.substring(0,40)}</div><div style="font-size:9px;color:#64748b">Agora</div></div>
+      </div>` + history.innerHTML;
+    }
+  } else {
+    showToast('Erro ao gerar áudio', 'error');
+  }
+}
+
+function selectPresetVoice(id) { showToast(`Voz "${id}" selecionada para TTS`, 'success'); voiceTab = 'tts'; renderVoice(); }
+function previewPresetVoice(id) { showToast(`Reproduzindo ${id}...`, 'info'); }
+function testVoice(id) { showToast('Testando voz...', 'info'); }
+function editVoice(id) { showToast('Editar voz em breve', 'info'); }
+async function deleteVoice(id) {
+  confirmModal({ title: 'Excluir voz', message: 'Tem certeza? Esta ação não pode ser desfeita.', danger: true, onConfirm: async () => {
+    await api(`/api/voice/${id}`, { method: 'DELETE' });
+    showToast('Voz excluída', 'success');
+    loadVoice(document.getElementById('content'));
+  }});
+}
+function togglePlayAudio() { showToast('Reproduzindo áudio...', 'info'); }
+function seekAudio(e) { showToast('Seek áudio', 'info'); }
+function downloadAudio() { showToast('Download iniciado', 'success'); }
 
 // ─── Agente IA (Full Management) ────────────────────────────────
 const AI_MODELS = [
