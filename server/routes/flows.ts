@@ -284,4 +284,24 @@ router.get('/:id/edges', async (req, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Trigger flow on conversation ────────────────────────────
+router.post('/trigger', async (req, res) => {
+  try {
+    const { flowId, conversationId } = req.body;
+    if (!flowId || !conversationId) return res.status(400).json({ error: 'flowId and conversationId required' });
+    const sb = getSupabase();
+    const { data: flow } = await sb.from('flows').select('*').eq('id', flowId).single();
+    if (!flow) return res.status(404).json({ error: 'Flow not found' });
+    // Log trigger
+    const id = crypto.randomUUID();
+    await sb.from('messages').insert({
+      id, conversation_id: conversationId, direction: 'system',
+      type: 'text', content: `Fluxo "${flow.name}" disparado`,
+      status: 'sent', sent_at: new Date().toISOString(), is_flow: true
+    });
+    await sb.from('conversations').update({ last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', conversationId);
+    res.json({ ok: true, flow: flow.name });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;

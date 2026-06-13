@@ -131,4 +131,41 @@ router.post('/risk-words', async (req, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// Toggle tag on conversation
+router.post('/conversations/:id/tags', async (req, res) => {
+  try {
+    const { tagId, active } = req.body;
+    const sb = getSupabase();
+    const { data: conv } = await sb.from('conversations').select('tags').eq('id', req.params.id).single();
+    let tags = conv?.tags || [];
+    if (!Array.isArray(tags)) tags = [];
+    if (active) { if (!tags.includes(tagId)) tags.push(tagId); }
+    else { tags = tags.filter((t: string) => t !== tagId); }
+    await sb.from('conversations').update({ tags, updated_at: new Date().toISOString() }).eq('id', req.params.id);
+    res.json({ ok: true, tags });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Transfer conversation
+router.post('/conversations/:id/transfer', async (req, res) => {
+  try {
+    const { operator, note } = req.body;
+    const sb = getSupabase();
+    await sb.from('conversations').update({
+      assigned_to: operator,
+      is_ai_active: false,
+      status: 'open',
+      updated_at: new Date().toISOString()
+    }).eq('id', req.params.id);
+    // Log transfer message
+    const id = crypto.randomUUID();
+    await sb.from('messages').insert({
+      id, conversation_id: req.params.id, direction: 'system',
+      type: 'text', content: `Conversa transferida para ${operator}${note ? ': ' + note : ''}`,
+      status: 'sent', sent_at: new Date().toISOString()
+    });
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;

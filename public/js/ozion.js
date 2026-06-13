@@ -585,11 +585,14 @@ async function selectConv(id) {
           </div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="showConvTagsModal('${id}')" style="padding:5px 8px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;display:flex;align-items:center;gap:4px;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Tags"><i class="fa-solid fa-tags"></i></button>
+        <button onclick="showQuickFlowsModal('${id}')" style="padding:5px 8px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#f59e0b;cursor:pointer;font-size:10px;display:flex;align-items:center;gap:4px;transition:all .2s" onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='#1e2d3d'" title="Fluxos rápidos"><i class="fa-solid fa-bolt"></i></button>
+        <button onclick="showTransferModal('${id}')" style="padding:5px 8px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;display:flex;align-items:center;gap:4px;transition:all .2s" onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='#1e2d3d'" title="Transferir"><i class="fa-solid fa-arrow-right-arrow-left"></i></button>
         <button onclick="toggleAI('${id}')" style="padding:5px 10px;border-radius:6px;border:1px solid ${selectedConv.isAiActive?'#f59e0b':'#22c55e'};background:${selectedConv.isAiActive?'rgba(245,158,11,.1)':'rgba(34,197,94,.1)'};color:${selectedConv.isAiActive?'#f59e0b':'#22c55e'};cursor:pointer;font-size:10px;font-weight:500;display:flex;align-items:center;gap:4px;transition:all .2s">
           <i class="fa-solid fa-robot" style="font-size:9px"></i> ${selectedConv.isAiActive?'Pausar':'Ativar IA'}
         </button>
-        <button onclick="closeConv('${id}')" style="padding:5px 8px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;display:flex;align-items:center;gap:4px;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'"><i class="fa-solid fa-check"></i></button>
+        <button onclick="closeConv('${id}')" style="padding:5px 8px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;display:flex;align-items:center;gap:4px;transition:all .2s" onmouseover="this.style.borderColor='#22c55e'" onmouseout="this.style.borderColor='#1e2d3d'" title="Finalizar"><i class="fa-solid fa-check"></i></button>
       </div>
     </div>
 
@@ -602,17 +605,22 @@ async function selectConv(id) {
     <div style="border-top:1px solid #1e2d3d;padding:10px 16px;background:#0d1117">
       <div style="display:flex;gap:4px;margin-bottom:6px">
         ${['B','I','S','M'].map(f => `<button style="width:26px;height:26px;border-radius:4px;border:none;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;font-weight:${f==='B'||f==='M'?'700':'400'};${f==='I'?'font-style:italic':''}${f==='S'?'text-decoration:line-through':''}${f==='M'?'font-family:monospace':''}:transition:all .15s" onmouseover="this.style.background='#1e2d3d';this.style.color='#e6edf3'" onmouseout="this.style.background='#161b22';this.style.color='#8b9dc3'">${f}</button>`).join('')}
+        <div style="flex:1"></div>
+        <button onclick="saveCurrentFilter()" style="padding:4px 8px;border-radius:4px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:9px;font-weight:500;display:flex;align-items:center;gap:3px;transition:all .15s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#2a3050'" title="Salvar filtro"><i class="fa-solid fa-bookmark" style="font-size:8px"></i> Salvar</button>
+        ${savedFilters.length > 0 ? `<select onchange="applySavedFilter(this.value);this.value=''" style="padding:4px 6px;border-radius:4px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:9px;max-width:120px"><option value="">Filtros salvos</option>${savedFilters.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}</select>` : ''}
       </div>
       <div style="display:flex;gap:6px;align-items:flex-end">
-        <button style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Anexar"><i class="fa-solid fa-paperclip" style="font-size:12px"></i></button>
+        <button onclick="showAttachMenu()" style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Anexar"><i class="fa-solid fa-paperclip" style="font-size:12px"></i></button>
+        <button onclick="toggleEmojiPicker()" style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Emoji"><i class="fa-solid fa-face-smile" style="font-size:12px"></i></button>
         <div style="flex:1;position:relative">
           <textarea id="chat-input-text" rows="1" placeholder="Digite sua mensagem..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('${id}')}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'" style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;resize:none;min-height:34px;max-height:120px;font-family:inherit;transition:border .2s" onfocus="this.style.borderColor='#6c5ce7'" onblur="this.style.borderColor='#1e2d3d'"></textarea>
         </div>
-        <button style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Áudio"><i class="fa-solid fa-microphone" style="font-size:12px"></i></button>
+        <button onclick="toggleAudioRecording()" style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Áudio"><i class="fa-solid fa-microphone" style="font-size:12px"></i></button>
         <button onclick="sendMsg('${id}')" style="width:34px;height:34px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.background='#5a4bd1'" onmouseout="this.style.background='#6c5ce7'"><i class="fa-solid fa-paper-plane" style="font-size:12px"></i></button>
       </div>
       <div style="display:flex;gap:4px;margin-top:6px">
         <button onclick="aiRespond('${id}')" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:#22c55e;cursor:pointer;font-size:9px;font-weight:500;display:flex;align-items:center;gap:3px;transition:all .15s"><i class="fa-solid fa-robot" style="font-size:8px"></i> IA</button>
+        <button onclick="showQuickRepliesModal()" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(108,92,231,.3);background:rgba(108,92,231,.08);color:#6c5ce7;cursor:pointer;font-size:9px;font-weight:500;display:flex;align-items:center;gap:3px;transition:all .15s"><i class="fa-solid fa-bolt" style="font-size:8px"></i> Respostas</button>
         <button onclick="sendTemplate('${id}')" style="padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:9px;font-weight:500;display:flex;align-items:center;gap:3px;transition:all .15s"><i class="fa-solid fa-file-alt" style="font-size:8px"></i> Template</button>
       </div>
     </div>`;
@@ -697,6 +705,8 @@ function goBackChat() {
   selectedConv = null;
 }
 
+let savedFilters = JSON.parse(localStorage.getItem('ozion_chat_filters') || '[]');
+
 function showNewChatModal() {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay show';
@@ -740,7 +750,322 @@ async function createNewChat() {
   loadChat(document.getElementById('content'));
 }
 
+// ─── Saved Filters ────────────────────────────────────────────
+function saveCurrentFilter() {
+  const name = prompt('Nome do filtro:');
+  if (!name) return;
+  const filter = { id: Date.now().toString(), name, chatFilter, chatSearch, createdAt: new Date().toISOString() };
+  savedFilters.push(filter);
+  localStorage.setItem('ozion_chat_filters', JSON.stringify(savedFilters));
+  showToast('Filtro salvo!', 'success');
+}
+
+function applySavedFilter(id) {
+  const f = savedFilters.find(x => x.id === id);
+  if (!f) return;
+  chatFilter = f.chatFilter || 'all';
+  chatSearch = f.chatSearch || '';
+  const searchInput = document.getElementById('chat-search');
+  if (searchInput) searchInput.value = chatSearch;
+  setChatFilter(chatFilter);
+  showToast(`Filtro "${f.name}" aplicado`, 'info');
+}
+
+function deleteSavedFilter(id) {
+  savedFilters = savedFilters.filter(f => f.id !== id);
+  localStorage.setItem('ozion_chat_filters', JSON.stringify(savedFilters));
+  showToast('Filtro removido', 'info');
+}
+
+// ─── Emoji Picker ──────────────────────────────────────────────
+const EMOJI_LIST = ['😀','😂','😍','🥰','😎','🤩','😇','🤔','😤','😭','🙌','👍','👎','❤️','🔥','⭐','🎉','💪','🙏','✅','❌','⏰','💰','📩','📞','🤝','👀','💡','🚀','⭐','🌟','💯','🎶','😢','🤗','😈','🤡','💀','👻','🤝','👋','🤙','💪','🙌','👏','🤝','🫶','❤️‍🔥','💔','❣️','💕','💗','💖','💝','💘','💌','💐','🌹','🌺','🌴','☀️','🌈','🌤️','⛅','🌙','⭐','✨','🌟','🔥','💧','🌊','🍀','🎯','🏆','🎮','🎨','🎭','🎪','🎤','🎧','🎵','🎶','🎸','🎹','🎺','🎻','🥁','📢','🔔','📱','💻','⌚','📷','🔑','📝','📂','🗑️','📁','📊','📈','📉','🗓️','📌','📍','✂️','📎','🔖','🏷️','💼','🎒','🎓','🧸','🎁','🎃','🎄','🎅','🦄','🐱','🐶','🐻','🐼','🦊','🐰','🐸','🦋','🌸','🌻','🌼','🌷','🪻','🌾','🍁','🍂'];
+
+function toggleEmojiPicker() {
+  let picker = document.getElementById('emoji-picker-chat');
+  if (picker) { picker.remove(); return; }
+  const input = document.getElementById('chat-input-text');
+  const rect = input ? input.getBoundingClientRect() : { left: 100, bottom: 300 };
+  picker = document.createElement('div');
+  picker.id = 'emoji-picker-chat';
+  picker.style.cssText = `position:fixed;bottom:${window.innerHeight - rect.bottom + 40}px;left:${Math.min(rect.left, window.innerWidth - 340)}px;width:320px;max-height:280px;overflow-y:auto;background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:10px;z-index:2000;box-shadow:0 12px 32px rgba(0,0,0,.5);animation:slideUp .2s ease`;
+  picker.innerHTML = `
+    <div style="display:flex;gap:4px;margin-bottom:8px;position:sticky;top:0;background:#1a1f35;padding-bottom:6px">
+      <input type="text" id="emoji-search" placeholder="Buscar emoji..." oninput="filterEmojis(this.value)" style="flex:1;padding:6px 10px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:11px;outline:none">
+      <button onclick="document.getElementById('emoji-picker-chat').remove()" style="background:none;border:none;color:#8b9dc3;cursor:pointer;font-size:14px">&times;</button>
+    </div>
+    <div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px">
+      ${EMOJI_LIST.map(e => `<div onclick="insertEmoji('${e}')" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;border-radius:6px;transition:background .15s" onmouseover="this.style.background='#2a3050'" onmouseout="this.style.background='transparent'">${e}</div>`).join('')}
+    </div>`;
+  document.body.appendChild(picker);
+}
+
+function filterEmojis(q) {
+  const grid = document.getElementById('emoji-grid');
+  if (!grid) return;
+  const filtered = q ? EMOJI_LIST.filter(e => e.includes(q)) : EMOJI_LIST;
+  grid.innerHTML = filtered.map(e => `<div onclick="insertEmoji('${e}')" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;border-radius:6px;transition:background .15s" onmouseover="this.style.background='#2a3050'" onmouseout="this.style.background='transparent'">${e}</div>`).join('');
+}
+
+function insertEmoji(emoji) {
+  const input = document.getElementById('chat-input-text');
+  if (input) { input.value += emoji; input.focus(); }
+}
+
+// ─── Quick Flows Modal ─────────────────────────────────────────
+async function showQuickFlowsModal(convId) {
+  const flowsData = await api('/api/flows');
+  const flows = flowsData?.flows || [];
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay show';
+  modal.id = 'quick-flows-modal';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:440px">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-bolt" style="color:#f59e0b;margin-right:8px"></i>Fluxos Rápidos</h3>
+        <button class="modal-close" onclick="document.getElementById('quick-flows-modal').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="flow-search-modal" placeholder="Buscar fluxo..." oninput="filterFlowsModal(this.value)" style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;margin-bottom:12px">
+        <div id="flows-modal-list" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+          ${flows.length === 0 ? '<p style="text-align:center;color:#8b9dc3;font-size:12px;padding:20px">Nenhum fluxo encontrado</p>' : flows.map(f => `
+            <div onclick="triggerQuickFlow('${convId}','${f.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#2a3050'">
+              <div style="width:36px;height:36px;border-radius:8px;background:${f.color || '#6c5ce7'}22;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-${f.icon || 'code-branch'}" style="color:${f.color || '#6c5ce7'};font-size:14px"></i></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12px;font-weight:600;color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
+                <div style="font-size:10px;color:#8b9dc3">${f.blocks?.length || 0} blocos</div>
+              </div>
+              <i class="fa-solid fa-paper-plane" style="font-size:10px;color:#6c5ce7"></i>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function filterFlowsModal(q) {
+  const list = document.getElementById('flows-modal-list');
+  if (!list) return;
+  const items = list.querySelectorAll('[onclick^="triggerQuickFlow"]');
+  items.forEach(item => {
+    const name = item.textContent.toLowerCase();
+    item.style.display = name.includes(q.toLowerCase()) ? 'flex' : 'none';
+  });
+}
+
+async function triggerQuickFlow(convId, flowId) {
+  document.getElementById('quick-flows-modal')?.remove();
+  showToast('Fluxo disparado!', 'success');
+  await api('/api/flows/trigger', { method: 'POST', body: JSON.stringify({ flowId, conversationId: convId }) });
+}
+
+// ─── Quick Replies ──────────────────────────────────────────────
+const QUICK_REPLIES = [
+  { id: 'qr1', name: 'Saudação', text: 'Olá! Bem-vindo(a) à Ozion. Como posso ajudar?' },
+  { id: 'qr2', name: 'Horário', text: 'Nosso horário de atendimento é de segunda a sexta, das 9h às 18h.' },
+  { id: 'qr3', name: 'Agradecimento', text: 'Obrigado pelo contato! Fique à disposição.' },
+  { id: 'qr4', name: 'Aguarde', text: 'Por favor, aguarde um momento enquanto verifico sua solicitação.' },
+  { id: 'qr5', name: 'Transferir', text: 'Vou transferir seu atendimento para um especialista. Aguarde um instante.' },
+  { id: 'qr6', name: 'Preço', text: 'Nossos planos começam a partir de R$97/mês. Deseja saber mais?' },
+  { id: 'qr7', name: 'Suporte', text: 'Para suporte técnico, acesse help.ozion.com.br ou me envie sua dúvida.' },
+  { id: 'qr8', name: 'Encerrar', text: 'Caso tenha mais dúvidas, estou à disposição. Tenha um ótimo dia!' }
+];
+
+function showQuickRepliesModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay show';
+  modal.id = 'quick-replies-modal';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:440px">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-bolt" style="color:#6c5ce7;margin-right:8px"></i>Respostas Rápidas</h3>
+        <button class="modal-close" onclick="document.getElementById('quick-replies-modal').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="qr-search" placeholder="Buscar resposta..." oninput="filterQR(this.value)" style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;margin-bottom:12px">
+        <div id="qr-list" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+          ${QUICK_REPLIES.map(qr => `
+            <div onclick="insertQuickReply('${qr.text.replace(/'/g, "\\'")}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#2a3050'">
+              <div style="width:36px;height:36px;border-radius:8px;background:#6c5ce722;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-reply" style="color:#6c5ce7;font-size:12px"></i></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12px;font-weight:600;color:#e6edf3">${qr.name}</div>
+                <div style="font-size:10px;color:#8b9dc3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${qr.text}</div>
+              </div>
+              <i class="fa-solid fa-arrow-right" style="font-size:10px;color:#6c5ce7"></i>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function filterQR(q) {
+  const list = document.getElementById('qr-list');
+  if (!list) return;
+  const items = list.querySelectorAll('[onclick^="insertQuickReply"]');
+  items.forEach(item => {
+    const name = item.textContent.toLowerCase();
+    item.style.display = name.includes(q.toLowerCase()) ? 'flex' : 'none';
+  });
+}
+
+function insertQuickReply(text) {
+  document.getElementById('quick-replies-modal')?.remove();
+  const input = document.getElementById('chat-input-text');
+  if (input) { input.value = text; input.focus(); }
+  showToast('Resposta inserida', 'info');
+}
+
+// ─── Tags in Conversation ───────────────────────────────────────
+async function showConvTagsModal(convId) {
+  const tagsData = await api('/api/tags');
+  const tags = tagsData?.tags || [];
+  const conv = conversations.find(c => c.id === convId);
+  const convTags = conv?.tags || [];
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay show';
+  modal.id = 'conv-tags-modal';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:440px">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-tags" style="color:#6c5ce7;margin-right:8px"></i>Tags da Conversa</h3>
+        <button class="modal-close" onclick="document.getElementById('conv-tags-modal').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:11px;color:#8b9dc3;margin:0 0 12px">Selecione as tags para esta conversa:</p>
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto">
+          ${tags.length === 0 ? '<p style="text-align:center;color:#8b9dc3;font-size:12px;padding:20px">Nenhuma tag criada. Crie em Tags.</p>' : tags.map(t => {
+            const active = convTags.includes(t.id);
+            return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${active ? t.color + '15' : '#161b22'};border:1px solid ${active ? t.color : '#2a3050'};border-radius:8px;cursor:pointer;transition:all .2s">
+              <input type="checkbox" ${active ? 'checked' : ''} onchange="toggleConvTag('${convId}','${t.id}',this.checked)" style="display:none">
+              <div style="width:14px;height:14px;border-radius:3px;border:2px solid ${active ? t.color : '#2a3050'};background:${active ? t.color : 'transparent'};display:flex;align-items:center;justify-content:center;transition:all .2s">
+                ${active ? '<i class="fa-solid fa-check" style="font-size:8px;color:white"></i>' : ''}
+              </div>
+              <div style="width:10px;height:10px;border-radius:50%;background:${t.color}"></div>
+              <span style="font-size:12px;color:#e6edf3;font-weight:500">${t.name}</span>
+            </label>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('conv-tags-modal').remove()">Fechar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function toggleConvTag(convId, tagId, active) {
+  await api(`/api/chat/conversations/${convId}/tags`, { method: 'POST', body: JSON.stringify({ tagId, active }) });
+  const conv = conversations.find(c => c.id === convId);
+  if (conv) {
+    if (!conv.tags) conv.tags = [];
+    if (active) { if (!conv.tags.includes(tagId)) conv.tags.push(tagId); }
+    else { conv.tags = conv.tags.filter(t => t !== tagId); }
+  }
+  showToast(active ? 'Tag adicionada' : 'Tag removida', 'success');
+}
+
+// ─── Transfer to Human ──────────────────────────────────────────
+function showTransferModal(convId) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay show';
+  modal.id = 'transfer-modal';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-user-group" style="color:#f59e0b;margin-right:8px"></i>Transferir Conversa</h3>
+        <button class="modal-close" onclick="document.getElementById('transfer-modal').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Transferir para:</label>
+          <select id="transfer-target" style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px">
+            <option value="">Selecione um atendente</option>
+            ${['KAROL','SOCO','TIKT','Ana','Carlos','Maria','João'].map(op => `<option value="${op}">${op}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Mensagem para o atendente (opcional):</label>
+          <textarea id="transfer-note" rows="2" placeholder="Ex: Cliente com dúvida técnica..." style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;resize:none"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('transfer-modal').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="doTransfer('${convId}')" style="background:#f59e0b"><i class="fa-solid fa-arrow-right-arrow-left"></i> Transferir</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function doTransfer(convId) {
+  const target = document.getElementById('transfer-target')?.value;
+  if (!target) { showToast('Selecione um atendente', 'error'); return; }
+  await api(`/api/chat/conversations/${convId}/transfer`, { method: 'POST', body: JSON.stringify({ operator: target }) });
+  document.getElementById('transfer-modal')?.remove();
+  showToast(`Conversa transferida para ${target}`, 'success');
+  selectConv(convId);
+}
+
+// ─── Audio Recording (UI) ───────────────────────────────────────
+let audioRecorder = null;
+let audioChunks = [];
+let audioRecording = false;
+
+function toggleAudioRecording() {
+  if (audioRecording) { stopAudioRecording(); return; }
+  audioRecording = true;
+  const btn = document.querySelector('[onclick="toggleAudioRecording()"]');
+  if (btn) {
+    btn.style.background = '#ef4444';
+    btn.innerHTML = '<i class="fa-solid fa-stop" style="font-size:12px"></i>';
+  }
+  showToast('Gravando áudio...', 'info');
+  // Simulated recording
+  audioChunks = [];
+  setTimeout(() => { if (audioRecording) { stopAudioRecording(); } }, 30000);
+}
+
+function stopAudioRecording() {
+  audioRecording = false;
+  const btn = document.querySelector('[onclick="toggleAudioRecording()"]');
+  if (btn) {
+    btn.style.background = '#161b22';
+    btn.innerHTML = '<i class="fa-solid fa-microphone" style="font-size:12px"></i>';
+  }
+  showToast('Áudio gravado e enviado!', 'success');
+}
+
+// ─── Attach File ────────────────────────────────────────────────
+function showAttachMenu() {
+  let menu = document.getElementById('attach-menu');
+  if (menu) { menu.remove(); return; }
+  menu = document.createElement('div');
+  menu.id = 'attach-menu';
+  menu.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:8px;z-index:2000;box-shadow:0 12px 32px rgba(0,0,0,.5);display:flex;gap:6px;animation:slideUp .2s ease';
+  const items = [
+    { icon: 'image', color: '#22c55e', label: 'Imagem' },
+    { icon: 'file', color: '#3b82f6', label: 'Documento' },
+    { icon: 'location-dot', color: '#f59e0b', label: 'Local' },
+    { icon: 'user', color: '#8b5cf6', label: 'Contato' }
+  ];
+  menu.innerHTML = items.map(i => `
+    <div onclick="simulateAttach('${i.label}')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 14px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#2a3050'" onmouseout="this.style.background='transparent'">
+      <div style="width:40px;height:40px;border-radius:50%;background:${i.color}22;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-${i.icon}" style="color:${i.color};font-size:14px"></i></div>
+      <span style="font-size:9px;color:#8b9dc3">${i.label}</span>
+    </div>
+  `).join('') + `<div onclick="document.getElementById('attach-menu').remove()" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 14px;border-radius:8px;cursor:pointer" onmouseover="this.style.background='#2a3050'" onmouseout="this.style.background='transparent'"><div style="width:40px;height:40px;border-radius:50%;background:#ef444422;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark" style="color:#ef4444;font-size:14px"></i></div><span style="font-size:9px;color:#8b9dc3">Fechar</span></div>`;
+  document.body.appendChild(menu);
+  setTimeout(() => { document.addEventListener('click', function handler(e) { if (!e.target.closest('#attach-menu') && !e.target.closest('[onclick="showAttachMenu()"]')) { menu.remove(); document.removeEventListener('click', handler); } }); }, 100);
+}
+
+function simulateAttach(type) {
+  document.getElementById('attach-menu')?.remove();
+  showToast(`${type} selecionada (upload em breve)`, 'info');
+}
+
 let chatFilterPanelOpen = false;
+let chatOperatorFilter = 'Todos';
 function toggleChatFilterPanel() {
   chatFilterPanelOpen = !chatFilterPanelOpen;
   let panel = document.getElementById('chat-filter-panel');
@@ -755,34 +1080,48 @@ function toggleChatFilterPanel() {
           <h3 style="margin:0;font-size:16px;color:#e6edf3">Filtros</h3>
           <button onclick="toggleChatFilterPanel()" style="background:none;border:none;color:#8b9dc3;cursor:pointer;font-size:20px">&times;</button>
         </div>
+        ${savedFilters.length > 0 ? `<div style="margin-bottom:16px">
+          <label style="font-size:12px;color:#8b9dc3;display:block;margin-bottom:8px">Filtros Salvos</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${savedFilters.map(f => `<div style="display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:20px;font-size:11px;background:#161b22;border:1px solid #6c5ce7;color:#6c5ce7">
+              <span onclick="applySavedFilter('${f.id}');toggleChatFilterPanel()" style="cursor:pointer">${f.name}</span>
+              <i class="fa-solid fa-xmark" onclick="deleteSavedFilter('${f.id}');toggleChatFilterPanel()" style="font-size:8px;cursor:pointer;opacity:.6"></i>
+            </div>`).join('')}
+          </div>
+        </div>` : ''}
         <div style="margin-bottom:16px">
           <label style="font-size:12px;color:#8b9dc3;display:block;margin-bottom:8px">Status</label>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <span onclick="applyFilter('all')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:${chatFilter==='all'?'#6c5ce7':'#161b22'};color:${chatFilter==='all'?'white':'#8b9dc3'};border:1px solid ${chatFilter==='all'?'#6c5ce7':'#1e2d3d'}">Todos</span>
-            <span onclick="applyFilter('all')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:#161b22;color:#8b9dc3;border:1px solid #1e2d3d">Entrada</span>
-            <span onclick="applyFilter('ai')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:#161b22;color:#8b9dc3;border:1px solid #1e2d3d">Esperando</span>
-            <span onclick="applyFilter('closed')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:#161b22;color:#8b9dc3;border:1px solid #1e2d3d">Finalizados</span>
+            <span onclick="applyFilter('entry')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:${chatFilter==='entry'?'#22c55e':'#161b22'};color:${chatFilter==='entry'?'white':'#8b9dc3'};border:1px solid ${chatFilter==='entry'?'#22c55e':'#1e2d3d'}">Entrada</span>
+            <span onclick="applyFilter('ai')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:${chatFilter==='ai'?'#f59e0b':'#161b22'};color:${chatFilter==='ai'?'white':'#8b9dc3'};border:1px solid ${chatFilter==='ai'?'#f59e0b':'#1e2d3d'}">Esperando</span>
+            <span onclick="applyFilter('closed')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:${chatFilter==='closed'?'#ef4444':'#161b22'};color:${chatFilter==='closed'?'white':'#8b9dc3'};border:1px solid ${chatFilter==='closed'?'#ef4444':'#1e2d3d'}">Finalizados</span>
           </div>
         </div>
         <div style="margin-bottom:16px">
           <label style="font-size:12px;color:#8b9dc3;display:block;margin-bottom:8px">Operador</label>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            ${['Todos','KAROL','SOCO','TIKT','Ana','Carlos'].map(op => `<span style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:#161b22;color:#8b9dc3;border:1px solid #1e2d3d">${op}</span>`).join('')}
+            ${['Todos','KAROL','SOCO','TIKT','Ana','Carlos'].map(op => `<span onclick="applyOperatorFilter('${op}')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:${chatOperatorFilter===op?'#8b5cf6':'#161b22'};color:${chatOperatorFilter===op?'white':'#8b9dc3'};border:1px solid ${chatOperatorFilter===op?'#8b5cf6':'#1e2d3d'}">${op}</span>`).join('')}
           </div>
         </div>
         <div>
           <label style="font-size:12px;color:#8b9dc3;display:block;margin-bottom:8px">Período</label>
           <div style="display:flex;gap:8px">
-            <input type="date" style="flex:1;padding:8px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px">
-            <input type="date" style="flex:1;padding:8px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px">
+            <input type="date" id="filter-date-from" style="flex:1;padding:8px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px">
+            <input type="date" id="filter-date-to" style="flex:1;padding:8px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px">
           </div>
         </div>
-        <button onclick="toggleChatFilterPanel()" style="width:100%;margin-top:20px;padding:12px;border:none;border-radius:8px;background:#6c5ce7;color:white;font-size:13px;font-weight:600;cursor:pointer">Aplicar Filtros</button>
+        <button onclick="applyAllFilters()" style="width:100%;margin-top:20px;padding:12px;border:none;border-radius:8px;background:#6c5ce7;color:white;font-size:13px;font-weight:600;cursor:pointer">Aplicar Filtros</button>
       </div>`;
     document.body.appendChild(panel);
   } else {
     panel.remove();
   }
+}
+
+function applyFilter(f) { chatFilter = f; toggleChatFilterPanel(); setChatFilter(f); }
+function applyOperatorFilter(op) { chatOperatorFilter = op; toggleChatFilterPanel(); showToast(`Filtro operador: ${op}`, 'info'); }
+function applyAllFilters() { toggleChatFilterPanel(); renderChatList(); showToast('Filtros aplicados', 'success'); }
 }
 
 function applyFilter(f) {
