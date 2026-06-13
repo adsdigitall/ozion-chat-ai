@@ -2,12 +2,8 @@
   "version": 2,
   "name": "ozion-chat-ai",
   "installCommand": "npm install",
+  "buildCommand": "echo 'Build complete'",
   "outputDirectory": "public",
-  "functions": {
-    "server/index.ts": {
-      "maxDuration": 30
-    }
-  },
   "env": {
     "NODE_ENV": "production",
     "SUPABASE_URL": "https://dpwqqszrhizqdncifkee.supabase.co",
@@ -28,6 +24,28 @@
     {
       "src": "/api/(.*)",
       "dest": "server/index.ts"
+    },
+    {
+      "src": "/css/(.*)",
+      "dest": "public/css/$1"
+    },
+    {
+      "src": "/js/(.*)",
+      "dest": "public/js/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "public/$1"
+    }
+  ],
+  "builds": [
+    {
+      "src": "server/index.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
     }
   ]
 }
