@@ -41,12 +41,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(join(__dirname, '../public')));
 
-// Public routes
 app.use('/api/auth', authRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/webhooks', evolutionRoutes);
 
-// Protected routes
 app.use('/api/health', authMiddleware, healthRoutes);
 app.use('/api/whatsapp', authMiddleware, whatsappRoutes);
 app.use('/api/messages', authMiddleware, messageRoutes);
@@ -68,28 +66,8 @@ app.use('/api/deploy', authMiddleware, deployRoutes);
 app.use('/api/flowise', authMiddleware, flowiseRoutes);
 app.use('/api/tags', authMiddleware, tagsRoutes);
 
-app.get('/api/ping', (_req, res) => {
+app.get('/api/ping', (_req: any, res: any) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 export default app;
-
-// Local dev only — not used by Vercel
-if (!process.env.VERCEL) {
-  import('http').then(({ createServer }) => {
-    const httpServer = createServer(app);
-    import('./services/websocket.js').then(({ initWebSocket }) => {
-      initWebSocket(httpServer);
-      console.log('🔌 WebSocket initialized');
-    }).catch(() => {});
-    import('./db/supabase.js').then(({ getSupabase }) => {
-      getSupabase().from('tenants').select('id').limit(1).then(({ error }) => {
-        if (error) throw error;
-        console.log('✅ Supabase connected');
-      }).catch((e: any) => console.log('⚠️ Supabase:', e.message));
-    }).catch(() => {});
-    httpServer.listen(PORT, () => {
-      console.log(`🚀 Ozion Chat AI: http://localhost:${PORT}`);
-    });
-  });
-}
