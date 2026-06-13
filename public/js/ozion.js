@@ -872,12 +872,7 @@ const TAG_COLORS = ['#6c5ce7','#22c55e','#f59e0b','#ef4444','#3b82f6','#ec4899',
 const TAG_FIELDS = [
   { key: 'name', label: 'Nome da Tag', placeholder: 'Ex: Lead Quente', required: true },
   { key: 'color', label: 'Cor', type: 'color', colors: TAG_COLORS },
-  { key: 'description', label: 'Descrição', type: 'textarea', placeholder: 'Opcional' },
-  { key: 'category', label: 'Categoria', type: 'select', options: [
-    { value: 'status', label: 'Status' }, { value: 'origem', label: 'Origem' },
-    { value: 'interesse', label: 'Interesse' }, { value: 'prioridade', label: 'Prioridade' },
-    { value: 'custom', label: 'Personalizada' }
-  ]}
+  { key: 'description', label: 'Descrição', type: 'textarea', placeholder: 'Opcional' }
 ];
 
 async function loadTags(el) {
@@ -918,9 +913,6 @@ function renderTagCard(t) {
           <div onclick="deleteTag('${t.id}')" style="padding:8px 12px;font-size:12px;color:#ef4444;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-trash" style="font-size:10px"></i> Excluir</div>
         </div>
       </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-      <span style="padding:3px 10px;border-radius:12px;font-size:10px;font-weight:600;background:${t.color || '#6c5ce7'}22;color:${t.color || '#6c5ce7'}">${t.category || 'custom'}</span>
     </div>
     ${t.description ? `<p style="font-size:11px;color:#8b9dc3;margin:0">${t.description}</p>` : ''}
     <div style="display:flex;gap:4px;margin-top:10px">
@@ -992,7 +984,7 @@ async function duplicateTag(id) {
   document.querySelectorAll('[id^="tag-menu-"]').forEach(m => m.style.display = 'none');
   const tag = allTags.find(t => t.id === id);
   if (!tag) return;
-  await api('/api/tags', { method: 'POST', body: JSON.stringify({ name: tag.name + ' (cópia)', color: tag.color, category: tag.category, description: tag.description }) });
+  await api('/api/tags', { method: 'POST', body: JSON.stringify({ name: tag.name + ' (cópia)', color: tag.color, description: tag.description }) });
   showToast('Tag duplicada!', 'success');
   loadTags(document.getElementById('content'));
 }

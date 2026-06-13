@@ -22,10 +22,10 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const supabase = getSupabase();
-    const { name, color, description, category } = req.body;
+    const { name, color, description } = req.body;
     const { data, error } = await supabase
       .from('tags')
-      .insert({ name, color: color || '#6c5ce7', description: description || '', category: category || 'custom', tenant_id: 'default' })
+      .insert({ name, color: color || '#6c5ce7', description: description || '', tenant_id: 'default' })
       .select()
       .single();
     if (error) throw error;
@@ -39,10 +39,10 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const supabase = getSupabase();
-    const { name, color, description, category } = req.body;
+    const { name, color, description } = req.body;
     const { data, error } = await supabase
       .from('tags')
-      .update({ name, color, description, category })
+      .update({ name, color, description })
       .eq('id', req.params.id)
       .select()
       .single();
