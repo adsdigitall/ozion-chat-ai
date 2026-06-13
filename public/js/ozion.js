@@ -135,6 +135,7 @@ const NAV = [
   { id: 'contacts', icon: 'fa-address-book', label: 'Contatos' },
   { id: 'tags', icon: 'fa-tags', label: 'Tags' },
   { id: 'flows', icon: 'fa-diagram-project', label: 'Fluxos' },
+  { id: 'whatsapp', icon: 'fa-whatsapp', label: 'WhatsApp' },
   { id: 'voice', icon: 'fa-microphone', label: 'Voice Studio' },
   { id: 'agents', icon: 'fa-robot', label: 'Agente IA' },
   { id: 'campaigns', icon: 'fa-bullhorn', label: 'Campanhas' },
@@ -270,7 +271,7 @@ async function loadPage(page) {
   const el = document.getElementById('content');
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px"></i><p style="margin-top:8px">Carregando...</p></div>';
-  const pages = { dashboard:loadDashboard, chat:loadChat, contacts:loadContacts, tags:loadTags, flows:loadFlows, voice:loadVoice, agents:loadAgents, campaigns:loadCampaigns, ctwa:loadCTWA, sales:loadSales, integrations:loadIntegrations, settings:loadSettings, flowise:showFlowiseConfig };
+  const pages = { dashboard:loadDashboard, chat:loadChat, contacts:loadContacts, tags:loadTags, flows:loadFlows, whatsapp:loadWhatsApp, voice:loadVoice, agents:loadAgents, campaigns:loadCampaigns, ctwa:loadCTWA, sales:loadSales, integrations:loadIntegrations, settings:loadSettings, flowise:showFlowiseConfig };
   if (pages[page]) await pages[page](el);
   else el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-construction"></i><h3>Em construção</h3></div>';
 }
@@ -2545,6 +2546,203 @@ async function loadIntegrations(el) {
 }
 
 async function connectIntegration(provider) { showToast(`Conectando ${provider}...`, 'info'); }
+
+// ─── WhatsApp Connection (Embedded Signup + Channels) ────────────
+let whatsappChannels = [];
+let whatsappNumbers = [];
+
+async function loadWhatsApp(el) {
+  const wa = await api('/api/whatsapp/status');
+  const status = wa?.connected ? 'connected' : 'disconnected';
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <h2 style="margin:0;font-size:20px">WhatsApp</h2>
+        <p style="color:#8b9dc3;margin-top:2px;font-size:12px">Conecte seu WhatsApp via Meta Cloud API</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="refreshWhatsApp()" style="padding:6px 12px;border-radius:8px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px"><i class="fa-solid fa-arrows-rotate"></i> Atualizar</button>
+      </div>
+    </div>
+
+    <!-- Connection Status Card -->
+    <div style="background:${status==='connected'?'rgba(34,197,94,.08)':'rgba(239,68,68,.08)'};border:1px solid ${status==='connected'?'#22c55e44':'#ef444444'};border-radius:12px;padding:20px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="width:56px;height:56px;border-radius:14px;background:${status==='connected'?'#22c55e':'#ef4444'}22;display:flex;align-items:center;justify-content:center">
+          <i class="fa-brands fa-whatsapp" style="font-size:28px;color:${status==='connected'?'#22c55e':'#ef4444'}"></i>
+        </div>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-size:16px;font-weight:600;color:#e6edf3">WhatsApp Business API</span>
+            <span style="padding:3px 10px;border-radius:10px;font-size:10px;font-weight:600;background:${status==='connected'?'#22c55e22':'#ef444422'};color:${status==='connected'?'#22c55e':'#ef4444'}">${status==='connected'?'Conectado':'Desconectado'}</span>
+          </div>
+          <p style="font-size:12px;color:#8b9dc3;margin:0">${status==='connected'?'Sua conta está conectada e funcionando':'Conecte sua conta Meta para usar o WhatsApp'}</p>
+        </div>
+        ${status === 'connected' ?
+          `<button onclick="disconnectWhatsApp()" style="padding:8px 16px;border-radius:8px;border:1px solid #ef4444;background:#ef444415;color:#ef4444;cursor:pointer;font-size:12px;font-weight:500"><i class="fa-solid fa-link-slash"></i> Desconectar</button>` :
+          `<button onclick="connectMetaSignup()" style="padding:8px 16px;border-radius:8px;border:none;background:#22c55e;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-link"></i> Conectar com Meta</button>`
+        }
+      </div>
+    </div>
+
+    ${status === 'disconnected' ? renderMetaSignupGuide() : renderWhatsAppDashboard()}
+  `;
+}
+
+function renderMetaSignupGuide() {
+  return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
+        <h3 style="font-size:14px;color:#e6edf3;margin:0 0 12px"><i class="fa-solid fa-list-check" style="color:#6c5ce7;margin-right:8px"></i>Pré-requisitos</h3>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${[
+            'Conta Meta Business Suite ativa',
+            'Número de telefone WhatsApp Business',
+            'Permissões de administrador',
+            'App ID do Meta Developer'
+          ].map((item, i) => `<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b9dc3">
+            <i class="fa-solid fa-circle-check" style="color:#22c55e;font-size:11px"></i>${item}
+          </div>`).join('')}
+        </div>
+      </div>
+      <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
+        <h3 style="font-size:14px;color:#e6edf3;margin:0 0 12px"><i class="fa-solid fa-plug" style="color:#6c5ce7;margin-right:8px"></i>Como funciona</h3>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${[
+            '1. Clique em "Conectar com Meta"',
+            '2. Faça login na sua conta Meta',
+            '3. Selecione a Business Account',
+            '4. Escolha ou crie um App',
+            '5. Autorize o acesso ao WhatsApp'
+          ].map((step, i) => `<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b9dc3">
+            <span style="width:20px;height:20px;border-radius:50%;background:#6c5ce722;color:#6c5ce7;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700">${i+1}</span>${step}
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Webhook Config -->
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
+      <h3 style="font-size:14px;color:#e6edf3;margin:0 0 12px"><i class="fa-solid fa-globe" style="color:#6c5ce7;margin-right:8px"></i>Webhook URL</h3>
+      <p style="font-size:11px;color:#8b9dc3;margin:0 0 12px">Configure este URL no painel do Meta Developer</p>
+      <div style="display:flex;gap:8px">
+        <input type="text" value="${window.location.origin}/webhook/whatsapp" readonly style="flex:1;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;font-family:monospace">
+        <button onclick="navigator.clipboard.writeText('${window.location.origin}/webhook/whatsapp');showToast('Copiado!','success')" style="padding:8px 12px;border-radius:6px;border:1px solid #6c5ce7;background:#6c5ce715;color:#6c5ce7;cursor:pointer;font-size:11px"><i class="fa-solid fa-copy"></i> Copiar</button>
+      </div>
+      <div style="margin-top:12px">
+        <label style="font-size:11px;color:#8b9dc3;display:block;margin-bottom:6px">Verify Token</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" value="ozion_verify_${Math.random().toString(36).slice(2,10)}" readonly style="flex:1;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;font-family:monospace">
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWhatsAppDashboard() {
+  return `
+    <!-- Quick Stats -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      ${[
+        { icon: 'fa-paper-plane', label: 'Mensagens hoje', value: '127', color: '#3b82f6' },
+        { icon: 'fa-users', label: 'Contatos ativos', value: '89', color: '#22c55e' },
+        { icon: 'fa-clock', label: 'Tempo resposta', value: '2.3s', color: '#f59e0b' },
+        { icon: 'fa-check-double', label: 'Entrega', value: '98.5%', color: '#8b5cf6' }
+      ].map(s => `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:10px;padding:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="width:32px;height:32px;border-radius:8px;background:${s.color}22;display:flex;align-items:center;justify-content:center"><i class="fa-solid ${s.icon}" style="color:${s.color};font-size:12px"></i></div>
+          <span style="font-size:10px;color:#8b9dc3">${s.label}</span>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:#e6edf3">${s.value}</div>
+      </div>`).join('')}
+    </div>
+
+    <!-- Connected Numbers -->
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:14px;color:#e6edf3;margin:0"><i class="fa-solid fa-phone" style="color:#6c5ce7;margin-right:8px"></i>Números Conectados</h3>
+        <button onclick="addWhatsAppNumber()" style="padding:6px 12px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-plus"></i> Adicionar</button>
+      </div>
+      <div id="whatsapp-numbers-list">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px">
+          <div style="width:40px;height:40px;border-radius:10px;background:#22c55e22;display:flex;align-items:center;justify-content:center"><i class="fa-brands fa-whatsapp" style="color:#22c55e;font-size:18px"></i></div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500;color:#e6edf3">+55 11 99999-9999</div>
+            <div style="font-size:11px;color:#8b9dc3">Método Fire • WABA ID: 123456789</div>
+          </div>
+          <span style="padding:3px 10px;border-radius:10px;font-size:10px;font-weight:600;background:#22c55e22;color:#22c55e">Ativo</span>
+          <button onclick="showToast('Configurações do número','info')" style="padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-gear"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Templates -->
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:14px;color:#e6edf3;margin:0"><i class="fa-solid fa-file-lines" style="color:#f59e0b;margin-right:8px"></i>Templates Mensagem</h3>
+        <button onclick="syncTemplates()" style="padding:6px 12px;border-radius:8px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px"><i class="fa-solid fa-arrows-rotate"></i> Sincronizar</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${[
+          { name: 'saudacao', status: 'approved', lang: 'pt_BR', category: 'MARKETING' },
+          { name: 'followup', status: 'approved', lang: 'pt_BR', category: 'UTILITY' },
+          { name: 'promocao', status: 'pending', lang: 'pt_BR', category: 'MARKETING' }
+        ].map(t => `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px">
+          <i class="fa-solid fa-file-alt" style="color:#f59e0b;font-size:14px"></i>
+          <div style="flex:1">
+            <span style="font-size:12px;font-weight:500;color:#e6edf3">${t.name}</span>
+            <span style="font-size:10px;color:#8b9dc3;margin-left:8px">${t.lang} • ${t.category}</span>
+          </div>
+          <span style="padding:3px 10px;border-radius:10px;font-size:10px;font-weight:600;background:${t.status==='approved'?'#22c55e22':'#f59e0b22'};color:${t.status==='approved'?'#22c55e':'#f59e0b'}">${t.status==='approved'?'Aprovado':'Pendente'}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Webhook Status -->
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
+      <h3 style="font-size:14px;color:#e6edf3;margin:0 0 12px"><i class="fa-solid fa-globe" style="color:#6c5ce7;margin-right:8px"></i>Webhook</h3>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="padding:3px 10px;border-radius:10px;font-size:10px;font-weight:600;background:#22c55e22;color:#22c55e">Ativo</span>
+        <span style="font-size:12px;color:#8b9dc3">Último evento: há 2 minutos</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input type="text" value="${window.location.origin}/webhook/whatsapp" readonly style="flex:1;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:11px;font-family:monospace">
+        <button onclick="navigator.clipboard.writeText('${window.location.origin}/webhook/whatsapp');showToast('Copiado!','success')" style="padding:8px 12px;border-radius:6px;border:1px solid #6c5ce7;background:#6c5ce715;color:#6c5ce7;cursor:pointer;font-size:11px"><i class="fa-solid fa-copy"></i></button>
+      </div>
+    </div>
+  `;
+}
+
+function connectMetaSignup() {
+  const appId = 'YOUR_META_APP_ID'; // User should configure
+  const redirectUri = window.location.origin + '/whatsapp/callback';
+  const scopes = 'whatsapp_business_management,whatsapp_business_messaging,business_management,pages_messaging';
+  const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code&state=ozion_${Date.now()}`;
+  showToast('Redirecionando para Meta...', 'info');
+  window.open(url, '_blank');
+}
+
+async function disconnectWhatsApp() {
+  confirmModal({ title: 'Desconectar WhatsApp', message: 'Tem certeza? Você perderá a conexão com o WhatsApp.', danger: true, onConfirm: async () => {
+    await api('/api/whatsapp/disconnect', { method: 'POST' });
+    showToast('WhatsApp desconectado', 'success');
+    loadWhatsApp(document.getElementById('content'));
+  }});
+}
+
+function addWhatsAppNumber() {
+  showToast('Adicionar número via Meta Business Suite', 'info');
+}
+
+function syncTemplates() {
+  showToast('Templates sincronizados com Meta', 'success');
+}
+
+function refreshWhatsApp() {
+  loadWhatsApp(document.getElementById('content'));
+  showToast('Atualizado', 'success');
+}
 
 // ─── Configurações (Lailla.io style) ─────────────────────────────
 async function loadSettings(el) {

@@ -188,4 +188,45 @@ router.get('/status/:tenantId', (req: Request, res: Response) => {
   }
 });
 
+// ============================================================
+// GET /api/whatsapp/status (simple, for frontend)
+// ============================================================
+router.get('/status', (req: Request, res: Response) => {
+  try {
+    const tid = (req.headers['x-tenant-id'] as string) || 'default';
+    const cred = db.select().from(whatsappCredentials)
+      .where(eq(whatsappCredentials.tenantId, tid))
+      .get();
+
+    if (!cred) {
+      return res.json({ connected: false });
+    }
+
+    res.json({
+      connected: true,
+      phoneNumber: cred.displayPhoneNumber,
+      businessName: cred.businessName,
+      wabaName: cred.wabaName,
+      verified: cred.phoneNumberVerified,
+      qualityRating: cred.qualityRating,
+      connectedAt: cred.connectedAt,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================
+// POST /api/whatsapp/disconnect
+// ============================================================
+router.post('/disconnect', (req: Request, res: Response) => {
+  try {
+    const tid = (req.headers['x-tenant-id'] as string) || 'default';
+    db.delete(whatsappCredentials).where(eq(whatsappCredentials.tenantId, tid)).run();
+    res.json({ ok: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
