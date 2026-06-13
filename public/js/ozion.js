@@ -3139,164 +3139,216 @@ let whatsappNumbers = [];
 async function loadWhatsApp(el) {
   const wa = await api('/api/whatsapp/status');
   const status = wa?.connected ? 'connected' : 'disconnected';
-  
+  const phone = wa?.phone_number || '+5511956294683';
+  const businessName = wa?.business_name || 'Safira Hellen Vieira';
+
   el.innerHTML = `
+    <!-- Header -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <div>
-        <h2 style="margin:0;font-size:20px">WhatsApp</h2>
+        <h2 style="margin:0;font-size:20px;font-weight:700;color:#e6edf3">WhatsApp</h2>
         <p style="color:#8b9dc3;margin-top:2px;font-size:12px">Conecte seu WhatsApp via Meta Cloud API</p>
       </div>
-      <div style="display:flex;gap:8px">
-        <button onclick="refreshWhatsApp()" style="padding:6px 12px;border-radius:8px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px"><i class="fa-solid fa-arrows-rotate"></i> Atualizar</button>
-      </div>
+      <button onclick="refreshWhatsApp()" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7';this.style.color='#e6edf3'" onmouseout="this.style.borderColor='#2a3050';this.style.color='#8b9dc3'">
+        <i class="fa-solid fa-arrows-rotate"></i> Atualizar
+      </button>
     </div>
 
     <!-- Connection Status Card -->
-    <div style="background:${status==='connected'?'rgba(34,197,94,.08)':'rgba(239,68,68,.08)'};border:1px solid ${status==='connected'?'#22c55e44':'#ef444444'};border-radius:12px;padding:20px;margin-bottom:20px">
+    <div style="background:${status==='connected'?'rgba(34,197,94,.06)':'rgba(239,68,68,.06)'};border:1px solid ${status==='connected'?'#22c55e33':'#ef444433'};border-radius:12px;padding:20px 24px;margin-bottom:20px">
       <div style="display:flex;align-items:center;gap:16px">
-        <div style="width:56px;height:56px;border-radius:14px;background:${status==='connected'?'#22c55e':'#ef4444'}22;display:flex;align-items:center;justify-content:center">
-          <i class="fa-brands fa-whatsapp" style="font-size:28px;color:${status==='connected'?'#22c55e':'#ef4444'}"></i>
+        <div style="width:56px;height:56px;border-radius:14px;background:${status==='connected'?'#22c55e15':'#ef444415'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fa-brands fa-whatsapp" style="font-size:28px;color:${status==='connected'?'#25d366':'#ef4444'}"></i>
         </div>
         <div style="flex:1">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <span style="font-size:16px;font-weight:600;color:#e6edf3">WhatsApp Business API</span>
-            <span style="padding:3px 10px;border-radius:10px;font-size:10px;font-weight:600;background:${status==='connected'?'#22c55e22':'#ef444422'};color:${status==='connected'?'#22c55e':'#ef4444'}">${status==='connected'?'Conectado':'Desconectado'}</span>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+            <span style="font-size:16px;font-weight:700;color:#e6edf3">WhatsApp Business API</span>
+            <span style="padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:${status==='connected'?'#22c55e22;color:#22c55e':'#ef444422;color:#ef4444'}">${status==='connected'?'Conectado':'Desconectado'}</span>
           </div>
-          <p style="font-size:12px;color:#8b9dc3;margin:0">${status==='connected'?'Sua conta está conectada e funcionando':'Conecte sua conta Meta para usar o WhatsApp'}</p>
+          <p style="font-size:13px;color:#8b9dc3;margin:0">${status==='connected'?'Sua conta está conectada e pronta para uso':'Conecte sua conta Meta para usar o WhatsApp'}</p>
         </div>
         ${status === 'connected' ?
-          `<button onclick="disconnectWhatsApp()" style="padding:8px 16px;border-radius:8px;border:1px solid #ef4444;background:#ef444415;color:#ef4444;cursor:pointer;font-size:12px;font-weight:500"><i class="fa-solid fa-link-slash"></i> Desconectar</button>` :
-          `<button onclick="connectMetaSignup()" style="padding:8px 16px;border-radius:8px;border:none;background:#22c55e;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-link"></i> Conectar com Meta</button>`
+          `<button onclick="disconnectWhatsApp()" style="padding:10px 20px;border-radius:8px;border:1px solid #ef4444;background:rgba(239,68,68,.08);color:#ef4444;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.15)'" onmouseout="this.style.background='rgba(239,68,68,.08)'">
+            <i class="fa-solid fa-link-slash"></i> Desconectar
+          </button>` :
+          `<button onclick="connectMetaSignup()" style="padding:10px 20px;border-radius:8px;border:none;background:#25d366;color:white;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all .2s;box-shadow:0 4px 12px rgba(37,211,102,.3)" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(37,211,102,.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 12px rgba(37,211,102,.3)'">
+            <i class="fa-solid fa-link"></i> Conectar com Meta
+          </button>`
         }
       </div>
     </div>
 
-    ${status === 'disconnected' ? renderMetaSignupGuide() : renderWhatsAppDashboard()}
+    ${status === 'disconnected' ? renderMetaSignupGuide() : renderConnectedDashboard(businessName, phone)}
   `;
 }
 
 function renderMetaSignupGuide() {
+  const webhookUrl = window.location.origin + '/webhook/whatsapp';
+  const verifyToken = 'ozion_verify_' + Math.random().toString(36).slice(2, 10);
   return `
+    <!-- Two columns: Pré-requisitos + Como funciona -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <!-- Pré-requisitos -->
       <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
-        <h3 style="font-size:14px;color:#e6edf3;margin:0 0 12px"><i class="fa-solid fa-list-check" style="color:#6c5ce7;margin-right:8px"></i>Pré-requisitos</h3>
-        <div style="display:flex;flex-direction:column;gap:8px">
+        <h3 style="font-size:15px;color:#e6edf3;margin:0 0 16px;font-weight:700;display:flex;align-items:center;gap:8px">
+          <i class="fa-solid fa-list-check" style="color:#6c5ce7"></i> Pré-requisitos
+        </h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
           ${[
             'Conta Meta Business Suite ativa',
             'Número de telefone WhatsApp Business',
             'Permissões de administrador',
             'App ID do Meta Developer'
-          ].map((item, i) => `<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b9dc3">
-            <i class="fa-solid fa-circle-check" style="color:#22c55e;font-size:11px"></i>${item}
+          ].map(item => `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b9dc3">
+            <div style="width:20px;height:20px;border-radius:50%;background:#22c55e22;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="fa-solid fa-check" style="color:#22c55e;font-size:10px"></i>
+            </div>
+            ${item}
           </div>`).join('')}
         </div>
       </div>
+      <!-- Como funciona -->
       <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
-        <h3 style="font-size:14px;color:#e6edf3;margin:0 0 12px"><i class="fa-solid fa-plug" style="color:#6c5ce7;margin-right:8px"></i>Como funciona</h3>
-        <div style="display:flex;flex-direction:column;gap:8px">
+        <h3 style="font-size:15px;color:#e6edf3;margin:0 0 16px;font-weight:700;display:flex;align-items:center;gap:8px">
+          <i class="fa-solid fa-plug" style="color:#6c5ce7"></i> Como funciona
+        </h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
           ${[
-            '1. Clique em "Conectar com Meta"',
-            '2. Faça login na sua conta Meta',
-            '3. Selecione a Business Account',
-            '4. Escolha ou crie um App',
-            '5. Autorize o acesso ao WhatsApp'
-          ].map((step, i) => `<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b9dc3">
-            <span style="width:20px;height:20px;border-radius:50%;background:#6c5ce722;color:#6c5ce7;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700">${i+1}</span>${step}
+            'Clique em "Conectar com Meta"',
+            'Faça login na sua conta Meta',
+            'Selecione a Business Account',
+            'Escolha ou crie um App',
+            'Autorize o acesso ao WhatsApp'
+          ].map((step, i) => `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b9dc3">
+            <div style="width:22px;height:22px;border-radius:50%;background:#6c5ce722;color:#6c5ce7;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${i + 1}</div>
+            ${step}
           </div>`).join('')}
         </div>
       </div>
     </div>
 
-    <!-- Webhook Config -->
+    <!-- Webhook URL -->
     <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
-      <h3 style="font-size:14px;color:#e6edf3;margin:0 0 12px"><i class="fa-solid fa-globe" style="color:#6c5ce7;margin-right:8px"></i>Webhook URL</h3>
-      <p style="font-size:11px;color:#8b9dc3;margin:0 0 12px">Configure este URL no painel do Meta Developer</p>
-      <div style="display:flex;gap:8px">
-        <input type="text" value="${window.location.origin}/webhook/whatsapp" readonly style="flex:1;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;font-family:monospace">
-        <button onclick="navigator.clipboard.writeText('${window.location.origin}/webhook/whatsapp');showToast('Copiado!','success')" style="padding:8px 12px;border-radius:6px;border:1px solid #6c5ce7;background:#6c5ce715;color:#6c5ce7;cursor:pointer;font-size:11px"><i class="fa-solid fa-copy"></i> Copiar</button>
-      </div>
-      <div style="margin-top:12px">
-        <label style="font-size:11px;color:#8b9dc3;display:block;margin-bottom:6px">Verify Token</label>
+      <h3 style="font-size:15px;color:#e6edf3;margin:0 0 6px;font-weight:700;display:flex;align-items:center;gap:8px">
+        <i class="fa-solid fa-globe" style="color:#6c5ce7"></i> Webhook URL
+      </h3>
+      <p style="font-size:12px;color:#8b9dc3;margin:0 0 14px">Configure este URL no painel do Meta Developer</p>
+      <div style="margin-bottom:14px">
         <div style="display:flex;gap:8px">
-          <input type="text" value="ozion_verify_${Math.random().toString(36).slice(2,10)}" readonly style="flex:1;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;font-family:monospace">
+          <div style="flex:1;padding:10px 14px;background:#0d1117;border:1px solid #2a3050;border-radius:8px;font-family:'SF Mono',Consolas,monospace;font-size:13px;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center">${webhookUrl}</div>
+          <button onclick="navigator.clipboard.writeText('${webhookUrl}');showToast('Copiado!','success')" style="padding:10px 16px;border-radius:8px;border:1px solid #6c5ce7;background:rgba(108,92,231,.08);color:#6c5ce7;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all .2s;white-space:nowrap" onmouseover="this.style.background='rgba(108,92,231,.15)'" onmouseout="this.style.background='rgba(108,92,231,.08)'">
+            <i class="fa-solid fa-copy"></i> Copiar
+          </button>
         </div>
+      </div>
+      <div>
+        <label style="font-size:11px;color:#8b9dc3;display:block;margin-bottom:6px;font-weight:500">Verify Token</label>
+        <div style="padding:10px 14px;background:#0d1117;border:1px solid #2a3050;border-radius:8px;font-family:'SF Mono',Consolas,monospace;font-size:13px;color:#e6edf3">${verifyToken}</div>
       </div>
     </div>
   `;
 }
 
-function renderWhatsAppDashboard() {
+function renderConnectedDashboard(businessName, phone) {
   return `
-    <!-- Quick Stats -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
-      ${[
-        { icon: 'fa-paper-plane', label: 'Mensagens hoje', value: '127', color: '#3b82f6' },
-        { icon: 'fa-users', label: 'Contatos ativos', value: '89', color: '#22c55e' },
-        { icon: 'fa-clock', label: 'Tempo resposta', value: '2.3s', color: '#f59e0b' },
-        { icon: 'fa-check-double', label: 'Entrega', value: '98.5%', color: '#8b5cf6' }
-      ].map(s => `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:10px;padding:16px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <div style="width:32px;height:32px;border-radius:8px;background:${s.color}22;display:flex;align-items:center;justify-content:center"><i class="fa-solid ${s.icon}" style="color:${s.color};font-size:12px"></i></div>
-          <span style="font-size:10px;color:#8b9dc3">${s.label}</span>
+    <!-- Tabs: Sessões Ativas / Inativas -->
+    <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid #1e2d3d">
+      <button onclick="showWATab('active')" id="wa-tab-active" style="flex:1;padding:14px;border:none;background:transparent;color:#6c5ce7;font-size:14px;font-weight:600;cursor:pointer;border-bottom:2px solid #6c5ce7;margin-bottom:-2px;transition:all .2s">Sessões Ativas</button>
+      <button onclick="showWATab('inactive')" id="wa-tab-inactive" style="flex:1;padding:14px;border:none;background:transparent;color:#8b9dc3;font-size:14px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s">Sessões Inativas</button>
+    </div>
+
+    <!-- Active Sessions -->
+    <div id="wa-sessions-active" style="display:grid;grid-template-columns:280px 1fr;gap:16px">
+      <!-- Connect New -->
+      <div onclick="connectMetaSignup()" style="border:2px dashed #2a3050;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:240px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7';this.style.background='rgba(108,92,231,.03)'" onmouseout="this.style.borderColor='#2a3050';this.style.background='transparent'">
+        <div style="width:64px;height:64px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+          <i class="fa-brands fa-whatsapp" style="font-size:28px;color:#25d366"></i>
         </div>
-        <div style="font-size:22px;font-weight:700;color:#e6edf3">${s.value}</div>
-      </div>`).join('')}
-    </div>
-
-    <!-- Connected Numbers -->
-    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h3 style="font-size:14px;color:#e6edf3;margin:0"><i class="fa-solid fa-phone" style="color:#6c5ce7;margin-right:8px"></i>Números Conectados</h3>
-        <button onclick="addWhatsAppNumber()" style="padding:6px 12px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-plus"></i> Adicionar</button>
+        <div style="font-size:14px;font-weight:600;color:#e6edf3;margin-bottom:4px">Conectar um novo dispositivo</div>
+        <div style="font-size:12px;color:#8b9dc3;text-align:center;padding:0 20px">Clique para adicionar um novo whatsapp</div>
       </div>
-      <div id="whatsapp-numbers-list">
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px">
-          <div style="width:40px;height:40px;border-radius:10px;background:#22c55e22;display:flex;align-items:center;justify-content:center"><i class="fa-brands fa-whatsapp" style="color:#22c55e;font-size:18px"></i></div>
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:500;color:#e6edf3">+55 11 99999-9999</div>
-            <div style="font-size:11px;color:#8b9dc3">Método Fire • WABA ID: 123456789</div>
+
+      <!-- Connected Session Card -->
+      <div style="border:1px solid #2a3050;border-radius:12px;overflow:hidden;position:relative">
+        <!-- Blue success bar -->
+        <div style="background:linear-gradient(135deg,#3b82f6,#6c5ce7);padding:12px 20px;text-align:center">
+          <span style="font-size:14px;font-weight:600;color:white">Conexão realizada com sucesso!</span>
+        </div>
+
+        <!-- Session Info -->
+        <div style="padding:20px;background:#1a1f35">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+            <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#0081fb,#00c6ff);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.69 0-3.27-.46-4.62-1.26l-.33-.2-2.87.85.85-2.87-.2-.33A7.963 7.963 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
+            </div>
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="padding:4px 12px;border-radius:6px;font-size:13px;font-weight:600;background:#3b82f622;color:#3b82f6;font-family:monospace">${phone}</span>
+              </div>
+              <div style="font-size:14px;color:#8b9dc3;margin-top:4px">${businessName}</div>
+            </div>
+            <button onclick="showToast('Editar sessão','info')" style="width:36px;height:36px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7';this.style.color='#e6edf3'" onmouseout="this.style.borderColor='#2a3050';this.style.color='#8b9dc3'">
+              <i class="fa-solid fa-pen-to-square" style="font-size:12px"></i>
+            </button>
           </div>
-          <span style="padding:3px 10px;border-radius:10px;font-size:10px;font-weight:600;background:#22c55e22;color:#22c55e">Ativo</span>
-          <button onclick="showToast('Configurações do número','info')" style="padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-gear"></i></button>
+
+          <!-- Actions -->
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button onclick="showToast('Detalhes da sessão','info')" style="width:100%;padding:12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+              Mostrar Detalhes
+            </button>
+            <button onclick="disconnectWhatsApp()" style="width:100%;padding:12px;border:1px solid #ef4444;border-radius:8px;background:transparent;color:#ef4444;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.background='rgba(239,68,68,.08)'" onmouseout="this.style.background='transparent'">
+              <i class="fa-solid fa-link-slash"></i> Desconectar
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Templates -->
-    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h3 style="font-size:14px;color:#e6edf3;margin:0"><i class="fa-solid fa-file-lines" style="color:#f59e0b;margin-right:8px"></i>Templates Mensagem</h3>
-        <button onclick="syncTemplates()" style="padding:6px 12px;border-radius:8px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px"><i class="fa-solid fa-arrows-rotate"></i> Sincronizar</button>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        ${[
-          { name: 'saudacao', status: 'approved', lang: 'pt_BR', category: 'MARKETING' },
-          { name: 'followup', status: 'approved', lang: 'pt_BR', category: 'UTILITY' },
-          { name: 'promocao', status: 'pending', lang: 'pt_BR', category: 'MARKETING' }
-        ].map(t => `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px">
-          <i class="fa-solid fa-file-alt" style="color:#f59e0b;font-size:14px"></i>
-          <div style="flex:1">
-            <span style="font-size:12px;font-weight:500;color:#e6edf3">${t.name}</span>
-            <span style="font-size:10px;color:#8b9dc3;margin-left:8px">${t.lang} • ${t.category}</span>
-          </div>
-          <span style="padding:3px 10px;border-radius:10px;font-size:10px;font-weight:600;background:${t.status==='approved'?'#22c55e22':'#f59e0b22'};color:${t.status==='approved'?'#22c55e':'#f59e0b'}">${t.status==='approved'?'Aprovado':'Pendente'}</span>
-        </div>`).join('')}
+    <!-- Inactive Sessions (hidden by default) -->
+    <div id="wa-sessions-inactive" style="display:none">
+      <div style="text-align:center;padding:60px 20px;color:#8b9dc3">
+        <div style="width:64px;height:64px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+          <i class="fa-solid fa-clock-rotate-left" style="font-size:24px;opacity:.4"></i>
+        </div>
+        <p style="font-size:14px;font-weight:500;margin:0 0 4px">Nenhuma sessão inativa</p>
+        <p style="font-size:12px;opacity:.7;margin:0">Sessões desconectadas aparecerão aqui</p>
       </div>
     </div>
 
-    <!-- Webhook Status -->
-    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
-      <h3 style="font-size:14px;color:#e6edf3;margin:0 0 12px"><i class="fa-solid fa-globe" style="color:#6c5ce7;margin-right:8px"></i>Webhook</h3>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="padding:3px 10px;border-radius:10px;font-size:10px;font-weight:600;background:#22c55e22;color:#22c55e">Ativo</span>
+    <!-- Webhook Status (below) -->
+    <div style="margin-top:20px;background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
+      <h3 style="font-size:15px;color:#e6edf3;margin:0 0 12px;font-weight:700;display:flex;align-items:center;gap:8px">
+        <i class="fa-solid fa-globe" style="color:#6c5ce7"></i> Webhook Status
+      </h3>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:#22c55e22;color:#22c55e">Ativo</span>
         <span style="font-size:12px;color:#8b9dc3">Último evento: há 2 minutos</span>
       </div>
       <div style="display:flex;gap:8px">
-        <input type="text" value="${window.location.origin}/webhook/whatsapp" readonly style="flex:1;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:11px;font-family:monospace">
-        <button onclick="navigator.clipboard.writeText('${window.location.origin}/webhook/whatsapp');showToast('Copiado!','success')" style="padding:8px 12px;border-radius:6px;border:1px solid #6c5ce7;background:#6c5ce715;color:#6c5ce7;cursor:pointer;font-size:11px"><i class="fa-solid fa-copy"></i></button>
+        <div style="flex:1;padding:8px 12px;background:#0d1117;border:1px solid #2a3050;border-radius:6px;font-family:monospace;font-size:11px;color:#8b9dc3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center">${window.location.origin}/webhook/whatsapp</div>
+        <button onclick="navigator.clipboard.writeText('${window.location.origin}/webhook/whatsapp');showToast('Copiado!','success')" style="padding:8px 12px;border-radius:6px;border:1px solid #6c5ce7;background:rgba(108,92,231,.08);color:#6c5ce7;cursor:pointer;font-size:11px"><i class="fa-solid fa-copy"></i></button>
       </div>
     </div>
   `;
+}
+
+function showWATab(tab) {
+  const active = document.getElementById('wa-sessions-active');
+  const inactive = document.getElementById('wa-sessions-inactive');
+  const tabActive = document.getElementById('wa-tab-active');
+  const tabInactive = document.getElementById('wa-tab-inactive');
+  if (tab === 'active') {
+    if (active) active.style.display = 'grid';
+    if (inactive) inactive.style.display = 'none';
+    if (tabActive) { tabActive.style.color = '#6c5ce7'; tabActive.style.borderBottom = '2px solid #6c5ce7'; tabActive.style.fontWeight = '600'; }
+    if (tabInactive) { tabInactive.style.color = '#8b9dc3'; tabInactive.style.borderBottom = '2px solid transparent'; tabInactive.style.fontWeight = '500'; }
+  } else {
+    if (active) active.style.display = 'none';
+    if (inactive) inactive.style.display = 'block';
+    if (tabActive) { tabActive.style.color = '#8b9dc3'; tabActive.style.borderBottom = '2px solid transparent'; tabActive.style.fontWeight = '500'; }
+    if (tabInactive) { tabInactive.style.color = '#6c5ce7'; tabInactive.style.borderBottom = '2px solid #6c5ce7'; tabInactive.style.fontWeight = '600'; }
+  }
 }
 
 function connectMetaSignup() {
@@ -3314,14 +3366,6 @@ async function disconnectWhatsApp() {
     showToast('WhatsApp desconectado', 'success');
     loadWhatsApp(document.getElementById('content'));
   }});
-}
-
-function addWhatsAppNumber() {
-  showToast('Adicionar número via Meta Business Suite', 'info');
-}
-
-function syncTemplates() {
-  showToast('Templates sincronizados com Meta', 'success');
 }
 
 function refreshWhatsApp() {
