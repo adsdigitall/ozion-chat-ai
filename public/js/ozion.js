@@ -3342,7 +3342,7 @@ let settingsTab = 'workspace';
 
 function setSettingsTab(tab) {
   settingsTab = tab;
-  const el = document.getElementById('page-content');
+  const el = document.getElementById('content');
   if (el) loadSettings(el);
 }
 
@@ -3657,103 +3657,134 @@ function runHealthCheck() { showToast('Verificando componentes...', 'info'); api
 function exportSystemData() { showToast('Exportando dados do sistema...', 'info'); }
 
 function showCreatePlan() {
-  showModal('Novo Plano', `
-    <div class="form-group"><label>Nome</label><input type="text" id="plan-name" class="form-input" placeholder="Ex: Profissional"></div>
-    <div class="form-group"><label>Preço (R$)</label><input type="number" id="plan-price" class="form-input" placeholder="197"></div>
-    <div class="form-group"><label>Features (uma por linha)</label><textarea id="plan-features" class="form-input" rows="4" placeholder="3 agentes IA&#10;15M tokens&#10;1M tokens voz"></textarea></div>
-  `, async () => {
-    const name = document.getElementById('plan-name').value;
-    const price = parseFloat(document.getElementById('plan-price').value) || 0;
-    const features = document.getElementById('plan-features').value.split('\n').filter(Boolean);
-    if (!name) return showToast('Nome obrigatório', 'error');
-    await api('/api/plans', { method: 'POST', body: JSON.stringify({ name, price, features }) });
-    showToast('Plano criado!', 'success');
-    closeModal();
-    loadSettings(document.getElementById('page-content'));
+  showModal({
+    title: 'Novo Plano',
+    body: `
+    <div class="form-group"><label>Nome</label><input type="text" id="plan-name" placeholder="Ex: Profissional" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Preço (R$)</label><input type="number" id="plan-price" placeholder="197" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Features (uma por linha)</label><textarea id="plan-features" rows="4" placeholder="3 agentes IA&#10;15M tokens&#10;1M tokens voz" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px;resize:vertical;font-family:inherit"></textarea></div>`,
+    footer: `
+      <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      <button onclick="saveNewPlan()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`
   });
+}
+
+async function saveNewPlan() {
+  const name = document.getElementById('plan-name').value;
+  const price = parseFloat(document.getElementById('plan-price').value) || 0;
+  const features = document.getElementById('plan-features').value.split('\n').filter(Boolean);
+  if (!name) return showToast('Nome obrigatório', 'error');
+  await api('/api/plans', { method: 'POST', body: JSON.stringify({ name, price, features }) });
+  showToast('Plano criado!', 'success');
+  document.querySelector('.modal-overlay.show')?.remove();
+  loadSettings(document.getElementById('content'));
 }
 
 function editPlan(id, name, price) {
-  showModal('Editar Plano', `
-    <div class="form-group"><label>Nome</label><input type="text" id="plan-name" class="form-input" value="${name}"></div>
-    <div class="form-group"><label>Preço (R$)</label><input type="number" id="plan-price" class="form-input" value="${price}"></div>
-  `, async () => {
-    const n = document.getElementById('plan-name').value;
-    const p = parseFloat(document.getElementById('plan-price').value) || 0;
-    if (!n) return showToast('Nome obrigatório', 'error');
-    await api(`/api/plans/${id}`, { method: 'PUT', body: JSON.stringify({ name: n, price: p }) });
-    showToast('Plano atualizado!', 'success');
-    closeModal();
-    loadSettings(document.getElementById('page-content'));
+  showModal({
+    title: 'Editar Plano',
+    body: `
+    <div class="form-group"><label>Nome</label><input type="text" id="plan-name" value="${name}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Preço (R$)</label><input type="number" id="plan-price" value="${price}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>`,
+    footer: `
+      <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      <button onclick="saveEditPlan('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>`
   });
 }
 
-async function deletePlan(id) {
-  const ok = await confirmModal('Tem certeza que deseja excluir este plano?');
-  if (!ok) return;
-  await api(`/api/plans/${id}`, { method: 'DELETE' });
-  showToast('Plano excluído!', 'success');
-  loadSettings(document.getElementById('page-content'));
+async function saveEditPlan(id) {
+  const n = document.getElementById('plan-name').value;
+  const p = parseFloat(document.getElementById('plan-price').value) || 0;
+  if (!n) return showToast('Nome obrigatório', 'error');
+  await api(`/api/plans/${id}`, { method: 'PUT', body: JSON.stringify({ name: n, price: p }) });
+  showToast('Plano atualizado!', 'success');
+  document.querySelector('.modal-overlay.show')?.remove();
+  loadSettings(document.getElementById('content'));
+}
+
+function deletePlan(id) {
+  confirmModal({ title: 'Excluir Plano', message: 'Tem certeza que deseja excluir este plano?', danger: true, onConfirm: async () => {
+    await api(`/api/plans/${id}`, { method: 'DELETE' });
+    showToast('Plano excluído!', 'success');
+    loadSettings(document.getElementById('content'));
+  }});
 }
 
 function showCreateTenant() {
-  showModal('Novo Tenant', `
-    <div class="form-group"><label>Nome</label><input type="text" id="tenant-name" class="form-input" placeholder="Empresa XYZ"></div>
-    <div class="form-group"><label>Email</label><input type="email" id="tenant-email" class="form-input" placeholder="admin@empresa.com"></div>
-    <div class="form-group"><label>Plano</label><select id="tenant-plan" class="form-input"><option>Gratuito</option><option>Essencial</option><option>Profissional</option><option>Enterprise</option></select></div>
-  `, async () => {
-    const name = document.getElementById('tenant-name').value;
-    const email = document.getElementById('tenant-email').value;
-    if (!name) return showToast('Nome obrigatório', 'error');
-    await api('/api/admin/customers', { method: 'POST', body: JSON.stringify({ name, email }) });
-    showToast('Tenant criado!', 'success');
-    closeModal();
-    loadSettings(document.getElementById('page-content'));
+  showModal({
+    title: 'Novo Tenant',
+    body: `
+    <div class="form-group"><label>Nome</label><input type="text" id="tenant-name" placeholder="Empresa XYZ" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="tenant-email" placeholder="admin@empresa.com" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Plano</label><select id="tenant-plan" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option>Gratuito</option><option>Essencial</option><option>Profissional</option><option>Enterprise</option></select></div>`,
+    footer: `
+      <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      <button onclick="saveNewTenant()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`
   });
+}
+
+async function saveNewTenant() {
+  const name = document.getElementById('tenant-name').value;
+  const email = document.getElementById('tenant-email').value;
+  if (!name) return showToast('Nome obrigatório', 'error');
+  await api('/api/admin/customers', { method: 'POST', body: JSON.stringify({ name, email }) });
+  showToast('Tenant criado!', 'success');
+  document.querySelector('.modal-overlay.show')?.remove();
+  loadSettings(document.getElementById('content'));
 }
 
 function editTenant(id) { showToast(`Editando tenant ${id.slice(0,8)}`, 'info'); }
 function toggleTenant(id) { showToast(`Tenant ${id.slice(0,8)} bloqueado/desbloqueado`, 'info'); }
-async function deleteTenant(id) {
-  const ok = await confirmModal('Tem certeza que deseja excluir este tenant? Todos os dados serão perdidos.');
-  if (!ok) return;
-  showToast('Tenant excluído!', 'success');
-  loadSettings(document.getElementById('page-content'));
+function deleteTenant(id) {
+  confirmModal({ title: 'Excluir Tenant', message: 'Tem certeza que deseja excluir este tenant? Todos os dados serão perdidos.', danger: true, onConfirm: () => {
+    showToast('Tenant excluído!', 'success');
+    loadSettings(document.getElementById('content'));
+  }});
 }
 
 function showCreateUser() {
-  showModal('Novo Usuário', `
-    <div class="form-group"><label>Nome</label><input type="text" id="user-name" class="form-input" placeholder="João Silva"></div>
-    <div class="form-group"><label>Email</label><input type="email" id="user-email" class="form-input" placeholder="joao@email.com"></div>
-    <div class="form-group"><label>Senha</label><input type="password" id="user-pass" class="form-input" placeholder="••••••"></div>
-    <div class="form-group"><label>Perfil</label><select id="user-role" class="form-input"><option value="user">Usuário</option><option value="admin">Administrador</option></select></div>
-  `, async () => {
-    const name = document.getElementById('user-name').value;
-    const email = document.getElementById('user-email').value;
-    const password = document.getElementById('user-pass').value;
-    const role = document.getElementById('user-role').value;
-    if (!name || !email) return showToast('Nome e email obrigatórios', 'error');
-    showToast('Usuário criado!', 'success');
-    closeModal();
-    loadSettings(document.getElementById('page-content'));
+  showModal({
+    title: 'Novo Usuário',
+    body: `
+    <div class="form-group"><label>Nome</label><input type="text" id="user-name" placeholder="João Silva" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="user-email" placeholder="joao@email.com" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Senha</label><input type="password" id="user-pass" placeholder="••••••" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Perfil</label><select id="user-role" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="user">Usuário</option><option value="admin">Administrador</option></select></div>`,
+    footer: `
+      <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      <button onclick="saveNewUser()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`
   });
 }
 
+async function saveNewUser() {
+  const name = document.getElementById('user-name').value;
+  const email = document.getElementById('user-email').value;
+  if (!name || !email) return showToast('Nome e email obrigatórios', 'error');
+  showToast('Usuário criado!', 'success');
+  document.querySelector('.modal-overlay.show')?.remove();
+  loadSettings(document.getElementById('content'));
+}
+
 function editUser(id) { showToast(`Editando usuário ${id.slice(0,8)}`, 'info'); }
-async function deleteUser(id) {
-  const ok = await confirmModal('Tem certeza que deseja excluir este usuário?');
-  if (!ok) return;
-  showToast('Usuário excluído!', 'success');
-  loadSettings(document.getElementById('page-content'));
+function deleteUser(id) {
+  confirmModal({ title: 'Excluir Usuário', message: 'Tem certeza que deseja excluir este usuário?', danger: true, onConfirm: () => {
+    showToast('Usuário excluído!', 'success');
+    loadSettings(document.getElementById('content'));
+  }});
 }
 
 function createBackup() { showToast('Backup criado com sucesso!', 'success'); }
 function showCreateChangelog() {
-  showModal('Novo Changelog', `
-    <div class="form-group"><label>Versão</label><input type="text" id="cl-version" class="form-input" placeholder="1.0.0"></div>
-    <div class="form-group"><label>Título</label><input type="text" id="cl-title" class="form-input" placeholder="Melhorias no chat"></div>
-    <div class="form-group"><label>Descrição</label><textarea id="cl-desc" class="form-input" rows="3" placeholder="O que mudou..."></textarea></div>
-  `, () => { showToast('Changelog publicado!', 'success'); closeModal(); });
+  showModal({
+    title: 'Novo Changelog',
+    body: `
+    <div class="form-group"><label>Versão</label><input type="text" id="cl-version" placeholder="1.0.0" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Título</label><input type="text" id="cl-title" placeholder="Melhorias no chat" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Descrição</label><textarea id="cl-desc" rows="3" placeholder="O que mudou..." style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px;resize:vertical;font-family:inherit"></textarea></div>`,
+    footer: `
+      <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      <button onclick="showToast('Changelog publicado!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Publicar</button>`
+  });
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
