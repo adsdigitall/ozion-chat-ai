@@ -27,14 +27,21 @@ import plansRoutes from './routes/plans.js';
 import deployRoutes from './routes/deploy.js';
 import flowiseRoutes from './routes/flowise.js';
 import tagsRoutes from './routes/tags.js';
+import evolutionRoutes from './routes/evolution.js';
 import { getSupabase } from './db/supabase.js';
 import { authMiddleware } from './middleware/auth.js';
+import { createServer } from 'http';
+import { initWebSocket } from './services/websocket.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const httpServer = createServer(app);
+
+// Initialize WebSocket
+initWebSocket(httpServer);
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
@@ -44,6 +51,7 @@ app.use(express.static(join(__dirname, '../public')));
 // Public routes
 app.use('/api/auth', authRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/webhooks', evolutionRoutes); // Evolution API webhook (public)
 
 // Protected routes - require authentication
 app.use('/api/health', authMiddleware, healthRoutes);
@@ -84,8 +92,9 @@ async function start() {
     console.log('⚠️  Continuing without database...');
   }
   
-  app.listen(PORT, () => {
+  httpServer.listen(PORT, () => {
     console.log(`🚀 Ozion Chat AI: http://localhost:${PORT}`);
+    console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
   });
 }
 
