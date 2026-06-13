@@ -44,9 +44,9 @@ app.use(express.static(join(__dirname, '../public')));
 // Public routes
 app.use('/api/auth', authRoutes);
 app.use('/api/webhooks', webhookRoutes);
-app.use('/api/health', healthRoutes);
 
 // Protected routes - require authentication
+app.use('/api/health', authMiddleware, healthRoutes);
 app.use('/api/whatsapp', authMiddleware, whatsappRoutes);
 app.use('/api/messages', authMiddleware, messageRoutes);
 app.use('/api/ctwa', authMiddleware, ctwaRoutes);
@@ -67,7 +67,8 @@ app.use('/api/deploy', authMiddleware, deployRoutes);
 app.use('/api/flowise', authMiddleware, flowiseRoutes);
 app.use('/api/tags', authMiddleware, tagsRoutes);
 
-app.get('/api/health', (req, res) => {
+// Simple health check (no auth required)
+app.get('/api/ping', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
