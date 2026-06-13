@@ -26,10 +26,37 @@ let ctwaAnalytics = {};
 let selectedFlowFolder = null;
 let contactFilter = { tag: null, search: '' };
 let bulkSelected = [];
+let currentUser = null;
+
+function getAuthToken() {
+  return localStorage.getItem('ozion_token');
+}
+
+function setAuthToken(token) {
+  localStorage.setItem('ozion_token', token);
+}
+
+function clearAuthToken() {
+  localStorage.removeItem('ozion_token');
+  localStorage.removeItem('ozion_user');
+}
 
 async function api(path, opts = {}) {
   try {
-    const res = await fetch(API + path, { headers: HEADERS, ...opts });
+    const token = getAuthToken();
+    const headers = { ...HEADERS, ...opts.headers };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(API + path, { headers, ...opts });
+    
+    if (res.status === 401) {
+      clearAuthToken();
+      currentUser = null;
+      render();
+      return null;
+    }
+    
     return await res.json();
   } catch (e) { console.error('API Error:', e); return null; }
 }
@@ -128,28 +155,69 @@ function validateForm(fields, data) {
   return true;
 }
 
-// ─── Navigation (Lailla.io exact structure) ──────────────────────
-const NAV = [
-  { id: 'dashboard', icon: 'fa-chart-pie', label: 'Dashboard' },
-  { id: 'chat', icon: 'fa-comments', label: 'Chat ao vivo' },
-  { id: 'contacts', icon: 'fa-address-book', label: 'Contatos' },
-  { id: 'tags', icon: 'fa-tags', label: 'Tags' },
-  { id: 'flows', icon: 'fa-diagram-project', label: 'Fluxos' },
-  { id: 'whatsapp', icon: 'fa-whatsapp', label: 'WhatsApp' },
-  { id: 'voice', icon: 'fa-microphone', label: 'Voice Studio' },
-  { id: 'agents', icon: 'fa-robot', label: 'Agente IA' },
-  { id: 'campaigns', icon: 'fa-bullhorn', label: 'Campanhas' },
-  { id: 'analytics', icon: 'fa-chart-bar', label: 'Análises', children: [
-    { id: 'ctwa', icon: 'fa-bullseye', label: 'CTWA' },
-    { id: 'sales', icon: 'fa-dollar-sign', label: 'Vendas' },
-  ]},
-  { id: 'integrations', icon: 'fa-plug', label: 'Integrações' },
-  { id: 'settings', icon: 'fa-cog', label: 'Configurações' },
-  { id: 'flowise', icon: 'fa-cogs', label: 'Flowise' },
-];
+// ─── Navigation (Dynamic based on user role) ──────────────────────
+function getNavItems() {
+  const isMaster = currentUser?.is_master || currentUser?.role === 'admin';
+  
+  // Admin Master navigation
+  if (isMaster) {
+    return [
+      { id: 'dashboard', icon: 'fa-chart-pie', label: 'Dashboard' },
+      { id: 'admin-customers', icon: 'fa-users', label: 'Clientes' },
+      { id: 'admin-plans', icon: 'fa-tags', label: 'Planos' },
+      { id: 'admin-users', icon: 'fa-user-shield', label: 'Usuários' },
+      { id: 'admin-workspaces', icon: 'fa-building', label: 'Workspaces' },
+      { id: 'admin-revenue', icon: 'fa-chart-line', label: 'Receita SaaS' },
+      { id: 'admin-logs', icon: 'fa-history', label: 'Logs de Auditoria' },
+      { id: 'chat', icon: 'fa-comments', label: 'Chat ao vivo' },
+      { id: 'contacts', icon: 'fa-address-book', label: 'Contatos' },
+      { id: 'flows', icon: 'fa-diagram-project', label: 'Fluxos' },
+      { id: 'agents', icon: 'fa-robot', label: 'Agente IA' },
+      { id: 'settings', icon: 'fa-cog', label: 'Configurações' },
+    ];
+  }
+  
+  // Client navigation (based on plan)
+  return [
+    { id: 'dashboard', icon: 'fa-chart-pie', label: 'Dashboard' },
+    { id: 'chat', icon: 'fa-comments', label: 'Chat ao vivo' },
+    { id: 'contacts', icon: 'fa-address-book', label: 'Contatos' },
+    { id: 'tags', icon: 'fa-tags', label: 'Tags' },
+    { id: 'flows', icon: 'fa-diagram-project', label: 'Fluxos' },
+    { id: 'whatsapp', icon: 'fa-whatsapp', label: 'WhatsApp' },
+    { id: 'voice', icon: 'fa-microphone', label: 'Voice Studio' },
+    { id: 'agents', icon: 'fa-robot', label: 'Agente IA' },
+    { id: 'campaigns', icon: 'fa-bullhorn', label: 'Campanhas' },
+    { id: 'analytics', icon: 'fa-chart-bar', label: 'Análises', children: [
+      { id: 'ctwa', icon: 'fa-bullseye', label: 'CTWA' },
+      { id: 'sales', icon: 'fa-dollar-sign', label: 'Vendas' },
+    ]},
+    { id: 'integrations', icon: 'fa-plug', label: 'Integrações' },
+    { id: 'settings', icon: 'fa-cog', label: 'Configurações' },
+    { id: 'flowise', icon: 'fa-cogs', label: 'Flowise' },
+  ];
+}
+
+const NAV = getNavItems();
 
 function render() {
-  if (!localStorage.getItem('ozion_logged')) { document.getElementById('app').innerHTML = loginHTML(); return; }
+  if (!localStorage.getItem('ozion_logged') || !getAuthToken()) { 
+    document.getElementById('app').innerHTML = loginHTML(); 
+    return; 
+  }
+  
+  // Load user info if not loaded
+  if (!currentUser) {
+    const savedUser = localStorage.getItem('ozion_user');
+    if (savedUser) {
+      try {
+        currentUser = JSON.parse(savedUser);
+      } catch (e) {
+        localStorage.removeItem('ozion_user');
+      }
+    }
+  }
+  
   document.getElementById('app').innerHTML = appHTML();
   loadPage(currentPage);
 }
@@ -170,8 +238,11 @@ function loginHTML() {
 
 function appHTML() {
   const expandedAnalytics = ['ctwa','sales','analytics'].includes(currentPage);
+  const isImpersonated = currentUser?.impersonated;
+  
   return `<div class="app-layout">
-    <div class="sidebar">
+    ${isImpersonated ? `<div style="background:linear-gradient(90deg,#f59e0b,#d97706);padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:12px;font-weight:600;color:white;position:fixed;top:0;left:0;right:0;z-index:1000"><i class="fa-solid fa-exclamation-triangle"></i>Você está acessando como Admin Master. <button onclick="exitImpersonation()" style="padding:4px 12px;border-radius:6px;border:1px solid white;background:transparent;color:white;cursor:pointer;font-size:11px;font-weight:600">Sair do modo cliente</button></div>` : ''}
+    <div class="sidebar" ${isImpersonated ? 'style="margin-top:36px"' : ''}>
       <div class="sidebar-logo" style="cursor:pointer;padding:16px" onclick="navigate('dashboard')">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:16px;color:white;font-weight:700">O</div>
@@ -211,8 +282,8 @@ function appHTML() {
         <div style="height:4px;background:var(--border);border-radius:2px"><div style="height:100%;width:0%;background:linear-gradient(90deg,#25D366,#128C7E);border-radius:2px" id="voice-bar"></div></div>
       </div>
       <div style="border-top:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:8px">
-        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:11px;color:white">A</div>
-        <div style="flex:1"><div style="font-weight:500;font-size:12px">Admin</div><div style="font-size:9px;color:var(--text-muted)">Plano Essencials</div></div>
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:11px;color:white">${currentUser?.name?.charAt(0)?.toUpperCase() || 'A'}</div>
+        <div style="flex:1"><div style="font-weight:500;font-size:12px">${currentUser?.name || 'Admin'}</div><div style="font-size:9px;color:var(--text-muted)">${currentUser?.is_master ? 'Admin Master' : currentUser?.role === 'owner' ? 'Dono da Conta' : currentUser?.role || 'Usuário'}</div></div>
         <button onclick="logout()" style="background:none;border:none;color:var(--text-muted);cursor:pointer"><i class="fa-solid fa-right-from-bracket"></i></button>
       </div>
     </div>
@@ -263,17 +334,90 @@ function appHTML() {
 
 function navigate(page) { currentPage = page; selectedConv = null; render(); }
 function toggleSubmenu(id) { render(); }
-function doLogin() { localStorage.setItem('ozion_logged', '1'); render(); }
-function logout() { localStorage.removeItem('ozion_logged'); render(); }
+
+async function doLogin() {
+  const email = document.getElementById('login-email')?.value || 'admin@ozion.com';
+  const pass = document.getElementById('login-pass')?.value || 'admin123';
+  
+  try {
+    const res = await fetch(API + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    
+    const data = await res.json();
+    
+    if (data.token) {
+      setAuthToken(data.token);
+      currentUser = data.user;
+      localStorage.setItem('ozion_user', JSON.stringify(data.user));
+      localStorage.setItem('ozion_logged', '1');
+      render();
+    } else {
+      showToast(data.error || 'Erro ao fazer login', 'error');
+    }
+  } catch (e) {
+    showToast('Erro ao conectar com o servidor', 'error');
+  }
+}
+
+function logout() {
+  const token = getAuthToken();
+  if (token) {
+    fetch(API + '/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).catch(() => {});
+  }
+  clearAuthToken();
+  localStorage.removeItem('ozion_logged');
+  currentUser = null;
+  render();
+}
 function switchWorkspace(id) { localStorage.setItem('ozion_workspace', id); showToast('Workspace alterado', 'success'); }
 
 async function loadPage(page) {
   const el = document.getElementById('content');
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px"></i><p style="margin-top:8px">Carregando...</p></div>';
-  const pages = { dashboard:loadDashboard, chat:loadChat, contacts:loadContacts, tags:loadTags, flows:loadFlows, whatsapp:loadWhatsApp, voice:loadVoice, agents:loadAgents, campaigns:loadCampaigns, ctwa:loadCTWA, sales:loadSales, integrations:loadIntegrations, settings:loadSettings, flowise:showFlowiseConfig };
-  if (pages[page]) await pages[page](el);
-  else el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-construction"></i><h3>Em construção</h3></div>';
+  
+  // Admin Master pages
+  const adminPages = { 
+    'admin-customers': loadAdminCustomers, 
+    'admin-plans': loadAdminPlans, 
+    'admin-users': loadAdminUsers, 
+    'admin-workspaces': loadAdminWorkspaces, 
+    'admin-revenue': loadAdminRevenue, 
+    'admin-logs': loadAdminLogs 
+  };
+  
+  // Client pages
+  const clientPages = { 
+    dashboard: loadDashboard, 
+    chat: loadChat, 
+    contacts: loadContacts, 
+    tags: loadTags, 
+    flows: loadFlows, 
+    whatsapp: loadWhatsApp, 
+    voice: loadVoice, 
+    agents: loadAgents, 
+    campaigns: loadCampaigns, 
+    ctwa: loadCTWA, 
+    sales: loadSales, 
+    integrations: loadIntegrations, 
+    settings: loadSettings, 
+    flowise: showFlowiseConfig 
+  };
+  
+  // Check admin pages first
+  if (adminPages[page]) {
+    await adminPages[page](el);
+  } else if (clientPages[page]) {
+    await clientPages[page](el);
+  } else {
+    el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-construction"></i><h3>Em construção</h3></div>';
+  }
 }
 
 // ─── Dashboard (Lailla.io exact) ─────────────────────────────────
@@ -3136,6 +3280,10 @@ function manageIntegration(provider) { showToast(`Gerenciando ${provider}`, 'inf
 let whatsappChannels = [];
 let whatsappNumbers = [];
 
+// ─── WhatsApp Connection (Multi-step Wizard) ────────────────────
+let waWizardStep = 0;
+let waConnectionType = '';
+
 async function loadWhatsApp(el) {
   const wa = await api('/api/whatsapp/status');
   const status = wa?.connected ? 'connected' : 'disconnected';
@@ -3143,191 +3291,132 @@ async function loadWhatsApp(el) {
   const businessName = wa?.business_name || 'Safira Hellen Vieira';
 
   el.innerHTML = `
-    <!-- Header -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <div>
         <h2 style="margin:0;font-size:20px;font-weight:700;color:#e6edf3">WhatsApp</h2>
         <p style="color:#8b9dc3;margin-top:2px;font-size:12px">Conecte seu WhatsApp via Meta Cloud API</p>
       </div>
-      <button onclick="refreshWhatsApp()" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7';this.style.color='#e6edf3'" onmouseout="this.style.borderColor='#2a3050';this.style.color='#8b9dc3'">
+      <button onclick="refreshWhatsApp()" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px">
         <i class="fa-solid fa-arrows-rotate"></i> Atualizar
       </button>
     </div>
 
-    <!-- Connection Status Card -->
-    <div style="background:${status==='connected'?'rgba(34,197,94,.06)':'rgba(239,68,68,.06)'};border:1px solid ${status==='connected'?'#22c55e33':'#ef444433'};border-radius:12px;padding:20px 24px;margin-bottom:20px">
+    ${status === 'disconnected' ? renderWADisconnected() : renderWAConnected(businessName, phone)}
+  `;
+}
+
+function renderWADisconnected() {
+  return `
+    <!-- Status Card -->
+    <div style="background:rgba(239,68,68,.06);border:1px solid #ef444433;border-radius:12px;padding:20px 24px;margin-bottom:20px">
       <div style="display:flex;align-items:center;gap:16px">
-        <div style="width:56px;height:56px;border-radius:14px;background:${status==='connected'?'#22c55e15':'#ef444415'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <i class="fa-brands fa-whatsapp" style="font-size:28px;color:${status==='connected'?'#25d366':'#ef4444'}"></i>
+        <div style="width:56px;height:56px;border-radius:14px;background:#ef444415;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fa-brands fa-whatsapp" style="font-size:28px;color:#ef4444"></i>
         </div>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
             <span style="font-size:16px;font-weight:700;color:#e6edf3">WhatsApp Business API</span>
-            <span style="padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:${status==='connected'?'#22c55e22;color:#22c55e':'#ef444422;color:#ef4444'}">${status==='connected'?'Conectado':'Desconectado'}</span>
+            <span style="padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:#ef444422;color:#ef4444">Desconectado</span>
           </div>
-          <p style="font-size:13px;color:#8b9dc3;margin:0">${status==='connected'?'Sua conta está conectada e pronta para uso':'Conecte sua conta Meta para usar o WhatsApp'}</p>
+          <p style="font-size:13px;color:#8b9dc3;margin:0">Conecte sua conta Meta para usar o WhatsApp</p>
         </div>
-        ${status === 'connected' ?
-          `<button onclick="disconnectWhatsApp()" style="padding:10px 20px;border-radius:8px;border:1px solid #ef4444;background:rgba(239,68,68,.08);color:#ef4444;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.15)'" onmouseout="this.style.background='rgba(239,68,68,.08)'">
-            <i class="fa-solid fa-link-slash"></i> Desconectar
-          </button>` :
-          `<button onclick="connectMetaSignup()" style="padding:10px 20px;border-radius:8px;border:none;background:#25d366;color:white;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all .2s;box-shadow:0 4px 12px rgba(37,211,102,.3)" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(37,211,102,.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 12px rgba(37,211,102,.3)'">
-            <i class="fa-solid fa-link"></i> Conectar com Meta
-          </button>`
-        }
+        <button onclick="openWAWizard()" style="padding:10px 20px;border-radius:8px;border:none;background:#25d366;color:white;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(37,211,102,.3)">
+          <i class="fa-solid fa-link"></i> Conectar com Meta
+        </button>
       </div>
     </div>
 
-    ${status === 'disconnected' ? renderMetaSignupGuide() : renderConnectedDashboard(businessName, phone)}
-  `;
-}
-
-function renderMetaSignupGuide() {
-  const webhookUrl = window.location.origin + '/webhook/whatsapp';
-  const verifyToken = 'ozion_verify_' + Math.random().toString(36).slice(2, 10);
-  return `
-    <!-- Two columns: Pré-requisitos + Como funciona -->
+    <!-- Two columns -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-      <!-- Pré-requisitos -->
       <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
-        <h3 style="font-size:15px;color:#e6edf3;margin:0 0 16px;font-weight:700;display:flex;align-items:center;gap:8px">
-          <i class="fa-solid fa-list-check" style="color:#6c5ce7"></i> Pré-requisitos
-        </h3>
+        <h3 style="font-size:15px;color:#e6edf3;margin:0 0 16px;font-weight:700"><i class="fa-solid fa-list-check" style="color:#6c5ce7;margin-right:8px"></i>Pré-requisitos</h3>
         <div style="display:flex;flex-direction:column;gap:10px">
-          ${[
-            'Conta Meta Business Suite ativa',
-            'Número de telefone WhatsApp Business',
-            'Permissões de administrador',
-            'App ID do Meta Developer'
-          ].map(item => `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b9dc3">
-            <div style="width:20px;height:20px;border-radius:50%;background:#22c55e22;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <i class="fa-solid fa-check" style="color:#22c55e;font-size:10px"></i>
-            </div>
-            ${item}
+          ${['Conta Meta Business Suite ativa','Número de telefone WhatsApp Business','Permissões de administrador','App ID do Meta Developer'].map(item => `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b9dc3">
+            <div style="width:20px;height:20px;border-radius:50%;background:#22c55e22;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-solid fa-check" style="color:#22c55e;font-size:10px"></i></div>${item}
           </div>`).join('')}
         </div>
       </div>
-      <!-- Como funciona -->
       <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
-        <h3 style="font-size:15px;color:#e6edf3;margin:0 0 16px;font-weight:700;display:flex;align-items:center;gap:8px">
-          <i class="fa-solid fa-plug" style="color:#6c5ce7"></i> Como funciona
-        </h3>
+        <h3 style="font-size:15px;color:#e6edf3;margin:0 0 16px;font-weight:700"><i class="fa-solid fa-plug" style="color:#6c5ce7;margin-right:8px"></i>Como funciona</h3>
         <div style="display:flex;flex-direction:column;gap:10px">
-          ${[
-            'Clique em "Conectar com Meta"',
-            'Faça login na sua conta Meta',
-            'Selecione a Business Account',
-            'Escolha ou crie um App',
-            'Autorize o acesso ao WhatsApp'
-          ].map((step, i) => `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b9dc3">
-            <div style="width:22px;height:22px;border-radius:50%;background:#6c5ce722;color:#6c5ce7;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${i + 1}</div>
-            ${step}
+          ${['Clique em "Conectar com Meta"','Faça login na sua conta Meta','Selecione a Business Account','Escolha ou crie um App','Autorize o acesso ao WhatsApp'].map((s,i) => `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b9dc3">
+            <div style="width:22px;height:22px;border-radius:50%;background:#6c5ce722;color:#6c5ce7;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${i+1}</div>${s}
           </div>`).join('')}
         </div>
       </div>
     </div>
 
-    <!-- Webhook URL -->
+    <!-- Webhook -->
     <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
-      <h3 style="font-size:15px;color:#e6edf3;margin:0 0 6px;font-weight:700;display:flex;align-items:center;gap:8px">
-        <i class="fa-solid fa-globe" style="color:#6c5ce7"></i> Webhook URL
-      </h3>
+      <h3 style="font-size:15px;color:#e6edf3;margin:0 0 6px;font-weight:700"><i class="fa-solid fa-globe" style="color:#6c5ce7;margin-right:8px"></i>Webhook URL</h3>
       <p style="font-size:12px;color:#8b9dc3;margin:0 0 14px">Configure este URL no painel do Meta Developer</p>
-      <div style="margin-bottom:14px">
-        <div style="display:flex;gap:8px">
-          <div style="flex:1;padding:10px 14px;background:#0d1117;border:1px solid #2a3050;border-radius:8px;font-family:'SF Mono',Consolas,monospace;font-size:13px;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center">${webhookUrl}</div>
-          <button onclick="navigator.clipboard.writeText('${webhookUrl}');showToast('Copiado!','success')" style="padding:10px 16px;border-radius:8px;border:1px solid #6c5ce7;background:rgba(108,92,231,.08);color:#6c5ce7;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all .2s;white-space:nowrap" onmouseover="this.style.background='rgba(108,92,231,.15)'" onmouseout="this.style.background='rgba(108,92,231,.08)'">
-            <i class="fa-solid fa-copy"></i> Copiar
-          </button>
-        </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <div style="flex:1;padding:10px 14px;background:#0d1117;border:1px solid #2a3050;border-radius:8px;font-family:monospace;font-size:13px;color:#e6edf3;display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${window.location.origin}/webhook/whatsapp</div>
+        <button onclick="navigator.clipboard.writeText('${window.location.origin}/webhook/whatsapp');showToast('Copiado!','success')" style="padding:10px 16px;border-radius:8px;border:1px solid #6c5ce7;background:rgba(108,92,231,.08);color:#6c5ce7;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-copy"></i> Copiar</button>
       </div>
-      <div>
-        <label style="font-size:11px;color:#8b9dc3;display:block;margin-bottom:6px;font-weight:500">Verify Token</label>
-        <div style="padding:10px 14px;background:#0d1117;border:1px solid #2a3050;border-radius:8px;font-family:'SF Mono',Consolas,monospace;font-size:13px;color:#e6edf3">${verifyToken}</div>
-      </div>
+      <label style="font-size:11px;color:#8b9dc3;display:block;margin-bottom:6px;font-weight:500">Verify Token</label>
+      <div style="padding:10px 14px;background:#0d1117;border:1px solid #2a3050;border-radius:8px;font-family:monospace;font-size:13px;color:#e6edf3">ozion_verify_${Math.random().toString(36).slice(2,10)}</div>
     </div>
   `;
 }
 
-function renderConnectedDashboard(businessName, phone) {
+function renderWAConnected(businessName, phone) {
   return `
-    <!-- Tabs: Sessões Ativas / Inativas -->
-    <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid #1e2d3d">
-      <button onclick="showWATab('active')" id="wa-tab-active" style="flex:1;padding:14px;border:none;background:transparent;color:#6c5ce7;font-size:14px;font-weight:600;cursor:pointer;border-bottom:2px solid #6c5ce7;margin-bottom:-2px;transition:all .2s">Sessões Ativas</button>
-      <button onclick="showWATab('inactive')" id="wa-tab-inactive" style="flex:1;padding:14px;border:none;background:transparent;color:#8b9dc3;font-size:14px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s">Sessões Inativas</button>
+    <!-- Status Card -->
+    <div style="background:rgba(34,197,94,.06);border:1px solid #22c55e33;border-radius:12px;padding:20px 24px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="width:56px;height:56px;border-radius:14px;background:#22c55e15;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-brands fa-whatsapp" style="font-size:28px;color:#25d366"></i></div>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="font-size:16px;font-weight:700;color:#e6edf3">WhatsApp Business API</span><span style="padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:#22c55e22;color:#22c55e">Conectado</span></div>
+          <p style="font-size:13px;color:#8b9dc3;margin:0">Sua conta está conectada e pronta para uso</p>
+        </div>
+        <button onclick="disconnectWhatsApp()" style="padding:10px 20px;border-radius:8px;border:1px solid #ef4444;background:rgba(239,68,68,.08);color:#ef4444;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-link-slash"></i> Desconectar</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;border-bottom:2px solid #1e2d3d;margin-bottom:16px">
+      <button onclick="showWATab('active')" id="wa-tab-active" style="flex:1;padding:14px;border:none;background:transparent;color:#3b82f6;font-size:14px;font-weight:600;cursor:pointer;border-bottom:2px solid #3b82f6;margin-bottom:-2px">Sessões Ativas</button>
+      <button onclick="showWATab('inactive')" id="wa-tab-inactive" style="flex:1;padding:14px;border:none;background:transparent;color:#8b9dc3;font-size:14px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px">Sessões Inativas</button>
     </div>
 
     <!-- Active Sessions -->
-    <div id="wa-sessions-active" style="display:grid;grid-template-columns:280px 1fr;gap:16px">
+    <div id="wa-sessions-active" style="display:grid;grid-template-columns:260px 1fr;gap:16px">
       <!-- Connect New -->
-      <div onclick="connectMetaSignup()" style="border:2px dashed #2a3050;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:240px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7';this.style.background='rgba(108,92,231,.03)'" onmouseout="this.style.borderColor='#2a3050';this.style.background='transparent'">
-        <div style="width:64px;height:64px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
-          <i class="fa-brands fa-whatsapp" style="font-size:28px;color:#25d366"></i>
-        </div>
-        <div style="font-size:14px;font-weight:600;color:#e6edf3;margin-bottom:4px">Conectar um novo dispositivo</div>
-        <div style="font-size:12px;color:#8b9dc3;text-align:center;padding:0 20px">Clique para adicionar um novo whatsapp</div>
+      <div onclick="openWAWizard()" style="border:2px dashed #d0d5dd;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:280px;cursor:pointer;transition:all .2s;background:white" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#d0d5dd'">
+        <div style="width:72px;height:72px;border-radius:50%;background:#f0f0f0;display:flex;align-items:center;justify-content:center;margin-bottom:16px"><i class="fa-brands fa-whatsapp" style="font-size:32px;color:#aaa"></i></div>
+        <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px;text-align:center">Conectar um novo<br>dispositivo</div>
+        <div style="font-size:12px;color:#888;text-align:center;padding:0 20px">Clique para adicionar um novo whatsapp</div>
       </div>
 
       <!-- Connected Session Card -->
-      <div style="border:1px solid #2a3050;border-radius:12px;overflow:hidden;position:relative">
-        <!-- Blue success bar -->
-        <div style="background:linear-gradient(135deg,#3b82f6,#6c5ce7);padding:12px 20px;text-align:center">
-          <span style="font-size:14px;font-weight:600;color:white">Conexão realizada com sucesso!</span>
+      <div style="border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;background:white;max-width:360px">
+        <div style="padding:20px">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+            <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#0081fb,#00c6ff);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.69 0-3.27-.46-4.62-1.26l-.33-.2-2.87.85.85-2.87-.2-.33A7.963 7.963 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
+            </div>
+            <div style="flex:1;min-width:0">
+              <span style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:13px;font-weight:600;background:#3b82f6;color:white;font-family:monospace">${phone}</span>
+              <div style="font-size:13px;color:#666;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${businessName}</div>
+            </div>
+            <button onclick="showToast('Editar','info')" style="width:32px;height:32px;border-radius:6px;border:1px solid #e0e0e0;background:white;color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-pen" style="font-size:11px"></i></button>
+          </div>
         </div>
-
-        <!-- Session Info -->
-        <div style="padding:20px;background:#1a1f35">
-          <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-            <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#0081fb,#00c6ff);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.69 0-3.27-.46-4.62-1.26l-.33-.2-2.87.85.85-2.87-.2-.33A7.963 7.963 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
-            </div>
-            <div style="flex:1">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-                <span style="padding:4px 12px;border-radius:6px;font-size:13px;font-weight:600;background:#3b82f622;color:#3b82f6;font-family:monospace">${phone}</span>
-              </div>
-              <div style="font-size:14px;color:#8b9dc3;margin-top:4px">${businessName}</div>
-            </div>
-            <button onclick="showToast('Editar sessão','info')" style="width:36px;height:36px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7';this.style.color='#e6edf3'" onmouseout="this.style.borderColor='#2a3050';this.style.color='#8b9dc3'">
-              <i class="fa-solid fa-pen-to-square" style="font-size:12px"></i>
-            </button>
-          </div>
-
-          <!-- Actions -->
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <button onclick="showToast('Detalhes da sessão','info')" style="width:100%;padding:12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
-              Mostrar Detalhes
-            </button>
-            <button onclick="disconnectWhatsApp()" style="width:100%;padding:12px;border:1px solid #ef4444;border-radius:8px;background:transparent;color:#ef4444;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.background='rgba(239,68,68,.08)'" onmouseout="this.style.background='transparent'">
-              <i class="fa-solid fa-link-slash"></i> Desconectar
-            </button>
-          </div>
+        <div style="background:#3b82f6;padding:14px;text-align:center"><span style="font-size:14px;font-weight:600;color:white">Conexão realizada com sucesso!</span></div>
+        <div style="padding:16px 20px;background:#f8f9fa">
+          <button onclick="showToast('Detalhes','info')" style="width:100%;padding:12px;border:none;border-radius:8px;background:white;color:#333;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px;border:1px solid #e0e0e0">Mostrar Detalhes</button>
+          <button onclick="disconnectWhatsApp()" style="width:100%;padding:12px;border:none;border-radius:8px;background:white;color:#ef4444;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid #e0e0e0"><i class="fa-solid fa-link-slash"></i> Desconectar</button>
         </div>
       </div>
     </div>
 
-    <!-- Inactive Sessions (hidden by default) -->
+    <!-- Inactive Sessions -->
     <div id="wa-sessions-inactive" style="display:none">
-      <div style="text-align:center;padding:60px 20px;color:#8b9dc3">
-        <div style="width:64px;height:64px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
-          <i class="fa-solid fa-clock-rotate-left" style="font-size:24px;opacity:.4"></i>
-        </div>
-        <p style="font-size:14px;font-weight:500;margin:0 0 4px">Nenhuma sessão inativa</p>
-        <p style="font-size:12px;opacity:.7;margin:0">Sessões desconectadas aparecerão aqui</p>
-      </div>
-    </div>
-
-    <!-- Webhook Status (below) -->
-    <div style="margin-top:20px;background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
-      <h3 style="font-size:15px;color:#e6edf3;margin:0 0 12px;font-weight:700;display:flex;align-items:center;gap:8px">
-        <i class="fa-solid fa-globe" style="color:#6c5ce7"></i> Webhook Status
-      </h3>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <span style="padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:#22c55e22;color:#22c55e">Ativo</span>
-        <span style="font-size:12px;color:#8b9dc3">Último evento: há 2 minutos</span>
-      </div>
-      <div style="display:flex;gap:8px">
-        <div style="flex:1;padding:8px 12px;background:#0d1117;border:1px solid #2a3050;border-radius:6px;font-family:monospace;font-size:11px;color:#8b9dc3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center">${window.location.origin}/webhook/whatsapp</div>
-        <button onclick="navigator.clipboard.writeText('${window.location.origin}/webhook/whatsapp');showToast('Copiado!','success')" style="padding:8px 12px;border-radius:6px;border:1px solid #6c5ce7;background:rgba(108,92,231,.08);color:#6c5ce7;cursor:pointer;font-size:11px"><i class="fa-solid fa-copy"></i></button>
+      <div style="text-align:center;padding:60px 20px;color:#888;background:white;border-radius:12px;border:1px solid #e0e0e0">
+        <i class="fa-solid fa-clock-rotate-left" style="font-size:32px;opacity:.3;margin-bottom:12px;display:block"></i>
+        <p style="font-size:14px;font-weight:500;margin:0 0 4px;color:#333">Nenhuma sessão inativa</p>
+        <p style="font-size:12px;margin:0">Sessões desconectadas aparecerão aqui</p>
       </div>
     </div>
   `;
@@ -3336,23 +3425,185 @@ function renderConnectedDashboard(businessName, phone) {
 function showWATab(tab) {
   const active = document.getElementById('wa-sessions-active');
   const inactive = document.getElementById('wa-sessions-inactive');
-  const tabActive = document.getElementById('wa-tab-active');
-  const tabInactive = document.getElementById('wa-tab-inactive');
+  const tabA = document.getElementById('wa-tab-active');
+  const tabI = document.getElementById('wa-tab-inactive');
   if (tab === 'active') {
     if (active) active.style.display = 'grid';
     if (inactive) inactive.style.display = 'none';
-    if (tabActive) { tabActive.style.color = '#6c5ce7'; tabActive.style.borderBottom = '2px solid #6c5ce7'; tabActive.style.fontWeight = '600'; }
-    if (tabInactive) { tabInactive.style.color = '#8b9dc3'; tabInactive.style.borderBottom = '2px solid transparent'; tabInactive.style.fontWeight = '500'; }
+    if (tabA) { tabA.style.color = '#3b82f6'; tabA.style.borderBottom = '2px solid #3b82f6'; }
+    if (tabI) { tabI.style.color = '#8b9dc3'; tabI.style.borderBottom = '2px solid transparent'; }
   } else {
     if (active) active.style.display = 'none';
     if (inactive) inactive.style.display = 'block';
-    if (tabActive) { tabActive.style.color = '#8b9dc3'; tabActive.style.borderBottom = '2px solid transparent'; tabActive.style.fontWeight = '500'; }
-    if (tabInactive) { tabInactive.style.color = '#6c5ce7'; tabInactive.style.borderBottom = '2px solid #6c5ce7'; tabInactive.style.fontWeight = '600'; }
+    if (tabA) { tabA.style.color = '#8b9dc3'; tabA.style.borderBottom = '2px solid transparent'; }
+    if (tabI) { tabI.style.color = '#3b82f6'; tabI.style.borderBottom = '2px solid #3b82f6'; }
   }
 }
 
-function connectMetaSignup() {
-  const appId = 'YOUR_META_APP_ID'; // User should configure
+// ─── WA Connection Wizard (Multi-step Modal) ────────────────────
+function openWAWizard() {
+  waWizardStep = 1;
+  waConnectionType = '';
+  renderWAWizard();
+}
+
+function renderWAWizard() {
+  const existing = document.getElementById('wa-wizard-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'wa-wizard-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:2000;display:flex;align-items:center;justify-content:center';
+
+  let content = '';
+  if (waWizardStep === 1) content = waWizardStep1();
+  else if (waWizardStep === 2) content = waWizardStep2();
+  else if (waWizardStep === 3) content = waWizardStep3();
+  else if (waWizardStep === 4) content = waWizardStep4();
+
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .3s ease">
+      <!-- Purple Header -->
+      <div style="background:linear-gradient(135deg,#9b59b6,#8e44ad);padding:18px 24px;border-radius:16px 16px 0 0;display:flex;justify-content:space-between;align-items:center">
+        <h3 style="margin:0;font-size:17px;font-weight:700;color:white">Escolha o tipo de conexão</h3>
+        <button onclick="closeWAWizard()" style="background:rgba(255,255,255,.2);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.2)'">&times;</button>
+      </div>
+      <!-- Body -->
+      <div style="padding:24px">${content}</div>
+    </div>`;
+
+  overlay.onclick = (e) => { if (e.target === overlay) closeWAWizard(); };
+  document.body.appendChild(overlay);
+}
+
+function closeWAWizard() {
+  const o = document.getElementById('wa-wizard-overlay');
+  if (o) o.remove();
+}
+
+// Step 1: Choose connection type
+function waWizardStep1() {
+  return `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div onclick="waConnectionType='business';waWizardStep=2;renderWAWizard()" style="border:1px solid #e0e0e0;border-radius:12px;padding:20px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:16px" onmouseover="this.style.borderColor='#3b82f6';this.style.background='#f8f9ff'" onmouseout="this.style.borderColor='#e0e0e0';this.style.background='white'">
+        <div style="width:48px;height:48px;border-radius:50%;background:#25d36615;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-brands fa-whatsapp" style="font-size:24px;color:#25d366"></i></div>
+        <div><div style="font-size:15px;font-weight:700;color:#1a1a1a">WhatsApp Business</div></div>
+        <i class="fa-solid fa-chevron-right" style="margin-left:auto;color:#ccc"></i>
+      </div>
+      <div onclick="waConnectionType='api';waWizardStep=2;renderWAWizard()" style="border:2px solid #3b82f6;border-radius:12px;padding:20px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:16px;background:#f0f7ff" onmouseover="this.style.background='#e8f2ff'" onmouseout="this.style.background='#f0f7ff'">
+        <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#0081fb,#00c6ff);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.69 0-3.27-.46-4.62-1.26l-.33-.2-2.87.85.85-2.87-.2-.33A7.963 7.963 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
+        </div>
+        <div><div style="font-size:15px;font-weight:700;color:#1a1a1a">API Oficial</div></div>
+        <i class="fa-solid fa-chevron-right" style="margin-left:auto;color:#3b82f6"></i>
+      </div>
+    </div>`;
+}
+
+// Step 2: Requisitos obrigatórios
+function waWizardStep2() {
+  const requisitos = [
+    { title: 'Business Manager verificado', desc: 'Sua Business Manager (BM) deve estar verificada pela Meta.' },
+    { title: 'CNPJ compatível com a categoria do WhatsApp', desc: 'A atividade econômica (CNAE) do CNPJ vinculado à BM deve ser coerente com a categoria escolhida para o WhatsApp.' },
+    { title: 'Número apto para API', desc: 'O número não pode estar ativo em outra API ou vinculado a outro provedor (BSP). Se estiver migrando de plataforma, a desconexão deve ser feita corretamente. Acesse dicas de migração.' }
+  ];
+  return `
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="display:inline-flex;align-items:center;gap:8px;padding:10px 24px;border-radius:24px;background:linear-gradient(135deg,#0081fb,#00c6ff);color:white;font-size:14px;font-weight:700">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.69 0-3.27-.46-4.62-1.26l-.33-.2-2.87.85.85-2.87-.2-.33A7.963 7.963 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
+        Requisitos obrigatórios
+      </div>
+    </div>
+    <div style="background:#f0f7ff;border:1px solid #d0e4ff;border-radius:12px;padding:24px;margin-bottom:20px">
+      ${requisitos.map(r => `<div style="margin-bottom:20px:last-child;margin-bottom:0">
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:4px">
+          <span style="font-size:16px;line-height:1">✅</span>
+          <div><div style="font-size:14px;font-weight:700;color:#1a1a1a">${r.title}</div><div style="font-size:13px;color:#555;margin-top:2px;line-height:1.5">${r.desc}</div></div>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div style="text-align:right"><button onclick="waWizardStep=3;renderWAWizard()" style="padding:12px 32px;border:none;border-radius:24px;background:#3b82f6;color:white;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Próximo</button></div>`;
+}
+
+// Step 3: Custos e cobranças
+function waWizardStep3() {
+  return `
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="display:inline-flex;align-items:center;gap:8px;padding:10px 24px;border-radius:24px;background:linear-gradient(135deg,#0081fb,#00c6ff);color:white;font-size:14px;font-weight:700">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.69 0-3.27-.46-4.62-1.26l-.33-.2-2.87.85.85-2.87-.2-.33A7.963 7.963 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
+        Custos e cobranças
+      </div>
+    </div>
+    <div style="background:#f0f7ff;border:1px solid #d0e4ff;border-radius:12px;padding:24px;margin-bottom:20px">
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:16px">
+        <span style="font-size:16px;line-height:1">⚠️</span>
+        <div style="font-size:14px;color:#1a1a1a"><b>A Ozion não cobra pelas mensagens enviadas via API Oficial.</b><br>As cobranças de conversas (marketing, utilidade, autenticação e serviço) são feitas diretamente pela Meta.</div>
+      </div>
+      <div style="font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:12px">Você deve:</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:flex-start;gap:10px"><span style="font-size:16px;line-height:1">✅</span><span style="font-size:13px;color:#333">Configurar uma forma de pagamento na sua Business Manager</span></div>
+        <div style="display:flex;align-items:flex-start;gap:10px"><span style="font-size:16px;line-height:1">✅</span><span style="font-size:13px;color:#333">Acompanhar seus custos pelo Gerenciador de Negócios da Meta</span></div>
+      </div>
+    </div>
+    <div style="text-align:right"><button onclick="waWizardStep=4;renderWAWizard()" style="padding:12px 32px;border:none;border-radius:24px;background:#3b82f6;color:white;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Próximo</button></div>`;
+}
+
+// Step 4: Choose API mode
+function waWizardStep4() {
+  return `
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="display:inline-flex;align-items:center;gap:8px;padding:10px 24px;border-radius:24px;background:linear-gradient(135deg,#0081fb,#00c6ff);color:white;font-size:14px;font-weight:700">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.69 0-3.27-.46-4.62-1.26l-.33-.2-2.87.85.85-2.87-.2-.33A7.963 7.963 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
+        Escolha o tipo de conexão
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      <div onclick="selectWAAPIMode('only')" id="wa-mode-only" style="border:2px solid #3b82f6;border-radius:12px;padding:20px;cursor:pointer;text-align:center;transition:all .2s;background:#f0f7ff" onmouseover="this.style.background='#e8f2ff'" onmouseout="if(!this.classList.contains('selected'))this.style.background='#f0f7ff'">
+        <div style="font-size:15px;font-weight:800;color:#3b82f6;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">Apenas API</div>
+        <div style="font-size:12px;color:#555;line-height:1.6;text-align:left">
+          <p style="margin:0 0 8px">O número passa a funcionar exclusivamente na API.</p>
+          <p style="margin:0 0 8px">O WhatsApp Business do celular deixa de funcionar.</p>
+          <p style="margin:0;color:#888;font-style:italic">Indicado para operações 100% profissionais e centralizadas.</p>
+        </div>
+      </div>
+      <div onclick="selectWAAPIMode('coexist')" id="wa-mode-coexist" style="border:2px solid #e0e0e0;border-radius:12px;padding:20px;cursor:pointer;text-align:center;transition:all .2s;background:white" onmouseover="this.style.borderColor='#3b82f6';this.style.background='#f8f9ff'" onmouseout="if(!this.classList.contains('selected')){this.style.borderColor='#e0e0e0';this.style.background='white'}">
+        <div style="font-size:15px;font-weight:800;color:#333;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">API com Coexistência</div>
+        <div style="font-size:12px;color:#555;line-height:1.6;text-align:left">
+          <p style="margin:0 0 8px">Permite usar o mesmo número no WhatsApp Business (celular) e na API ao mesmo tempo.</p>
+          <p style="margin:0 0 8px">Mensagens ficam sincronizadas.</p>
+          <p style="margin:0;color:#888;font-style:italic">Ideal para quem ainda precisa usar o app no celular.</p>
+        </div>
+      </div>
+    </div>
+    <!-- Warning box -->
+    <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;color:#e65100;margin-bottom:8px;text-align:center">Configurações obrigatórias na coexistência:</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#bf360c">
+        <div style="display:flex;align-items:center;gap:8px"><span>🚫</span>Não utilize dispositivos complementares (WhatsApp Web ou aparelhos adicionais).</div>
+        <div style="display:flex;align-items:center;gap:8px"><span>🚫</span>Desative mensagens automáticas do app (saudação e ausência).</div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:#e65100;text-align:center;margin-top:8px">Essas configurações causam conflitos com a API.</div>
+    </div>
+    <div id="wa-mode-next" style="text-align:right;display:none"><button onclick="startWAConnection()" style="padding:12px 32px;border:none;border-radius:24px;background:#3b82f6;color:white;font-size:14px;font-weight:600;cursor:pointer" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Conectar</button></div>`;
+}
+
+function selectWAAPIMode(mode) {
+  const only = document.getElementById('wa-mode-only');
+  const coexist = document.getElementById('wa-mode-coexist');
+  const next = document.getElementById('wa-mode-next');
+  if (mode === 'only') {
+    only.style.borderColor = '#3b82f6'; only.style.background = '#f0f7ff';
+    coexist.style.borderColor = '#e0e0e0'; coexist.style.background = 'white';
+  } else {
+    coexist.style.borderColor = '#3b82f6'; coexist.style.background = '#f0f7ff';
+    only.style.borderColor = '#e0e0e0'; only.style.background = 'white';
+  }
+  if (next) next.style.display = 'block';
+}
+
+function startWAConnection() {
+  closeWAWizard();
+  const appId = 'YOUR_META_APP_ID';
   const redirectUri = window.location.origin + '/whatsapp/callback';
   const scopes = 'whatsapp_business_management,whatsapp_business_messaging,business_management,pages_messaging';
   const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code&state=ozion_${Date.now()}`;
@@ -3701,52 +3952,11 @@ function showCreatePlan() {
     <div class="form-group"><label>Features (uma por linha)</label><textarea id="plan-features" rows="4" placeholder="3 agentes IA&#10;15M tokens&#10;1M tokens voz" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px;resize:vertical;font-family:inherit"></textarea></div>`,
     footer: `
       <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
-      <button onclick="saveNewPlan()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`
+      <button onclick="settingsSaveNewPlan()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`
   });
 }
 
-async function saveNewPlan() {
-  const name = document.getElementById('plan-name').value;
-  const price = parseFloat(document.getElementById('plan-price').value) || 0;
-  const features = document.getElementById('plan-features').value.split('\n').filter(Boolean);
-  if (!name) return showToast('Nome obrigatório', 'error');
-  await api('/api/plans', { method: 'POST', body: JSON.stringify({ name, price, features }) });
-  showToast('Plano criado!', 'success');
-  document.querySelector('.modal-overlay.show')?.remove();
-  loadSettings(document.getElementById('content'));
-}
-
-function editPlan(id, name, price) {
-  showModal({
-    title: 'Editar Plano',
-    body: `
-    <div class="form-group"><label>Nome</label><input type="text" id="plan-name" value="${name}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
-    <div class="form-group"><label>Preço (R$)</label><input type="number" id="plan-price" value="${price}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>`,
-    footer: `
-      <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
-      <button onclick="saveEditPlan('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>`
-  });
-}
-
-async function saveEditPlan(id) {
-  const n = document.getElementById('plan-name').value;
-  const p = parseFloat(document.getElementById('plan-price').value) || 0;
-  if (!n) return showToast('Nome obrigatório', 'error');
-  await api(`/api/plans/${id}`, { method: 'PUT', body: JSON.stringify({ name: n, price: p }) });
-  showToast('Plano atualizado!', 'success');
-  document.querySelector('.modal-overlay.show')?.remove();
-  loadSettings(document.getElementById('content'));
-}
-
-function deletePlan(id) {
-  confirmModal({ title: 'Excluir Plano', message: 'Tem certeza que deseja excluir este plano?', danger: true, onConfirm: async () => {
-    await api(`/api/plans/${id}`, { method: 'DELETE' });
-    showToast('Plano excluído!', 'success');
-    loadSettings(document.getElementById('content'));
-  }});
-}
-
-function showCreateTenant() {
+function settingsShowCreateTenant() {
   showModal({
     title: 'Novo Tenant',
     body: `
@@ -3755,11 +3965,11 @@ function showCreateTenant() {
     <div class="form-group"><label>Plano</label><select id="tenant-plan" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option>Gratuito</option><option>Essencial</option><option>Profissional</option><option>Enterprise</option></select></div>`,
     footer: `
       <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
-      <button onclick="saveNewTenant()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`
+      <button onclick="settingsSaveNewTenant()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`
   });
 }
 
-async function saveNewTenant() {
+async function settingsSaveNewTenant() {
   const name = document.getElementById('tenant-name').value;
   const email = document.getElementById('tenant-email').value;
   if (!name) return showToast('Nome obrigatório', 'error');
@@ -3769,16 +3979,16 @@ async function saveNewTenant() {
   loadSettings(document.getElementById('content'));
 }
 
-function editTenant(id) { showToast(`Editando tenant ${id.slice(0,8)}`, 'info'); }
-function toggleTenant(id) { showToast(`Tenant ${id.slice(0,8)} bloqueado/desbloqueado`, 'info'); }
-function deleteTenant(id) {
+function settingsEditTenant(id) { showToast(`Editando tenant ${id.slice(0,8)}`, 'info'); }
+function settingsToggleTenant(id) { showToast(`Tenant ${id.slice(0,8)} bloqueado/desbloqueado`, 'info'); }
+function settingsDeleteTenant(id) {
   confirmModal({ title: 'Excluir Tenant', message: 'Tem certeza que deseja excluir este tenant? Todos os dados serão perdidos.', danger: true, onConfirm: () => {
     showToast('Tenant excluído!', 'success');
     loadSettings(document.getElementById('content'));
   }});
 }
 
-function showCreateUser() {
+function settingsShowCreateUser() {
   showModal({
     title: 'Novo Usuário',
     body: `
@@ -3788,11 +3998,11 @@ function showCreateUser() {
     <div class="form-group"><label>Perfil</label><select id="user-role" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="user">Usuário</option><option value="admin">Administrador</option></select></div>`,
     footer: `
       <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
-      <button onclick="saveNewUser()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`
+      <button onclick="settingsSaveNewUser()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`
   });
 }
 
-async function saveNewUser() {
+async function settingsSaveNewUser() {
   const name = document.getElementById('user-name').value;
   const email = document.getElementById('user-email').value;
   if (!name || !email) return showToast('Nome e email obrigatórios', 'error');
@@ -3801,8 +4011,8 @@ async function saveNewUser() {
   loadSettings(document.getElementById('content'));
 }
 
-function editUser(id) { showToast(`Editando usuário ${id.slice(0,8)}`, 'info'); }
-function deleteUser(id) {
+function settingsEditUser(id) { showToast(`Editando usuário ${id.slice(0,8)}`, 'info'); }
+function settingsDeleteUser(id) {
   confirmModal({ title: 'Excluir Usuário', message: 'Tem certeza que deseja excluir este usuário?', danger: true, onConfirm: () => {
     showToast('Usuário excluído!', 'success');
     loadSettings(document.getElementById('content'));
@@ -3821,6 +4031,468 @@ function showCreateChangelog() {
       <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
       <button onclick="showToast('Changelog publicado!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Publicar</button>`
   });
+}
+
+// ─── Admin Master Pages ──────────────────────────────────────────
+
+// Admin Dashboard
+async function loadAdminDashboard(el) {
+  const stats = await api('/api/admin/stats');
+  if (!stats) return el.innerHTML = '<div class="empty-state">Erro ao carregar dados</div>';
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div><h2 style="margin:0;font-size:20px">Painel do Admin Master</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">Visão geral da plataforma SaaS</p></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="navigate('admin-customers')" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Novo Cliente</button>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><i class="fa-solid fa-users" style="color:#6c5ce7"></i><span style="font-size:12px;font-weight:600">Clientes Ativos</span></div>
+        <div style="font-size:24px;font-weight:700">${stats.activeCustomers || 0}</div>
+        <div style="font-size:10px;color:var(--text-muted)">${stats.totalCustomers || 0} total</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><i class="fa-solid fa-dollar-sign" style="color:#22c55e"></i><span style="font-size:12px;font-weight:600">MRR</span></div>
+        <div style="font-size:24px;font-weight:700">R$ ${(stats.mrr || 0).toLocaleString('pt-BR')}</div>
+        <div style="font-size:10px;color:var(--text-muted)">Receita mensal recorrente</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><i class="fa-solid fa-comments" style="color:#3b82f6"></i><span style="font-size:12px;font-weight:600">Conversas</span></div>
+        <div style="font-size:24px;font-weight:700">${stats.totalConversations || 0}</div>
+        <div style="font-size:10px;color:var(--text-muted)">Ativas agora</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><i class="fa-solid fa-robot" style="color:#f59e0b"></i><span style="font-size:12px;font-weight:600">Agentes IA</span></div>
+        <div style="font-size:24px;font-weight:700">${stats.totalAgents || 0}</div>
+        <div style="font-size:10px;color:var(--text-muted)">Em operação</div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <h3 style="margin:0 0 12px;font-size:14px;font-weight:600"><i class="fa-solid fa-bolt" style="color:#f59e0b;margin-right:6px"></i>Ações Rápidas</h3>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button onclick="navigate('admin-customers');showCreateCustomerModal()" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);cursor:pointer;font-size:12px;text-align:left"><i class="fa-solid fa-user-plus" style="color:#6c5ce7;width:20px"></i>Criar novo cliente</button>
+          <button onclick="navigate('admin-plans')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);cursor:pointer;font-size:12px;text-align:left"><i class="fa-solid fa-tags" style="color:#22c55e;width:20px"></i>Gerenciar planos</button>
+          <button onclick="navigate('admin-users')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);cursor:pointer;font-size:12px;text-align:left"><i class="fa-solid fa-user-shield" style="color:#3b82f6;width:20px"></i>Gerenciar usuários</button>
+          <button onclick="navigate('admin-logs')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);cursor:pointer;font-size:12px;text-align:left"><i class="fa-solid fa-history" style="color:#f59e0b;width:20px"></i>Ver logs de auditoria</button>
+        </div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <h3 style="margin:0 0 12px;font-size:14px;font-weight:600"><i class="fa-solid fa-chart-line" style="color:#22c55e;margin-right:6px"></i>Receita</h3>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-secondary);border-radius:8px"><span style="font-size:12px;color:var(--text-muted)">Assinaturas ativas</span><span style="font-size:12px;font-weight:600">${stats.activeSubscriptions || 0}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-secondary);border-radius:8px"><span style="font-size:12px;color:var(--text-muted)">Receita mensal</span><span style="font-size:12px;font-weight:600">R$ ${(stats.revenue || 0).toLocaleString('pt-BR')}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-secondary);border-radius:8px"><span style="font-size:12px;color:var(--text-muted)">Total de contatos</span><span style="font-size:12px;font-weight:600">${(stats.totalContacts || 0).toLocaleString('pt-BR')}</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Admin Customers Page
+async function loadAdminCustomers(el) {
+  const [customers, plans] = await Promise.all([
+    api('/api/admin/customers'),
+    api('/api/admin/plans')
+  ]);
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div><h2 style="margin:0;font-size:20px">Clientes</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">${customers?.length || 0} clientes cadastrados</p></div>
+      <button onclick="showCreateCustomerModal()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Novo Cliente</button>
+    </div>
+
+    <div style="display:grid;gap:12px">
+      ${(customers || []).map(c => `
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:16px">
+          <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,${c.status==='active'?'#22c55e,#16a34a':c.status==='suspended'?'#ef4444,#dc2626':'#f59e0b,#d97706'});display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:700">${c.name?.charAt(0)?.toUpperCase() || '?'}</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:14px">${c.name}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${c.email} • ${c.company || 'Sem empresa'}</div>
+            <div style="display:flex;gap:8px;margin-top:4px">
+              <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:${c.status==='active'?'#22c55e22;color:#22c55e':c.status==='suspended'?'#ef444422;color:#ef4444':'#f59e0b22;color:#f59e0b'}">${c.status==='active'?'Ativo':c.status==='suspended'?'Suspenso':c.status}</span>
+              <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#6c5ce722;color:#6c5ce7">${c.plans?.name || 'Sem plano'}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="impersonateCustomer('${c.id}')" title="Entrar como cliente" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;font-size:11px"><i class="fa-solid fa-sign-in-alt"></i></button>
+            <button onclick="editCustomer('${c.id}')" title="Editar" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;font-size:11px"><i class="fa-solid fa-edit"></i></button>
+            <button onclick="toggleCustomerStatus('${c.id}','${c.status}')" title="${c.status==='active'?'Suspender':'Reativar'}" style="padding:6px 10px;border-radius:6px;border:1px solid ${c.status==='active'?'#ef4444':'#22c55e'};background:${c.status==='active'?'#ef444422':'#22c55e22'};color:${c.status==='active'?'#ef4444':'#22c55e'};cursor:pointer;font-size:11px"><i class="fa-solid fa-${c.status==='active'?'ban':'check'}"></i></button>
+          </div>
+        </div>
+      `).join('')}
+      ${(!customers || customers.length === 0) ? '<div class="empty-state"><i class="fa-solid fa-users"></i><h3>Nenhum cliente</h3><p>Clique em "Novo Cliente" para começar</p></div>' : ''}
+    </div>
+  `;
+}
+
+function showCreateCustomerModal() {
+  showModal({
+    title: 'Novo Cliente',
+    body: `
+    <div class="form-group"><label>Nome *</label><input type="text" id="cust-name" placeholder="João Silva" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Email *</label><input type="email" id="cust-email" placeholder="joao@empresa.com" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Telefone</label><input type="tel" id="cust-phone" placeholder="(11) 99999-9999" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Empresa</label><input type="text" id="cust-company" placeholder="Empresa XYZ" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Plano *</label><select id="cust-plan" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="">Selecione um plano</option><option value="plan-start">Start - R$97/mês</option><option value="plan-pro">Pro - R$297/mês</option><option value="plan-scale">Scale - R$797/mês</option><option value="plan-enterprise">Enterprise - R$2997/mês</option></select></div>
+    <div class="form-group"><label>Observações</label><textarea id="cust-notes" rows="2" placeholder="Notas sobre o cliente..." style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px;resize:vertical;font-family:inherit"></textarea></div>
+    <div style="padding:10px;background:#22c55e22;border:1px solid #22c55e;border-radius:8px;font-size:11px;color:#22c55e"><i class="fa-solid fa-info-circle"></i> Um usuário será criado automaticamente com senha: <strong>123456</strong></div>`,
+    footer: `
+      <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      <button onclick="saveNewCustomer()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar Cliente</button>`
+  });
+}
+
+async function saveNewCustomer() {
+  const name = document.getElementById('cust-name')?.value;
+  const email = document.getElementById('cust-email')?.value;
+  const phone = document.getElementById('cust-phone')?.value;
+  const company = document.getElementById('cust-company')?.value;
+  const plan_id = document.getElementById('cust-plan')?.value;
+  const notes = document.getElementById('cust-notes')?.value;
+  
+  if (!name || !email) return showToast('Nome e email são obrigatórios', 'error');
+  if (!plan_id) return showToast('Selecione um plano', 'error');
+  
+  const result = await api('/api/admin/customers', {
+    method: 'POST',
+    body: JSON.stringify({ name, email, phone, company, plan_id, notes })
+  });
+  
+  if (result?.id) {
+    showToast('Cliente criado com sucesso!', 'success');
+    document.querySelector('.modal-overlay.show')?.remove();
+    navigate('admin-customers');
+  } else {
+    showToast(result?.error || 'Erro ao criar cliente', 'error');
+  }
+}
+
+async function editCustomer(id) {
+  const customer = await api(`/api/admin/customers/${id}`);
+  if (!customer) return showToast('Cliente não encontrado', 'error');
+  
+  showModal({
+    title: 'Editar Cliente',
+    body: `
+    <div class="form-group"><label>Nome</label><input type="text" id="edit-cust-name" value="${customer.name}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="edit-cust-email" value="${customer.email}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Telefone</label><input type="tel" id="edit-cust-phone" value="${customer.phone || ''}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Empresa</label><input type="text" id="edit-cust-company" value="${customer.company || ''}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Plano</label><select id="edit-cust-plan" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="plan-start" ${customer.plan_id==='plan-start'?'selected':''}>Start - R$97/mês</option><option value="plan-pro" ${customer.plan_id==='plan-pro'?'selected':''}>Pro - R$297/mês</option><option value="plan-scale" ${customer.plan_id==='plan-scale'?'selected':''}>Scale - R$797/mês</option><option value="plan-enterprise" ${customer.plan_id==='plan-enterprise'?'selected':''}>Enterprise - R$2997/mês</option></select></div>`,
+    footer: `
+      <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      <button onclick="updateCustomer('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>`
+  });
+}
+
+async function updateCustomer(id) {
+  const name = document.getElementById('edit-cust-name')?.value;
+  const email = document.getElementById('edit-cust-email')?.value;
+  const phone = document.getElementById('edit-cust-phone')?.value;
+  const company = document.getElementById('edit-cust-company')?.value;
+  const plan_id = document.getElementById('edit-cust-plan')?.value;
+  
+  const result = await api(`/api/admin/customers/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name, email, phone, company, plan_id })
+  });
+  
+  if (result?.id) {
+    showToast('Cliente atualizado!', 'success');
+    document.querySelector('.modal-overlay.show')?.remove();
+    navigate('admin-customers');
+  } else {
+    showToast(result?.error || 'Erro ao atualizar', 'error');
+  }
+}
+
+async function toggleCustomerStatus(id, currentStatus) {
+  const action = currentStatus === 'active' ? 'suspend' : 'reactivate';
+  const label = currentStatus === 'active' ? 'suspender' : 'reativar';
+  
+  confirmModal({
+    title: `${label === 'suspender' ? 'Suspender' : 'Reativar'} Cliente`,
+    message: `Tem certeza que deseja ${label} este cliente?`,
+    danger: action === 'suspend',
+    onConfirm: async () => {
+      const result = await api(`/api/admin/customers/${id}/${action}`, { method: 'POST' });
+      if (result?.success) {
+        showToast(`Cliente ${label === 'suspender' ? 'suspenso' : 'reativado'}!`, 'success');
+        navigate('admin-customers');
+      } else {
+        showToast(result?.error || 'Erro ao processar', 'error');
+      }
+    }
+  });
+}
+
+async function impersonateCustomer(id) {
+  confirmModal({
+    title: 'Entrar como Cliente',
+    message: 'Você vai acessar o painel deste cliente. Continuar?',
+    danger: false,
+    onConfirm: async () => {
+      const result = await api(`/api/auth/impersonate/${id}`, { method: 'POST' });
+      if (result?.token) {
+        setAuthToken(result.token);
+        currentUser = { ...result.user, is_master: false, impersonated: true, impersonated_by: result.user.impersonated_by };
+        localStorage.setItem('ozion_user', JSON.stringify(currentUser));
+        showToast('Acessando como cliente...', 'success');
+        render();
+      } else {
+        showToast(result?.error || 'Erro ao acessar', 'error');
+      }
+    }
+  });
+}
+
+function exitImpersonation() {
+  // Reload to get back to admin
+  localStorage.removeItem('ozion_user');
+  clearAuthToken();
+  localStorage.removeItem('ozion_logged');
+  currentUser = null;
+  render();
+}
+
+// Admin Plans Page
+async function loadAdminPlans(el) {
+  const plans = await api('/api/admin/plans');
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div><h2 style="margin:0;font-size:20px">Planos</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">${plans?.length || 0} planos disponíveis</p></div>
+      <button onclick="showCreatePlanModal()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Novo Plano</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+      ${(plans || []).map(p => `
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative">
+          <div style="position:absolute;top:16px;right:16px">
+            <button onclick="editPlan('${p.id}','${p.name}',${p.price})" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;font-size:10px"><i class="fa-solid fa-edit"></i></button>
+          </div>
+          <div style="font-size:18px;font-weight:700;margin-bottom:4px">${p.name}</div>
+          <div style="font-size:24px;font-weight:700;color:#6c5ce7;margin-bottom:12px">R$ ${p.price}<span style="font-size:12px;font-weight:400;color:var(--text-muted)">/mês</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--text-muted)">
+            <div><i class="fa-solid fa-check" style="color:#22c55e;width:16px"></i> ${p.max_workspaces} workspace(s)</div>
+            <div><i class="fa-solid fa-check" style="color:#22c55e;width:16px"></i> ${p.max_phone_numbers} número(s) WhatsApp</div>
+            <div><i class="fa-solid fa-check" style="color:#22c55e;width:16px"></i> ${p.max_flows} fluxos</div>
+            <div><i class="fa-solid fa-check" style="color:#22c55e;width:16px"></i> ${p.max_agents} agente(s) IA</div>
+            <div><i class="fa-solid fa-check" style="color:#22c55e;width:16px"></i> ${p.max_users} usuário(s)</div>
+            <div><i class="fa-solid fa-check" style="color:#22c55e;width:16px"></i> ${p.max_contacts?.toLocaleString('pt-BR')} contatos</div>
+            <div><i class="fa-solid fa-check" style="color:#22c55e;width:16px"></i> ${p.max_tokens?.toLocaleString('pt-BR')} tokens</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function showCreatePlanModal() {
+  showModal({
+    title: 'Novo Plano',
+    body: `
+    <div class="form-group"><label>Nome *</label><input type="text" id="plan-name" placeholder="Plano Pro" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Preço (R$/mês) *</label><input type="number" id="plan-price" placeholder="297" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label>Workspaces</label><input type="number" id="plan-workspaces" value="1" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+      <div class="form-group"><label>Números WA</label><input type="number" id="plan-phones" value="1" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+      <div class="form-group"><label>Fluxos</label><input type="number" id="plan-flows" value="5" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+      <div class="form-group"><label>Agentes IA</label><input type="number" id="plan-agents" value="1" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+      <div class="form-group"><label>Usuários</label><input type="number" id="plan-users" value="1" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+      <div class="form-group"><label>Contatos</label><input type="number" id="plan-contacts" value="1000" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+      <div class="form-group"><label>Tokens</label><input type="number" id="plan-tokens" value="100000" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+      <div class="form-group"><label>Integrações</label><input type="number" id="plan-integrations" value="2" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    </div>`,
+    footer: `
+      <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      <button onclick="saveNewPlan()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar Plano</button>`
+  });
+}
+
+async function saveNewPlan() {
+  const name = document.getElementById('plan-name')?.value;
+  const price = parseFloat(document.getElementById('plan-price')?.value) || 0;
+  
+  if (!name) return showToast('Nome é obrigatório', 'error');
+  
+  const result = await api('/api/admin/plans', {
+    method: 'POST',
+    body: JSON.stringify({
+      name,
+      slug: name.toLowerCase().replace(/\s+/g, '-'),
+      price,
+      max_workspaces: parseInt(document.getElementById('plan-workspaces')?.value) || 1,
+      max_phone_numbers: parseInt(document.getElementById('plan-phones')?.value) || 1,
+      max_flows: parseInt(document.getElementById('plan-flows')?.value) || 5,
+      max_agents: parseInt(document.getElementById('plan-agents')?.value) || 1,
+      max_users: parseInt(document.getElementById('plan-users')?.value) || 1,
+      max_contacts: parseInt(document.getElementById('plan-contacts')?.value) || 1000,
+      max_tokens: parseInt(document.getElementById('plan-tokens')?.value) || 100000,
+      max_integrations: parseInt(document.getElementById('plan-integrations')?.value) || 2,
+      max_voices: parseInt(document.getElementById('plan-agents')?.value) || 1,
+      max_executions: parseInt(document.getElementById('plan-flows')?.value) * 1000 || 5000
+    })
+  });
+  
+  if (result?.id) {
+    showToast('Plano criado!', 'success');
+    document.querySelector('.modal-overlay.show')?.remove();
+    navigate('admin-plans');
+  } else {
+    showToast(result?.error || 'Erro ao criar plano', 'error');
+  }
+}
+
+// Admin Users Page
+async function loadAdminUsers(el) {
+  const users = await api('/api/admin/users');
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div><h2 style="margin:0;font-size:20px">Usuários</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">${users?.length || 0} usuários cadastrados</p></div>
+      <button onclick="showCreateUserModal()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Novo Usuário</button>
+    </div>
+
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:var(--bg-secondary)">
+          <th style="padding:12px 16px;text-align:left;font-weight:600">Usuário</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600">Email</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600">Perfil</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600">Status</th>
+          <th style="padding:12px 16px;text-align:right;font-weight:600">Ações</th>
+        </tr></thead>
+        <tbody>
+          ${(users || []).map(u => `
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:12px 16px"><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:600">${u.name?.charAt(0)?.toUpperCase() || '?'}</div><span style="font-weight:500">${u.name}</span></div></td>
+              <td style="padding:12px 16px;color:var(--text-muted)">${u.email}</td>
+              <td style="padding:12px 16px"><span style="padding:2px 8px;border-radius:4px;background:${u.role==='admin'?'#ef444422;color:#ef4444':u.role==='owner'?'#6c5ce722;color:#6c5ce7':'#3b82f622;color:#3b82f6'}">${u.role==='admin'?'Admin Master':u.role==='owner'?'Dono':u.role==='manager'?'Gestor':u.role==='financial'?'Financeiro':'Atendente'}</span></td>
+              <td style="padding:12px 16px"><span style="padding:2px 8px;border-radius:4px;background:${u.is_active?'#22c55e22;color:#22c55e':'#ef444422;color:#ef4444'}">${u.is_active?'Ativo':'Inativo'}</span></td>
+              <td style="padding:12px 16px;text-align:right"><button onclick="editUser('${u.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;font-size:10px"><i class="fa-solid fa-edit"></i></button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function showCreateUserModal() {
+  showModal({
+    title: 'Novo Usuário',
+    body: `
+    <div class="form-group"><label>Nome *</label><input type="text" id="new-user-name" placeholder="João Silva" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Email *</label><input type="email" id="new-user-email" placeholder="joao@email.com" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Senha</label><input type="password" id="new-user-pass" placeholder="123456" value="123456" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>
+    <div class="form-group"><label>Perfil</label><select id="new-user-role" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="agent">Atendente</option><option value="manager">Gestor</option><option value="financial">Financeiro</option><option value="owner">Dono da Conta</option></select></div>`,
+    footer: `
+      <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      <button onclick="saveNewUser()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`
+  });
+}
+
+// Admin Workspaces Page
+async function loadAdminWorkspaces(el) {
+  const workspaces = await api('/api/admin/workspaces');
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div><h2 style="margin:0;font-size:20px">Workspaces</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">${workspaces?.length || 0} workspaces</p></div>
+    </div>
+
+    <div style="display:grid;gap:12px">
+      ${(workspaces || []).map(w => `
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:16px">
+          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#6c5ce7);display:flex;align-items:center;justify-content:center;color:white"><i class="fa-solid fa-building"></i></div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:14px">${w.name}</div>
+            <div style="font-size:11px;color:var(--text-muted)">ID: ${w.id?.slice(0,8)} • Slug: ${w.slug}</div>
+          </div>
+          <span style="padding:2px 8px;border-radius:4px;background:${w.is_active?'#22c55e22;color:#22c55e':'#ef444422;color:#ef4444'}">${w.is_active?'Ativo':'Inativo'}</span>
+        </div>
+      `).join('')}
+      ${(!workspaces || workspaces.length === 0) ? '<div class="empty-state"><i class="fa-solid fa-building"></i><h3>Nenhum workspace</h3></div>' : ''}
+    </div>
+  `;
+}
+
+// Admin Revenue Page
+async function loadAdminRevenue(el) {
+  const revenue = await api('/api/admin/revenue');
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div><h2 style="margin:0;font-size:20px">Receita SaaS</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">Métricas financeiras da plataforma</p></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">MRR</div>
+        <div style="font-size:24px;font-weight:700;color:#22c55e">R$ ${(revenue?.mrr || 0).toLocaleString('pt-BR')}</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">ARR</div>
+        <div style="font-size:24px;font-weight:700">R$ ${(revenue?.arr || 0).toLocaleString('pt-BR')}</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Assinaturas Ativas</div>
+        <div style="font-size:24px;font-weight:700;color:#3b82f6">${revenue?.activeSubscriptions || 0}</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Churn Rate</div>
+        <div style="font-size:24px;font-weight:700;color:${revenue?.churnRate > 5 ? '#ef4444' : '#22c55e'}">${revenue?.churnRate || 0}%</div>
+      </div>
+    </div>
+
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <h3 style="margin:0 0 12px;font-size:14px;font-weight:600">Histórico de Receita</h3>
+      ${(!revenue?.revenueHistory || revenue.revenueHistory.length === 0) ? '<p style="color:var(--text-muted);font-size:12px">Nenhum registro de receita ainda</p>' : ''}
+    </div>
+  `;
+}
+
+// Admin Audit Logs Page
+async function loadAdminLogs(el) {
+  const logs = await api('/api/admin/logs');
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div><h2 style="margin:0;font-size:20px">Logs de Auditoria</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">Registro de todas as ações</p></div>
+    </div>
+
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:var(--bg-secondary)">
+          <th style="padding:12px 16px;text-align:left;font-weight:600">Data</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600">Usuário</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600">Ação</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600">Entidade</th>
+          <th style="padding:12px 16px;text-align:left;font-weight:600">Status</th>
+        </tr></thead>
+        <tbody>
+          ${(logs || []).map(l => `
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:12px 16px;color:var(--text-muted)">${formatDate(l.created_at)} ${formatTime(l.created_at)}</td>
+              <td style="padding:12px 16px">${l.users?.name || 'Sistema'}</td>
+              <td style="padding:12px 16px"><span style="padding:2px 8px;border-radius:4px;background:${l.action==='create'?'#22c55e22;color:#22c55e':l.action==='delete'||l.action==='suspend'?'#ef444422;color:#ef4444':'#3b82f622;color:#3b82f6'}">${l.action}</span></td>
+              <td style="padding:12px 16px">${l.entity} ${l.entity_id?.slice(0,8) || ''}</td>
+              <td style="padding:12px 16px"><span style="padding:2px 8px;border-radius:4px;background:#22c55e22;color:#22c55e">OK</span></td>
+            </tr>
+          `).join('')}
+          ${(!logs || logs.length === 0) ? '<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--text-muted)">Nenhum log registrado</td></tr>' : ''}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
