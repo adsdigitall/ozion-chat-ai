@@ -4,6 +4,8 @@
   "installCommand": "npm install",
   "buildCommand": "echo 'Build complete'",
   "outputDirectory": "public",
+  "cleanUrls": true,
+  "trailingSlash": false,
   "env": {
     "NODE_ENV": "production",
     "SUPABASE_URL": "https://dpwqqszrhizqdncifkee.supabase.co",
@@ -39,7 +41,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "public/index.html"
+      "dest": "/index.html"
     }
   ],
   "builds": [
