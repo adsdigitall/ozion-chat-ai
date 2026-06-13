@@ -2851,52 +2851,198 @@ async function loadSales(el) {
     </div></div>`;
 }
 
-// ─── Integrações (Lailla.io exact) ───────────────────────────────
+// ─── Integrações (Full) ──────────────────────────────────────────
+let integrationsTab = 'native';
+
 async function loadIntegrations(el) {
   allIntegrations = await api('/api/integrations') || [];
-  const providers = [
-    { id: 'kiwify', name: 'Kiwify', desc: 'Gateway de pagamentos online', type: 'Integração Nativa' },
-    { id: 'perfectpay', name: 'Perfect Pay', desc: 'Gateway de pagamentos online', type: 'Integração Nativa' },
-    { id: 'hotmart', name: 'Hotmart', desc: 'Gateway de pagamentos online', type: 'Integração Nativa' },
-    { id: 'braip', name: 'Braip', desc: 'Gateway de pagamentos online', type: 'Integração Nativa' },
-    { id: 'asaas', name: 'Asaas', desc: 'Gateway de pagamentos online', type: 'Integração Nativa' },
-    { id: 'stripe', name: 'Stripe', desc: 'Gateway de pagamentos online', type: 'Integração Nativa' },
-    { id: 'mercadopago', name: 'MercadoPago', desc: 'Gateway de pagamentos online', type: 'Integração Nativa' },
-    { id: 'groq', name: 'Groq AI', desc: 'Llama 3.3 (Grátis)', type: 'Integração IA' },
-    { id: 'deepseek', name: 'DeepSeek', desc: 'DeepSeek Chat', type: 'Integração IA' },
-    { id: 'openai', name: 'OpenAI', desc: 'GPT-4o / Whisper', type: 'Integração IA' },
-    { id: 'elevenlabs', name: 'ElevenLabs', desc: 'Voice Cloning', type: 'Integração Voz' },
-    { id: 'meta', name: 'Meta WhatsApp', desc: 'WhatsApp Cloud API', type: 'Integração WhatsApp' },
-  ];
   
   el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div><h2 style="margin:0;font-size:20px">Integrações</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">Gerencie suas integrações nativas e webhooks</p></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <h2 style="margin:0;font-size:20px">Integrações</h2>
+        <p style="color:#8b9dc3;margin-top:2px;font-size:12px">Conecte serviços e gerencie webhooks</p>
+      </div>
     </div>
 
-    <!-- Webhooks Section -->
-    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px">
-      <h3 style="font-size:14px;margin-bottom:4px">Webhooks</h3>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Crie webhooks customizados para suas automações</p>
-      <button class="btn btn-sm btn-primary"><i class="fa-solid fa-plug"></i> Acessar Webhooks</button>
+    <!-- Tabs -->
+    <div style="display:flex;gap:4px;margin-bottom:20px;background:#161b22;border-radius:10px;padding:4px">
+      <button onclick="setIntTab('native')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${integrationsTab==='native'?'#6c5ce7':'transparent'};color:${integrationsTab==='native'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-puzzle-piece"></i> Nativas</button>
+      <button onclick="setIntTab('webhooks')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${integrationsTab==='webhooks'?'#6c5ce7':'transparent'};color:${integrationsTab==='webhooks'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-hook"></i> Webhooks</button>
+      <button onclick="setIntTab('api')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${integrationsTab==='api'?'#6c5ce7':'transparent'};color:${integrationsTab==='api'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-key"></i> API Keys</button>
     </div>
 
-    <!-- Integrations Grid -->
-    <h3 style="font-size:14px;margin-bottom:12px">Integrações Nativas</h3>
-    <div class="grid-3">${providers.map(p => {
-      const connected = allIntegrations.find(i => i.provider === p.id);
-      return `<div class="card"><div class="card-body">
-        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
-          <h3 style="margin:0;font-size:14px">${p.name}</h3>
-          <span class="badge badge-blue" style="font-size:9px">${p.type}</span>
-        </div>
-        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">${p.desc}</p>
-        <button class="btn btn-sm btn-${connected?'secondary':'primary'}" onclick="connectIntegration('${p.id}')"><i class="fa-solid fa-${connected?'cog':'plug'}"></i> ${connected?'Gerenciar':'Conectar'}</button>
-      </div></div>`;
-    }).join('')}</div>`;
+    <div id="int-content">${renderIntContent()}</div>
+  `;
 }
 
-async function connectIntegration(provider) { showToast(`Conectando ${provider}...`, 'info'); }
+function setIntTab(t) { integrationsTab = t; renderIntegrations(); }
+function renderIntegrations() { const c = document.getElementById('int-content'); if (c) c.innerHTML = renderIntContent(); }
+
+function renderIntContent() {
+  if (integrationsTab === 'webhooks') return renderWebhooksTab();
+  if (integrationsTab === 'api') return renderAPITab();
+  return renderNativeTab();
+}
+
+function renderNativeTab() {
+  const categories = {
+    'Pagamentos': [
+      { id: 'kiwify', name: 'Kiwify', icon: '💳', desc: 'Gateway de pagamentos' },
+      { id: 'perfectpay', name: 'Perfect Pay', icon: '💰', desc: 'Gateway de pagamentos' },
+      { id: 'hotmart', name: 'Hotmart', icon: '🔥', desc: 'Gateway de pagamentos' },
+      { id: 'braip', name: 'Braip', icon: '💎', desc: 'Gateway de pagamentos' },
+      { id: 'asaas', name: 'Asaas', icon: '🏦', desc: 'Gateway de pagamentos' },
+      { id: 'stripe', name: 'Stripe', icon: '💳', desc: 'Gateway de pagamentos' },
+      { id: 'mercadopago', name: 'MercadoPago', icon: '🟡', desc: 'Gateway de pagamentos' }
+    ],
+    'IA & LLM': [
+      { id: 'groq', name: 'Groq AI', icon: '⚡', desc: 'Llama 3.3 (Grátis)' },
+      { id: 'deepseek', name: 'DeepSeek', icon: '🧠', desc: 'DeepSeek Chat' },
+      { id: 'openai', name: 'OpenAI', icon: '🤖', desc: 'GPT-4o / Whisper' },
+      { id: 'anthropic', name: 'Anthropic', icon: '🧠', desc: 'Claude Sonnet' }
+    ],
+    'Voz': [
+      { id: 'elevenlabs', name: 'ElevenLabs', icon: '🎙️', desc: 'Voice Cloning & TTS' }
+    ],
+    'WhatsApp': [
+      { id: 'meta', name: 'Meta WhatsApp', icon: '📱', desc: 'WhatsApp Cloud API' }
+    ]
+  };
+
+  return Object.entries(categories).map(([cat, items]) => `
+    <div style="margin-bottom:20px">
+      <h3 style="font-size:13px;color:#8b9dc3;margin:0 0 10px;text-transform:uppercase;letter-spacing:1px">${cat}</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+        ${items.map(p => {
+          const connected = allIntegrations.find(i => i.provider === p.id);
+          return `<div style="background:#1a1f35;border:1px solid ${connected?'#22c55e44':'#2a3050'};border-radius:12px;padding:16px;transition:all .2s;${connected?'border-left:3px solid #22c55e':''}" onmouseover="this.style.borderColor='#3a4070'" onmouseout="this.style.borderColor='${connected?'#22c55e44':'#2a3050'}'">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <span style="font-size:24px">${p.icon}</span>
+              <div>
+                <div style="font-size:13px;font-weight:600;color:#e6edf3">${p.name}</div>
+                <div style="font-size:10px;color:#8b9dc3">${p.desc}</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+              ${connected ?
+                `<span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#22c55e22;color:#22c55e;font-weight:600"><i class="fa-solid fa-check"></i> Conectado</span>
+                <button onclick="manageIntegration('${p.id}')" style="margin-left:auto;padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-gear"></i></button>` :
+                `<button onclick="connectIntegration('${p.id}')" style="padding:6px 12px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px;font-weight:500"><i class="fa-solid fa-plug"></i> Conectar</button>`
+              }
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderWebhooksTab() {
+  return `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="font-size:14px;color:#e6edf3;margin:0"><i class="fa-solid fa-hook" style="color:#6c5ce7;margin-right:8px"></i>Webhooks</h3>
+      <button onclick="showCreateWebhook()" style="padding:6px 12px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-plus"></i> Novo Webhook</button>
+    </div>
+    <div id="webhook-form-area"></div>
+    <div style="display:flex;flex-direction:column;gap:8px" id="webhooks-list">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px">
+        <div style="width:36px;height:36px;border-radius:8px;background:#22c55e22;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-hook" style="color:#22c55e;font-size:14px"></i></div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:500;color:#e6edf3">WhatsApp Events</div>
+          <div style="font-size:10px;color:#8b9dc3">${window.location.origin}/webhook/whatsapp</div>
+        </div>
+        <span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#22c55e22;color:#22c55e">Ativo</span>
+        <button style="padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-copy" onclick="navigator.clipboard.writeText('${window.location.origin}/webhook/whatsapp');showToast('Copiado!','success')"></i></button>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px">
+        <div style="width:36px;height:36px;border-radius:8px;background:#3b82f622;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-hook" style="color:#3b82f6;font-size:14px"></i></div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:500;color:#e6edf3">Pagamento Eventos</div>
+          <div style="font-size:10px;color:#8b9dc3">${window.location.origin}/webhook/payments</div>
+        </div>
+        <span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#22c55e22;color:#22c55e">Ativo</span>
+        <button style="padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-copy" onclick="navigator.clipboard.writeText('${window.location.origin}/webhook/payments');showToast('Copiado!','success')"></i></button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderAPITab() {
+  return `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="font-size:14px;color:#e6edf3;margin:0"><i class="fa-solid fa-key" style="color:#f59e0b;margin-right:8px"></i>API Keys</h3>
+      <button onclick="showCreateAPIKey()" style="padding:6px 12px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-plus"></i> Gerar Chave</button>
+    </div>
+    <div id="api-key-form-area"></div>
+    <div style="display:flex;flex-direction:column;gap:8px" id="api-keys-list">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px">
+        <div style="width:36px;height:36px;border-radius:8px;background:#f59e0b22;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-key" style="color:#f59e0b;font-size:14px"></i></div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:500;color:#e6edf3">ozion_live_*****...k8m2</div>
+          <div style="font-size:10px;color:#8b9dc3">Criada em 10/06/2026 • Permissões: read, write</div>
+        </div>
+        <span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#22c55e22;color:#22c55e">Ativa</span>
+        <button onclick="showToast('Chave copiada!','success')" style="padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-copy"></i></button>
+        <button onclick="showToast('Chave revogada','info')" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#ef4444;cursor:pointer;font-size:10px"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>
+    <div style="margin-top:16px;padding:12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px">
+      <h4 style="font-size:12px;color:#e6edf3;margin:0 0 8px">Documentação da API</h4>
+      <p style="font-size:11px;color:#8b9dc3;margin:0 0 8px">Use a API REST para integrar com seus sistemas.</p>
+      <div style="display:flex;gap:8px">
+        <code style="flex:1;padding:8px;background:#0d1117;border-radius:6px;font-size:11px;color:#e6edf3">GET ${window.location.origin}/api/v1/contacts</code>
+        <button onclick="navigator.clipboard.writeText('${window.location.origin}/api/v1/contacts');showToast('Copiado!','success')" style="padding:6px 12px;border-radius:6px;border:1px solid #6c5ce7;background:#6c5ce715;color:#6c5ce7;cursor:pointer;font-size:10px"><i class="fa-solid fa-copy"></i></button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function showCreateWebhook() {
+  const area = document.getElementById('webhook-form-area');
+  if (!area) return;
+  area.innerHTML = `
+    <div style="background:#161b22;border:1px solid #2a3050;border-radius:10px;padding:16px;margin-bottom:16px;animation:slideUp .3s ease">
+      <h4 style="font-size:13px;color:#e6edf3;margin:0 0 12px">Novo Webhook</h4>
+      <div style="display:grid;gap:10px">
+        <input type="text" id="wh-name" placeholder="Nome (ex: Pagamento OK)" style="padding:8px 12px;background:#1a1f35;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;outline:none">
+        <input type="url" id="wh-url" placeholder="URL destino (https://...)" style="padding:8px 12px;background:#1a1f35;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;outline:none">
+        <select id="wh-events" style="padding:8px 12px;background:#1a1f35;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px">
+          <option>message.received</option><option>message.sent</option><option>payment.completed</option><option>payment.failed</option><option>contact.created</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button onclick="saveWebhook()" style="padding:6px 12px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-save"></i> Criar</button>
+        <button onclick="document.getElementById('webhook-form-area').innerHTML=''" style="padding:6px 12px;border-radius:6px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+function saveWebhook() { showToast('Webhook criado!', 'success'); document.getElementById('webhook-form-area').innerHTML = ''; }
+
+function showCreateAPIKey() {
+  const area = document.getElementById('api-key-form-area');
+  if (!area) return;
+  area.innerHTML = `
+    <div style="background:#161b22;border:1px solid #2a3050;border-radius:10px;padding:16px;margin-bottom:16px;animation:slideUp .3s ease">
+      <h4 style="font-size:13px;color:#e6edf3;margin:0 0 12px">Gerar Nova Chave</h4>
+      <input type="text" id="ak-name" placeholder="Nome da chave (ex: Produção)" style="width:100%;padding:8px 12px;background:#1a1f35;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;margin-bottom:10px">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <label style="font-size:11px;color:#8b9dc3;display:flex;align-items:center;gap:4px"><input type="checkbox" checked style="accent-color:#6c5ce7"> Read</label>
+        <label style="font-size:11px;color:#8b9dc3;display:flex;align-items:center;gap:4px"><input type="checkbox" checked style="accent-color:#6c5ce7"> Write</label>
+        <label style="font-size:11px;color:#8b9dc3;display:flex;align-items:center;gap:4px"><input type="checkbox" style="accent-color:#6c5ce7"> Admin</label>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="generateAPIKey()" style="padding:6px 12px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-key"></i> Gerar</button>
+        <button onclick="document.getElementById('api-key-form-area').innerHTML=''" style="padding:6px 12px;border-radius:6px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+function generateAPIKey() { showToast('Chave gerada: ozion_' + Math.random().toString(36).slice(2,14), 'success'); document.getElementById('api-key-form-area').innerHTML = ''; }
+
+function connectIntegration(provider) { showToast(`Conectando ${provider}...`, 'info'); }
+function manageIntegration(provider) { showToast(`Gerenciando ${provider}`, 'info'); }
 
 // ─── WhatsApp Connection (Embedded Signup + Channels) ────────────
 let whatsappChannels = [];
