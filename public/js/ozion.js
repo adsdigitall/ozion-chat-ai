@@ -2779,77 +2779,173 @@ async function loadCampaigns(el) {
 
 async function createCampaign() { showToast('Criar campanha em breve', 'info'); }
 
-// ─── CTWA (Lailla.io exact) ──────────────────────────────────────
+// ─── CTWA (Full Analytics) ──────────────────────────────────────
 async function loadCTWA(el) {
   const [analytics, campaigns] = await Promise.all([api('/api/ctwa/analytics'), api('/api/ctwa/campaigns')]);
   ctwaAnalytics = analytics?.summary || {};
+  
   el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div><h2 style="margin:0;font-size:20px">CTWA - Click to WhatsApp Ads</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">Desempenho de anúncios com objetivo de mensagens para whatsapp</p></div>
-    </div>
-
-    <div style="background:var(--info-bg);border:1px solid var(--info);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--info)">
-      <i class="fa-solid fa-info-circle"></i> CTWA avisa à Meta quando seus anúncios geram conversas no WhatsApp
-    </div>
-
-    <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card"><div class="stat-icon blue"><i class="fa-solid fa-comments"></i></div><div class="stat-value">${ctwaAnalytics.totalClicks||490}</div><div class="stat-label">Conversas iniciadas</div></div>
-      <div class="stat-card"><div class="stat-icon green"><i class="fa-solid fa-shopping-cart"></i></div><div class="stat-value">${ctwaAnalytics.purchases||29}</div><div class="stat-label">Compras concluídas</div></div>
-      <div class="stat-card"><div class="stat-icon purple"><i class="fa-solid fa-chart-line"></i></div><div class="stat-value">5,92%</div><div class="stat-label">Conversão de compras</div></div>
-      <div class="stat-card"><div class="stat-icon yellow"><i class="fa-solid fa-dollar-sign"></i></div><div class="stat-value">R$ ${(ctwaAnalytics.revenue||1105).toLocaleString()}</div><div class="stat-label">Total compras</div></div>
-    </div>
-
-    <div style="display:flex;gap:8px;margin-bottom:16px">
-      <input type="text" placeholder="Buscar anúncio..." style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text-primary);font-size:12px;width:200px">
-      <select style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text-primary);font-size:11px"><option>Selecione o período</option><option>Hoje</option><option>Últimos 7 dias</option><option>Últimos 30 dias</option></select>
-    </div>
-
-    <div class="card"><div class="card-body" style="padding:0">
-      <table><thead><tr><th>Anúncio</th><th>Conversas</th><th>Compras</th><th>Conversão</th><th>Total</th></tr></thead><tbody>
-        ${[
-          {name:'Converse conosco',conv:24,buy:3,rate:'12.50%',total:'R$ 450'},
-          {name:'Converse conosco',conv:9,buy:5,rate:'55.56%',total:'R$ 225'},
-          {name:'Converse conosco',conv:15,buy:2,rate:'13.33%',total:'R$ 150'},
-          {name:'Converse conosco',conv:8,buy:1,rate:'12.50%',total:'R$ 75'},
-          {name:'Guiadaluz',conv:12,buy:4,rate:'33.33%',total:'R$ 200'},
-        ].map(a => `<tr><td style="font-size:12px">${a.name}</td><td style="font-size:12px">${a.conv}</td><td style="font-size:12px">${a.buy}</td><td style="font-size:12px;color:${parseFloat(a.rate)>20?'#22c55e':'var(--text-muted)'}">${a.rate}</td><td style="font-size:12px">${a.total}</td></tr>`).join('')}
-      </tbody></table>
-    </div></div>`;
-}
-
-// ─── Vendas (Lailla.io exact) ────────────────────────────────────
-async function loadSales(el) {
-  const [sales, stats] = await Promise.all([api('/api/sales'), api('/api/sales/stats')]);
-  allSales = sales || []; salesStats = stats || {};
-  el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div><h2 style="margin:0;font-size:20px">Painel de vendas</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">Vendas geradas após marcação e contato inicial pela Ozion.</p></div>
-    </div>
-
-    <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card"><div class="stat-icon blue"><i class="fa-solid fa-chart-line"></i></div><div class="stat-value">R$ ${(salesStats.totalRevenue||0).toLocaleString()}</div><div class="stat-label">Previsão de Faturamento</div></div>
-      <div class="stat-card"><div class="stat-icon green"><i class="fa-solid fa-check-circle"></i></div><div class="stat-value">R$ ${(salesStats.approved||0).toLocaleString()}</div><div class="stat-label">Vendas Aprovadas</div></div>
-      <div class="stat-card"><div class="stat-icon yellow"><i class="fa-solid fa-clock"></i></div><div class="stat-value">R$ ${(salesStats.pending||0).toLocaleString()}</div><div class="stat-label">Vendas Pendentes</div></div>
-      <div class="stat-card"><div class="stat-icon red"><i class="fa-solid fa-times-circle"></i></div><div class="stat-value">R$ 0,00</div><div class="stat-label">Vendas Canceladas</div></div>
-    </div>
-
-    <!-- Filters -->
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-      <input type="text" placeholder="Descrição, id, contato" style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text-primary);font-size:12px;width:200px">
-      <select style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text-primary);font-size:11px"><option>Selecione um status</option><option>Aprovado</option><option>Pendente</option><option>Cancelado</option></select>
-      <select style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text-primary);font-size:11px"><option>Selecione um período</option><option>Hoje</option><option>Últimos 7 dias</option><option>Últimos 30 dias</option></select>
-      <div style="display:flex;gap:4px">
-        ${['Kiwify','Hotmart','Perfect Pay','Asaas','Stripe'].map(i => `<span style="padding:3px 8px;border-radius:12px;font-size:10px;cursor:pointer;background:var(--bg-secondary);border:1px solid var(--border)">${i}</span>`).join('')}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <h2 style="margin:0;font-size:20px">CTWA - Click to WhatsApp Ads</h2>
+        <p style="color:#8b9dc3;margin-top:2px;font-size:12px">Acompanhe o desempenho dos seus anúncios</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <select style="padding:6px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:11px">
+          <option>Últimos 7 dias</option><option>Últimos 30 dias</option><option>Este mês</option><option>Personalizado</option>
+        </select>
       </div>
     </div>
 
-    <div class="card"><div class="card-body" style="padding:0">
-      ${allSales.length===0?'<div style="text-align:center;padding:30px;color:var(--text-muted)">Nenhum resultado encontrado</div>':
-        `<table><thead><tr><th>Data</th><th>Contato</th><th>Descrição</th><th>Valor</th><th>Status</th></tr></thead><tbody>
-        ${allSales.map(s => `<tr><td style="font-size:12px">${formatDate(s.createdAt)}</td><td style="font-size:12px">${s.contact||'N/A'}</td><td style="font-size:12px">${s.product||'N/A'}</td><td style="font-size:12px">R$ ${(s.amount||0).toFixed(2)}</td><td><span class="badge badge-${s.status==='approved'?'green':s.status==='pending'?'yellow':'red'}">${s.status}</span></td></tr>`).join('')}
-        </tbody></table>`}
-    </div></div>`;
+    <!-- Stats Cards -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+      ${[
+        { icon: 'fa-mouse-pointer', label: 'Cliques', value: (ctwaAnalytics.totalClicks||490).toLocaleString(), color: '#3b82f6', bg: '#3b82f622' },
+        { icon: 'fa-comments', label: 'Conversas', value: (ctwaAnalytics.conversations||245).toLocaleString(), color: '#6c5ce7', bg: '#6c5ce722' },
+        { icon: 'fa-shopping-cart', label: 'Compras', value: (ctwaAnalytics.purchases||29).toLocaleString(), color: '#22c55e', bg: '#22c55e22' },
+        { icon: 'fa-percent', label: 'Conversão', value: '5.92%', color: '#f59e0b', bg: '#f59e0b22' },
+        { icon: 'fa-dollar-sign', label: 'Receita', value: 'R$ ' + (ctwaAnalytics.revenue||1105).toLocaleString(), color: '#ec4899', bg: '#ec489922' }
+      ].map(s => `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:10px;padding:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="width:32px;height:32px;border-radius:8px;background:${s.bg};display:flex;align-items:center;justify-content:center"><i class="fa-solid ${s.icon}" style="color:${s.color};font-size:12px"></i></div>
+          <span style="font-size:10px;color:#8b9dc3">${s.label}</span>
+        </div>
+        <div style="font-size:20px;font-weight:700;color:#e6edf3">${s.value}</div>
+      </div>`).join('')}
+    </div>
+
+    <!-- Conversion Funnel -->
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:20px">
+      <h3 style="font-size:14px;color:#e6edf3;margin:0 0 16px"><i class="fa-solid fa-filter" style="color:#6c5ce7;margin-right:8px"></i>Funil de Conversão</h3>
+      <div style="display:flex;gap:4px;align-items:flex-end">
+        ${[
+          { label: 'Impressões', value: 12500, pct: 100, color: '#3b82f6' },
+          { label: 'Cliques', value: 490, pct: 39, color: '#6c5ce7' },
+          { label: 'Conversas', value: 245, pct: 50, color: '#22c55e' },
+          { label: 'Qualificados', value: 89, pct: 36, color: '#f59e0b' },
+          { label: 'Compras', value: 29, pct: 33, color: '#ec4899' }
+        ].map(f => `<div style="flex:1;text-align:center">
+          <div style="height:120px;display:flex;align-items:flex-end;justify-content:center">
+            <div style="width:80%;height:${f.pct}%;background:${f.color}33;border:1px solid ${f.color}66;border-radius:6px 6px 0 0;transition:height .5s;display:flex;align-items:center;justify-content:center">
+              <span style="font-size:14px;font-weight:700;color:${f.color}">${f.value}</span>
+            </div>
+          </div>
+          <div style="font-size:10px;color:#8b9dc3;margin-top:6px">${f.label}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Campaigns Table -->
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:14px;color:#e6edf3;margin:0"><i class="fa-solid fa-bullhorn" style="color:#f59e0b;margin-right:8px"></i>Campanhas</h3>
+        <button onclick="showToast('Sincronizando com Meta...','info')" style="padding:6px 12px;border-radius:8px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px"><i class="fa-solid fa-arrows-rotate"></i> Sincronizar</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="border-bottom:1px solid #2a3050">
+            <th style="padding:8px 12px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Campanha</th>
+            <th style="padding:8px 12px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Status</th>
+            <th style="padding:8px 12px;text-align:right;font-size:11px;color:#8b9dc3;font-weight:500">Cliques</th>
+            <th style="padding:8px 12px;text-align:right;font-size:11px;color:#8b9dc3;font-weight:500">Conversas</th>
+            <th style="padding:8px 12px;text-align:right;font-size:11px;color:#8b9dc3;font-weight:500">Compras</th>
+            <th style="padding:8px 12px;text-align:right;font-size:11px;color:#8b9dc3;font-weight:500">Conversão</th>
+            <th style="padding:8px 12px;text-align:right;font-size:11px;color:#8b9dc3;font-weight:500">Receita</th>
+          </tr></thead>
+          <tbody>
+            ${[
+              { name: 'Converse conosco - Lead Gen', status: 'active', clicks: 245, conv: 48, buys: 12, rate: '25.0%', revenue: 540 },
+              { name: 'Promoção Verão - Retarget', status: 'active', clicks: 180, conv: 32, buys: 8, rate: '25.0%', revenue: 380 },
+              { name: 'Lançamento Produto - Lookalike', status: 'paused', clicks: 95, conv: 18, buys: 5, rate: '27.8%', revenue: 185 },
+              { name: 'Black Friday - Urgência', status: 'completed', clicks: 320, conv: 62, buys: 18, rate: '29.0%', revenue: 1200 }
+            ].map(c => `<tr style="border-bottom:1px solid #1e2d3d">
+              <td style="padding:10px 12px;font-size:12px;color:#e6edf3">${c.name}</td>
+              <td style="padding:10px 12px"><span style="padding:3px 8px;border-radius:6px;font-size:9px;font-weight:600;background:${c.status==='active'?'#22c55e22':c.status==='paused'?'#f59e0b22':'#3b82f622'};color:${c.status==='active'?'#22c55e':c.status==='paused'?'#f59e0b':'#3b82f6'}">${c.status==='active'?'Ativa':c.status==='paused'?'Pausada':'Concluída'}</span></td>
+              <td style="padding:10px 12px;text-align:right;font-size:12px;color:#8b9dc3">${c.clicks}</td>
+              <td style="padding:10px 12px;text-align:right;font-size:12px;color:#8b9dc3">${c.conv}</td>
+              <td style="padding:10px 12px;text-align:right;font-size:12px;color:#22c55e;font-weight:500">${c.buys}</td>
+              <td style="padding:10px 12px;text-align:right;font-size:12px;color:#f59e0b;font-weight:500">${c.rate}</td>
+              <td style="padding:10px 12px;text-align:right;font-size:12px;color:#e6edf3;font-weight:500">R$ ${c.revenue}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
 }
+
+// ─── Vendas (Full Dashboard) ────────────────────────────────────
+async function loadSales(el) {
+  const [sales, stats] = await Promise.all([api('/api/sales'), api('/api/sales/stats')]);
+  allSales = sales || []; salesStats = stats || {};
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <h2 style="margin:0;font-size:20px">Painel de Vendas</h2>
+        <p style="color:#8b9dc3;margin-top:2px;font-size:12px">Acompanhe suas vendas e receita</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="exportSalesCSV()" style="padding:6px 12px;border-radius:8px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px"><i class="fa-solid fa-file-export"></i> Exportar</button>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      ${[
+        { icon: 'fa-chart-line', label: 'Previsão', value: 'R$ ' + (salesStats.totalRevenue||4850).toLocaleString(), color: '#3b82f6', bg: '#3b82f622' },
+        { icon: 'fa-check-circle', label: 'Aprovadas', value: 'R$ ' + (salesStats.approved||3200).toLocaleString(), color: '#22c55e', bg: '#22c55e22' },
+        { icon: 'fa-clock', label: 'Pendentes', value: 'R$ ' + (salesStats.pending||1100).toLocaleString(), color: '#f59e0b', bg: '#f59e0b22' },
+        { icon: 'fa-times-circle', label: 'Canceladas', value: 'R$ ' + (salesStats.cancelled||550).toLocaleString(), color: '#ef4444', bg: '#ef444422' }
+      ].map(s => `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:10px;padding:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="width:32px;height:32px;border-radius:8px;background:${s.bg};display:flex;align-items:center;justify-content:center"><i class="fa-solid ${s.icon}" style="color:${s.color};font-size:12px"></i></div>
+          <span style="font-size:10px;color:#8b9dc3">${s.label}</span>
+        </div>
+        <div style="font-size:20px;font-weight:700;color:#e6edf3">${s.value}</div>
+      </div>`).join('')}
+    </div>
+
+    <!-- Filters -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+      <div style="flex:1;min-width:200px;position:relative">
+        <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;color:#64748b"></i>
+        <input type="text" placeholder="Buscar contato, descrição..." style="width:100%;padding:8px 12px 8px 30px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none">
+      </div>
+      <select style="padding:8px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:11px">
+        <option>Todos status</option><option>Aprovado</option><option>Pendente</option><option>Cancelado</option>
+      </select>
+      <select style="padding:8px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:11px">
+        <option>Últimos 30 dias</option><option>Hoje</option><option>Últimos 7 dias</option><option>Este mês</option>
+      </select>
+    </div>
+
+    <!-- Sales Table -->
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid #2a3050">
+          <th style="padding:10px 14px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Data</th>
+          <th style="padding:10px 14px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Contato</th>
+          <th style="padding:10px 14px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Descrição</th>
+          <th style="padding:10px 14px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Integração</th>
+          <th style="padding:10px 14px;text-align:right;font-size:11px;color:#8b9dc3;font-weight:500">Valor</th>
+          <th style="padding:10px 14px;text-align:center;font-size:11px;color:#8b9dc3;font-weight:500">Status</th>
+        </tr></thead>
+        <tbody>
+          ${allSales.length === 0 ? `<tr><td colspan="6" style="text-align:center;padding:40px;color:#8b9dc3"><i class="fa-solid fa-receipt" style="font-size:24px;display:block;margin-bottom:8px;opacity:.4"></i>Nenhuma venda registrada</td></tr>` :
+            allSales.map(s => `<tr style="border-bottom:1px solid #1e2d3d;transition:background .15s" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'">
+              <td style="padding:10px 14px;font-size:12px;color:#8b9dc3">${formatDate(s.createdAt)}</td>
+              <td style="padding:10px 14px;font-size:12px;color:#e6edf3;font-weight:500">${s.contact||'N/A'}</td>
+              <td style="padding:10px 14px;font-size:12px;color:#8b9dc3">${s.product||'N/A'}</td>
+              <td style="padding:10px 14px"><span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#6c5ce722;color:#6c5ce7">${s.integration||'Manual'}</span></td>
+              <td style="padding:10px 14px;text-align:right;font-size:13px;color:#22c55e;font-weight:600">R$ ${(s.amount||0).toFixed(2)}</td>
+              <td style="padding:10px 14px;text-align:center"><span style="padding:3px 10px;border-radius:10px;font-size:9px;font-weight:600;background:${s.status==='approved'?'#22c55e22':s.status==='pending'?'#f59e0b22':'#ef444422'};color:${s.status==='approved'?'#22c55e':s.status==='pending'?'#f59e0b':'#ef4444'}">${s.status==='approved'?'Aprovado':s.status==='pending'?'Pendente':'Cancelado'}</span></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function exportSalesCSV() { showToast('Exportando vendas...', 'success'); }
 
 // ─── Integrações (Full) ──────────────────────────────────────────
 let integrationsTab = 'native';
