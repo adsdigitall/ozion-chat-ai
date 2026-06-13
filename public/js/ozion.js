@@ -18,6 +18,7 @@ let allWorkspaces = [];
 let allUsers = [];
 let allVoices = [];
 let allCampaigns = [];
+let allTags = [];
 let dashboardStats = null;
 let convStats = {};
 let salesStats = {};
@@ -33,11 +34,106 @@ async function api(path, opts = {}) {
   } catch (e) { console.error('API Error:', e); return null; }
 }
 
+// ─── Global Toast System ─────────────────────────────────────────
+let toastTimeout;
+function showToast(msg, type = 'info') {
+  const existing = document.querySelector('.oz-toast');
+  if (existing) existing.remove();
+  clearTimeout(toastTimeout);
+  const colors = { success: '#22c55e', error: '#ef4444', info: '#3b82f6', warning: '#f59e0b' };
+  const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle', warning: 'fa-exclamation-triangle' };
+  const toast = document.createElement('div');
+  toast.className = 'oz-toast';
+  toast.style.cssText = `position:fixed;bottom:24px;right:24px;background:#1a1f35;border:1px solid #2a3050;border-left:3px solid ${colors[type]};border-radius:10px;padding:14px 20px;font-size:13px;z-index:9999;display:flex;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.4);animation:slideUp .3s ease;font-weight:500;color:#e6edf3;max-width:360px`;
+  toast.innerHTML = `<i class="fa-solid ${icons[type]}" style="color:${colors[type]};font-size:16px"></i><span>${msg}</span>`;
+  document.body.appendChild(toast);
+  toastTimeout = setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(10px)'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+// ─── Global Modal System ─────────────────────────────────────────
+function showModal({ title, body, footer, width = '480px', onClose }) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay show';
+  overlay.id = 'oz-modal-' + Date.now();
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(overlay.id); };
+  overlay.innerHTML = `
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:16px;width:100%;max-width:${width};max-height:85vh;overflow-y:auto;box-shadow:0 16px 64px rgba(0,0,0,.6);animation:slideUp .3s ease">
+      <div style="padding:20px 24px;border-bottom:1px solid #2a3050;display:flex;justify-content:space-between;align-items:center">
+        <h3 style="margin:0;font-size:16px;font-weight:700;color:#e6edf3">${title}</h3>
+        <button onclick="closeModal('${overlay.id}')" style="background:none;border:none;color:#8b9dc3;cursor:pointer;font-size:20px;padding:4px;line-height:1">&times;</button>
+      </div>
+      <div style="padding:20px 24px">${body}</div>
+      ${footer ? `<div style="padding:16px 24px;border-top:1px solid #2a3050;display:flex;justify-content:flex-end;gap:8px">${footer}</div>` : ''}
+    </div>`;
+  document.body.appendChild(overlay);
+  return overlay.id;
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 200); }
+}
+
+function confirmModal({ title, message, onConfirm, danger = false }) {
+  return showModal({
+    title: title || 'Confirmar',
+    body: `<p style="color:#8b9dc3;font-size:13px;margin:0">${message}</p>`,
+    footer: `
+      <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px;font-weight:500">Cancelar</button>
+      <button onclick="(${onConfirm.toString()})();closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:none;background:${danger ? '#ef4444' : '#6c5ce7'};color:white;cursor:pointer;font-size:12px;font-weight:600">${danger ? 'Excluir' : 'Confirmar'}</button>`
+  });
+}
+
+function loadingModal(msg = 'Carregando...') {
+  return showModal({
+    title: msg,
+    body: `<div style="text-align:center;padding:20px"><i class="fa-solid fa-spinner fa-spin" style="font-size:32px;color:#6c5ce7"></i><p style="margin-top:12px;color:#8b9dc3;font-size:13px">Aguarde...</p></div>`,
+    width: '320px'
+  });
+}
+
+// ─── Global CRUD Helpers ─────────────────────────────────────────
+function crudForm({ fields, values = {}, id }) {
+  return fields.map(f => {
+    const val = values[f.key] || '';
+    if (f.type === 'select') {
+      return `<div class="form-group"><label>${f.label}</label><select id="${id}-${f.key}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px">${f.options.map(o => `<option value="${o.value}" ${val === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}</select></div>`;
+    }
+    if (f.type === 'color') {
+      return `<div class="form-group"><label>${f.label}</label><div style="display:flex;gap:6px;flex-wrap:wrap">${f.colors.map(c => `<div onclick="document.getElementById('${id}-${f.key}').value='${c}';document.querySelectorAll('.color-pick-${id}').forEach(e=>e.style.outline='none');this.style.outline='2px solid #6c5ce7'" class="color-pick-${id}" style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${val===c?'#6c5ce7':'transparent'}"></div>`).join('')}<input type="color" id="${id}-${f.key}" value="${val || '#6c5ce7'}" style="width:28px;height:28px;border:none;background:none;cursor:pointer"></div></div>`;
+    }
+    if (f.type === 'textarea') {
+      return `<div class="form-group"><label>${f.label}</label><textarea id="${id}-${f.key}" rows="3" placeholder="${f.placeholder || ''}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px;resize:vertical;font-family:inherit">${val}</textarea></div>`;
+    }
+    return `<div class="form-group"><label>${f.label}</label><input type="${f.type || 'text'}" id="${id}-${f.key}" value="${val}" placeholder="${f.placeholder || ''}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>`;
+  }).join('');
+}
+
+function getFormData(fields, id) {
+  const data = {};
+  fields.forEach(f => {
+    const el = document.getElementById(`${id}-${f.key}`);
+    if (el) data[f.key] = el.value;
+  });
+  return data;
+}
+
+function validateForm(fields, data) {
+  for (const f of fields) {
+    if (f.required && !data[f.key]) {
+      showToast(`Preencha o campo ${f.label}`, 'error');
+      return false;
+    }
+  }
+  return true;
+}
+
 // ─── Navigation (Lailla.io exact structure) ──────────────────────
 const NAV = [
   { id: 'dashboard', icon: 'fa-chart-pie', label: 'Dashboard' },
   { id: 'chat', icon: 'fa-comments', label: 'Chat ao vivo' },
   { id: 'contacts', icon: 'fa-address-book', label: 'Contatos' },
+  { id: 'tags', icon: 'fa-tags', label: 'Tags' },
   { id: 'flows', icon: 'fa-diagram-project', label: 'Fluxos' },
   { id: 'voice', icon: 'fa-microphone', label: 'Voice Studio' },
   { id: 'agents', icon: 'fa-robot', label: 'Agente IA' },
@@ -174,7 +270,7 @@ async function loadPage(page) {
   const el = document.getElementById('content');
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px"></i><p style="margin-top:8px">Carregando...</p></div>';
-  const pages = { dashboard:loadDashboard, chat:loadChat, contacts:loadContacts, flows:loadFlows, voice:loadVoice, agents:loadAgents, campaigns:loadCampaigns, ctwa:loadCTWA, sales:loadSales, integrations:loadIntegrations, settings:loadSettings, flowise:showFlowiseConfig };
+  const pages = { dashboard:loadDashboard, chat:loadChat, contacts:loadContacts, tags:loadTags, flows:loadFlows, voice:loadVoice, agents:loadAgents, campaigns:loadCampaigns, ctwa:loadCTWA, sales:loadSales, integrations:loadIntegrations, settings:loadSettings, flowise:showFlowiseConfig };
   if (pages[page]) await pages[page](el);
   else el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-construction"></i><h3>Em construção</h3></div>';
 }
@@ -770,6 +866,150 @@ async function createContact() {
   await api('/api/crm/contacts', { method: 'POST', body: JSON.stringify(data) }); showToast('Contato criado!', 'success'); loadContacts(document.getElementById('content'));
 }
 function editContact(id) { showToast('Edição em breve', 'info'); }
+
+// ─── Tags (Funcional) ───────────────────────────────────────────
+const TAG_COLORS = ['#6c5ce7','#22c55e','#f59e0b','#ef4444','#3b82f6','#ec4899','#8b5cf6','#06b6d4','#f97316','#84cc16','#14b8a6','#e11d48'];
+const TAG_FIELDS = [
+  { key: 'name', label: 'Nome da Tag', placeholder: 'Ex: Lead Quente', required: true },
+  { key: 'color', label: 'Cor', type: 'color', colors: TAG_COLORS },
+  { key: 'description', label: 'Descrição', type: 'textarea', placeholder: 'Opcional' },
+  { key: 'category', label: 'Categoria', type: 'select', options: [
+    { value: 'status', label: 'Status' }, { value: 'origem', label: 'Origem' },
+    { value: 'interesse', label: 'Interesse' }, { value: 'prioridade', label: 'Prioridade' },
+    { value: 'custom', label: 'Personalizada' }
+  ]}
+];
+
+async function loadTags(el) {
+  const data = await api('/api/tags');
+  allTags = data?.tags || [];
+  
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div><h2 style="margin:0;font-size:20px">Tags</h2><p style="color:#8b9dc3;margin-top:4px;font-size:12px">${allTags.length} tag(s) criada(s)</p></div>
+      <button onclick="showCreateTag()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-plus"></i> Nova Tag</button>
+    </div>
+
+    <div id="tag-form-area"></div>
+
+    <!-- Tags Grid -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px" id="tags-grid">
+      ${allTags.length === 0 ? `
+        <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#8b9dc3">
+          <div style="width:64px;height:64px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><i class="fa-solid fa-tags" style="font-size:24px;opacity:.4"></i></div>
+          <h3 style="font-size:15px;font-weight:600;margin:0 0 6px;color:#e6edf3">Nenhuma tag criada</h3>
+          <p style="font-size:12px;margin:0">Crie tags para organizar contatos, fluxos e conversas</p>
+        </div>` : allTags.map(t => renderTagCard(t)).join('')}
+    </div>`;
+}
+
+function renderTagCard(t) {
+  return `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:16px;transition:all .2s;border-left:4px solid ${t.color || '#6c5ce7'}" onmouseover="this.style.borderColor='#3a4070'" onmouseout="this.style.borderColor='#2a3050'">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:12px;height:12px;border-radius:50%;background:${t.color || '#6c5ce7'}"></div>
+        <span style="font-weight:600;font-size:13px;color:#e6edf3">${t.name}</span>
+      </div>
+      <div style="position:relative">
+        <button onclick="toggleTagMenu('${t.id}')" style="background:none;border:none;color:#8b9dc3;cursor:pointer;padding:4px"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+        <div id="tag-menu-${t.id}" style="display:none;position:absolute;right:0;top:100%;background:#1a1f35;border:1px solid #2a3050;border-radius:8px;padding:6px;min-width:140px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.4)">
+          <div onclick="showEditTag('${t.id}')" style="padding:8px 12px;font-size:12px;color:#e6edf3;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-pen" style="font-size:10px;color:#3b82f6"></i> Editar</div>
+          <div onclick="duplicateTag('${t.id}')" style="padding:8px 12px;font-size:12px;color:#e6edf3;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-copy" style="font-size:10px;color:#22c55e"></i> Duplicar</div>
+          <div onclick="deleteTag('${t.id}')" style="padding:8px 12px;font-size:12px;color:#ef4444;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-trash" style="font-size:10px"></i> Excluir</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+      <span style="padding:3px 10px;border-radius:12px;font-size:10px;font-weight:600;background:${t.color || '#6c5ce7'}22;color:${t.color || '#6c5ce7'}">${t.category || 'custom'}</span>
+    </div>
+    ${t.description ? `<p style="font-size:11px;color:#8b9dc3;margin:0">${t.description}</p>` : ''}
+    <div style="display:flex;gap:4px;margin-top:10px">
+      <span style="padding:3px 8px;border-radius:6px;font-size:9px;color:#8b9dc3;background:#161b22">${t.usage_count || 0} usos</span>
+    </div>
+  </div>`;
+}
+
+function toggleTagMenu(id) {
+  const menu = document.getElementById(`tag-menu-${id}`);
+  if (!menu) return;
+  const isVisible = menu.style.display === 'block';
+  document.querySelectorAll('[id^="tag-menu-"]').forEach(m => m.style.display = 'none');
+  if (!isVisible) menu.style.display = 'block';
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[id^="tag-menu-"]') && !e.target.closest('[onclick^="toggleTagMenu"]')) {
+    document.querySelectorAll('[id^="tag-menu-"]').forEach(m => m.style.display = 'none');
+  }
+});
+
+function showCreateTag() {
+  const area = document.getElementById('tag-form-area');
+  if (!area) return;
+  area.innerHTML = `
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:20px;animation:slideUp .3s ease">
+      <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-plus" style="color:#6c5ce7;margin-right:8px"></i>Nova Tag</h3>
+      ${crudForm({ fields: TAG_FIELDS, id: 'tag-create' })}
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="saveTag()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
+        <button onclick="document.getElementById('tag-form-area').innerHTML=''" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+async function saveTag(editId) {
+  const data = getFormData(TAG_FIELDS, editId ? `tag-edit-${editId}` : 'tag-create');
+  if (!validateForm(TAG_FIELDS, data)) return;
+  if (editId) {
+    await api(`/api/tags/${editId}`, { method: 'PUT', body: JSON.stringify(data) });
+    showToast('Tag atualizada!', 'success');
+  } else {
+    await api('/api/tags', { method: 'POST', body: JSON.stringify(data) });
+    showToast('Tag criada!', 'success');
+  }
+  document.getElementById('tag-form-area').innerHTML = '';
+  loadTags(document.getElementById('content'));
+}
+
+function showEditTag(id) {
+  document.querySelectorAll('[id^="tag-menu-"]').forEach(m => m.style.display = 'none');
+  const tag = allTags.find(t => t.id === id);
+  if (!tag) return;
+  const area = document.getElementById('tag-form-area');
+  if (!area) return;
+  area.innerHTML = `
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:20px;animation:slideUp .3s ease">
+      <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-pen" style="color:#3b82f6;margin-right:8px"></i>Editar Tag</h3>
+      ${crudForm({ fields: TAG_FIELDS, values: tag, id: `tag-edit-${id}` })}
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="saveTag('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
+        <button onclick="document.getElementById('tag-form-area').innerHTML=''" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+async function duplicateTag(id) {
+  document.querySelectorAll('[id^="tag-menu-"]').forEach(m => m.style.display = 'none');
+  const tag = allTags.find(t => t.id === id);
+  if (!tag) return;
+  await api('/api/tags', { method: 'POST', body: JSON.stringify({ name: tag.name + ' (cópia)', color: tag.color, category: tag.category, description: tag.description }) });
+  showToast('Tag duplicada!', 'success');
+  loadTags(document.getElementById('content'));
+}
+
+async function deleteTag(id) {
+  document.querySelectorAll('[id^="tag-menu-"]').forEach(m => m.style.display = 'none');
+  confirmModal({
+    title: 'Excluir Tag',
+    message: 'Tem certeza que deseja excluir esta tag? Ela será removida de todos os contatos e fluxos.',
+    danger: true,
+    onConfirm: async () => {
+      await api(`/api/tags/${id}`, { method: 'DELETE' });
+      showToast('Tag excluída!', 'success');
+      loadTags(document.getElementById('content'));
+    }
+  });
+}
 
 // ─── Fluxos (Lailla.io FULL) ─────────────────────────────────
 let flowFolders = [];
