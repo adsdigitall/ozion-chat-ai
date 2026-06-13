@@ -8,17 +8,10 @@
     "NODE_ENV": "production",
     "SUPABASE_URL": "https://dpwqqszrhizqdncifkee.supabase.co",
     "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwd3Fxc3pyaGl6cWRuY2lma2VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExODEzNDcsImV4cCI6MjA5Njc1NzM0N30.TZ-3X2knNNXDeKQWHNaleqH-ECw1cwZ0X0L03U7xnJQ",
-    "JWT_SECRET": "ozion-chat-ai-secret-key-2024",
     "FLOWISE_URL": "",
     "FLOWISE_API_KEY": "",
     "FLOWISE_CHATFLOW_ID": "",
-    "WHATSAPP_ACCESS_TOKEN": "",
-    "EVOLUTION_API_URL": "",
-    "EVOLUTION_API_KEY": "",
-    "ELEVENLABS_API_KEY": "",
-    "GROQ_API_KEY": "",
-    "OPENAI_API_KEY": "",
-    "DEEPSEEK_API_KEY": ""
+    "WHATSAPP_ACCESS_TOKEN": ""
   },
   "routes": [
     {
