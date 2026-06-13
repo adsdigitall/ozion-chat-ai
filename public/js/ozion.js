@@ -1129,82 +1129,449 @@ function applyFilter(f) {
   toggleChatFilterPanel();
 }
 
-// ─── Contatos (Lailla.io exact) ──────────────────────────────────
+// ─── CRM (Lista + Kanban + Pipeline) ───────────────────────────
+let crmView = 'list';
+let crmSearch = '';
+let crmTagFilter = '';
+let allContacts = [];
+let customFields = [];
+const PIPELINE_STAGES = [
+  { id: 'lead', name: 'Lead', color: '#6c5ce7' },
+  { id: 'contacted', name: 'Contato', color: '#3b82f6' },
+  { id: 'proposal', name: 'Proposta', color: '#f59e0b' },
+  { id: 'negotiation', name: 'Negociação', color: '#ec4899' },
+  { id: 'won', name: 'Ganho', color: '#22c55e' },
+  { id: 'lost', name: 'Perdido', color: '#ef4444' }
+];
+
 async function loadContacts(el) {
   const data = await api('/api/crm/contacts'); allContacts = data?.contacts || [];
+  const tagsData = await api('/api/tags'); allTags = tagsData?.tags || [];
   const tags = [...new Set(allContacts.map(c => c.tag).filter(Boolean))];
   
   el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div><h2 style="margin:0;font-size:20px">Contatos</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">${allContacts.length} contato(s) workspace</p></div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-sm btn-secondary" title="Importar"><i class="fa-solid fa-file-import"></i></button>
-        <button class="btn btn-sm btn-secondary" title="Exportar"><i class="fa-solid fa-file-export"></i></button>
-        <button class="btn btn-sm btn-secondary" title="Ações em massa"><i class="fa-solid fa-check-double"></i></button>
-        <button class="btn btn-sm btn-primary" onclick="showCreateContact()"><i class="fa-solid fa-plus"></i> Novo</button>
-      </div>
-    </div>
-
-    <!-- Search + Tags Filter (Lailla.io style) -->
-    <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center">
-      <input type="text" placeholder="Buscar por nome" style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text-primary);font-size:12px;width:200px">
-      <div style="display:flex;gap:4px;flex-wrap:wrap">
-        <span style="font-size:11px;color:var(--text-muted);line-height:26px">Etiquetas (${tags.length}):</span>
-        ${tags.map(t => `<span onclick="filterByTag('${t}')" style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:10px;cursor:pointer;background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-primary)"><i class="fa-solid fa-circle" style="font-size:6px;color:var(--accent)"></i>${t}</span>`).join('')}
-      </div>
-    </div>
-
-    <!-- Origin Filter -->
-    <div style="display:flex;gap:6px;margin-bottom:12px">
-      <span style="font-size:11px;color:var(--text-muted);line-height:26px">Origem:</span>
-      ${['WhatsApp Business','API Oficial','CTWA','Manual'].map(o => `<span style="padding:3px 8px;border-radius:12px;font-size:10px;cursor:pointer;background:var(--bg-secondary);border:1px solid var(--border)">${o}</span>`).join('')}
-    </div>
-
-    <!-- Create Form -->
-    <div id="contact-form" style="display:none" class="card" style="margin-bottom:16px">
-      <div class="card-header"><h3>👤 Novo Contato</h3></div>
-      <div class="card-body">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group"><label>Nome</label><input type="text" id="contact-name" placeholder="Nome completo"></div>
-          <div class="form-group"><label>Telefone</label><input type="text" id="contact-phone" placeholder="+5511999999999"></div>
-          <div class="form-group"><label>Email</label><input type="email" id="contact-email" placeholder="email@exemplo.com"></div>
-          <div class="form-group"><label>Tag</label><select id="contact-tag"><option value="lead">Lead</option><option value="cliente">Cliente</option><option value="vip">VIP</option><option value="pendente">Pendente</option><option value="entregue">Entregue</option></select></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+      <div><h2 style="margin:0;font-size:20px">CRM</h2><p style="color:#8b9dc3;margin-top:2px;font-size:12px">${allContacts.length} contato(s)</p></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <div style="display:flex;background:#161b22;border:1px solid #1e2d3d;border-radius:8px;overflow:hidden">
+          <button onclick="setCrmView('list')" style="padding:6px 12px;border:none;background:${crmView==='list'?'#6c5ce7':'transparent'};color:${crmView==='list'?'white':'#8b9dc3'};cursor:pointer;font-size:11px"><i class="fa-solid fa-list"></i></button>
+          <button onclick="setCrmView('kanban')" style="padding:6px 12px;border:none;background:${crmView==='kanban'?'#6c5ce7':'transparent'};color:${crmView==='kanban'?'white':'#8b9dc3'};cursor:pointer;font-size:11px"><i class="fa-solid fa-columns"></i></button>
+          <button onclick="setCrmView('pipeline')" style="padding:6px 12px;border:none;background:${crmView==='pipeline'?'#6c5ce7':'transparent'};color:${crmView==='pipeline'?'white':'#8b9dc3'};cursor:pointer;font-size:11px"><i class="fa-solid fa-filter"></i></button>
         </div>
-        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-primary btn-sm" onclick="createContact()"><i class="fa-solid fa-save"></i> Salvar</button><button class="btn btn-secondary btn-sm" onclick="document.getElementById('contact-form').style.display='none'">Cancelar</button></div>
+        <button onclick="showImportCSV()" style="padding:6px 12px;border-radius:8px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:4px"><i class="fa-solid fa-file-import"></i> Importar</button>
+        <button onclick="exportCSV()" style="padding:6px 12px;border-radius:8px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:4px"><i class="fa-solid fa-file-export"></i> Exportar</button>
+        <button onclick="showCreateContact()" style="padding:6px 14px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px"><i class="fa-solid fa-plus"></i> Novo</button>
       </div>
     </div>
 
-    <!-- Contacts Table (Lailla.io exact) -->
-    <div class="card"><div class="card-body" style="padding:0">
-      <table><thead><tr>
-        <th style="width:30px"><input type="checkbox" onchange="toggleAllContacts(this)"></th>
-        <th style="width:40px"></th>
-        <th>Nome Completo</th>
-        <th>Telefone</th>
-        <th>Etiquetas</th>
-        <th style="width:40px"></th>
-      </tr></thead><tbody>
-        ${allContacts.length===0?'<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:30px">Nenhum contato</td></tr>':
-          allContacts.map(c => `<tr>
-            <td><input type="checkbox" value="${c.id}"></td>
-            <td><div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:10px;color:white">${(c.name||'?').substring(0,2).toUpperCase()}</div></td>
-            <td style="font-size:12px">${c.name||'N/A'}</td>
-            <td style="font-size:12px">${c.phone||'-'}</td>
-            <td><div style="display:flex;gap:4px;flex-wrap:wrap">${(c.tag||'lead').split(',').map(t => `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:10px;background:var(--bg-secondary);border:1px solid var(--border)"><i class="fa-solid fa-circle" style="font-size:5px;color:var(--accent)"></i>${t.trim()}</span>`).join('')}</div></td>
-            <td><button class="btn btn-sm btn-secondary" onclick="editContact('${c.id}')" style="padding:3px 6px"><i class="fa-solid fa-ellipsis"></i></button></td>
-          </tr>`).join('')}
-      </tbody></table>
-    </div></div>`;
+    <!-- Search + Filters -->
+    <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px;position:relative">
+        <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;color:#64748b"></i>
+        <input type="text" id="crm-search" placeholder="Buscar nome, telefone ou email..." value="${crmSearch}" oninput="crmSearch=this.value;renderCrmView()" style="width:100%;padding:8px 12px 8px 30px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none">
+      </div>
+      <select id="crm-tag-filter" onchange="crmTagFilter=this.value;renderCrmView()" style="padding:8px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px">
+        <option value="">Todas as tags</option>
+        ${tags.map(t => `<option value="${t}" ${crmTagFilter===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+      <button onclick="showCustomFields()" style="padding:8px 12px;border-radius:8px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px"><i class="fa-solid fa-sliders"></i> Campos</button>
+    </div>
+
+    <!-- Create/Edit Form -->
+    <div id="contact-form-area"></div>
+
+    <!-- CRM View -->
+    <div id="crm-view-area">${renderCrmViewContent()}</div>`;
 }
 
-function showCreateContact() { document.getElementById('contact-form').style.display = 'block'; }
-function filterByTag(tag) { showToast(`Filtrando por: ${tag}`, 'info'); }
-function toggleAllContacts(cb) { document.querySelectorAll('tbody input[type=checkbox]').forEach(c => c.checked = cb.checked); }
-async function createContact() {
-  const data = { name: document.getElementById('contact-name').value, phone: document.getElementById('contact-phone').value, email: document.getElementById('contact-email').value, tag: document.getElementById('contact-tag').value };
-  await api('/api/crm/contacts', { method: 'POST', body: JSON.stringify(data) }); showToast('Contato criado!', 'success'); loadContacts(document.getElementById('content'));
+function setCrmView(v) { crmView = v; renderCrmView(); }
+function renderCrmView() {
+  const area = document.getElementById('crm-view-area');
+  if (area) area.innerHTML = renderCrmViewContent();
 }
-function editContact(id) { showToast('Edição em breve', 'info'); }
+function getFilteredContacts() {
+  return allContacts.filter(c => {
+    const q = crmSearch.toLowerCase();
+    const matchSearch = !q || (c.name||'').toLowerCase().includes(q) || (c.phone||'').toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q);
+    const matchTag = !crmTagFilter || (c.tag||'').toLowerCase().includes(crmTagFilter.toLowerCase());
+    return matchSearch && matchTag;
+  });
+}
+
+function renderCrmViewContent() {
+  if (crmView === 'kanban') return renderKanbanView();
+  if (crmView === 'pipeline') return renderPipelineView();
+  return renderListView();
+}
+
+// ─── List View ──────────────────────────────────────────────────
+function renderListView() {
+  const filtered = getFilteredContacts();
+  return `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;overflow:hidden">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="border-bottom:1px solid #2a3050">
+        <th style="padding:10px 14px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500;width:30px"><input type="checkbox" onchange="toggleAllContacts(this)"></th>
+        <th style="padding:10px 14px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500;width:40px"></th>
+        <th style="padding:10px 14px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Nome</th>
+        <th style="padding:10px 14px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Telefone</th>
+        <th style="padding:10px 14px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Email</th>
+        <th style="padding:10px 14px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Tag</th>
+        <th style="padding:10px 14px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Estágio</th>
+        <th style="padding:10px 14px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500;width:80px">Ações</th>
+      </tr></thead>
+      <tbody>
+        ${filtered.length === 0 ? `<tr><td colspan="8" style="text-align:center;padding:40px;color:#8b9dc3"><i class="fa-solid fa-address-book" style="font-size:24px;display:block;margin-bottom:8px;opacity:.4"></i>Nenhum contato encontrado</td></tr>` :
+          filtered.map(c => {
+            const avatarColor = getAvatarColor(c.name || 'U');
+            const stage = PIPELINE_STAGES.find(s => s.id === (c.stage || 'lead')) || PIPELINE_STAGES[0];
+            return `<tr style="border-bottom:1px solid #1e2d3d;transition:background .15s" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'">
+              <td style="padding:10px 14px"><input type="checkbox" value="${c.id}"></td>
+              <td style="padding:10px 14px"><div style="width:32px;height:32px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:11px;color:white;font-weight:600">${(c.name||'?')[0]?.toUpperCase()}</div></td>
+              <td style="padding:10px 14px;font-size:12px;color:#e6edf3;font-weight:500">${c.name||'N/A'}</td>
+              <td style="padding:10px 14px;font-size:12px;color:#8b9dc3">${c.phone||'-'}</td>
+              <td style="padding:10px 14px;font-size:12px;color:#8b9dc3">${c.email||'-'}</td>
+              <td style="padding:10px 14px"><span style="padding:3px 10px;border-radius:10px;font-size:10px;background:#6c5ce722;color:#6c5ce7;border:1px solid #6c5ce744">${c.tag||'lead'}</span></td>
+              <td style="padding:10px 14px"><span style="padding:3px 10px;border-radius:10px;font-size:10px;background:${stage.color}22;color:${stage.color};border:1px solid ${stage.color}44">${stage.name}</span></td>
+              <td style="padding:10px 14px">
+                <div style="display:flex;gap:4px">
+                  <button onclick="showContactDetail('${c.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-eye"></i></button>
+                  <button onclick="showEditContact('${c.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-pen"></i></button>
+                  <button onclick="deleteContact('${c.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#ef4444;cursor:pointer;font-size:10px"><i class="fa-solid fa-trash"></i></button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ─── Kanban View ────────────────────────────────────────────────
+function renderKanbanView() {
+  const filtered = getFilteredContacts();
+  const groups = {};
+  PIPELINE_STAGES.forEach(s => groups[s.id] = []);
+  filtered.forEach(c => { const stage = c.stage || 'lead'; if (groups[stage]) groups[stage].push(c); });
+  
+  return `<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;min-height:500px">
+    ${PIPELINE_STAGES.map(s => `
+      <div style="min-width:280px;flex:1;background:#161b22;border:1px solid #1e2d3d;border-radius:12px;display:flex;flex-direction:column">
+        <div style="padding:12px 14px;border-bottom:1px solid #1e2d3d;display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${s.color}"></div>
+            <span style="font-size:12px;font-weight:600;color:#e6edf3">${s.name}</span>
+          </div>
+          <span style="padding:2px 8px;border-radius:10px;font-size:10px;background:#1a1f35;color:#8b9dc3">${groups[s.id].length}</span>
+        </div>
+        <div style="flex:1;padding:8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:460px">
+          ${groups[s.id].length === 0 ? '<div style="text-align:center;padding:20px;color:#64748b;font-size:11px">Nenhum contato</div>' :
+            groups[s.id].map(c => {
+              const avatarColor = getAvatarColor(c.name || 'U');
+              return `<div onclick="showContactDetail('${c.id}')" style="background:#1a1f35;border:1px solid #2a3050;border-radius:10px;padding:12px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='${s.color}'" onmouseout="this.style.borderColor='#2a3050'">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                  <div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:10px;color:white;font-weight:600">${(c.name||'?')[0]?.toUpperCase()}</div>
+                  <span style="font-size:12px;font-weight:500;color:#e6edf3">${c.name||'N/A'}</span>
+                </div>
+                <div style="font-size:10px;color:#8b9dc3;margin-bottom:4px">${c.phone||''}</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  ${(c.tag||'').split(',').filter(Boolean).map(t => `<span style="padding:2px 6px;border-radius:6px;font-size:8px;background:#6c5ce722;color:#6c5ce7">${t.trim()}</span>`).join('')}
+                </div>
+              </div>`;
+            }).join('')}
+        </div>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+// ─── Pipeline View ──────────────────────────────────────────────
+function renderPipelineView() {
+  const filtered = getFilteredContacts();
+  const groups = {};
+  PIPELINE_STAGES.forEach(s => groups[s.id] = []);
+  filtered.forEach(c => { const stage = c.stage || 'lead'; if (groups[stage]) groups[stage].push(c); });
+  
+  return `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:16px">
+    <!-- Pipeline Bar -->
+    <div style="display:flex;gap:2px;margin-bottom:20px;background:#161b22;border-radius:8px;padding:4px">
+      ${PIPELINE_STAGES.map(s => {
+        const count = groups[s.id].length;
+        const pct = filtered.length > 0 ? Math.round(count / filtered.length * 100) : 0;
+        return `<div style="flex:1;text-align:center;padding:8px 4px;border-radius:6px;background:${count > 0 ? s.color + '15' : 'transparent'};cursor:pointer" onclick="crmStageFilter='${s.id}';renderCrmView()">
+          <div style="font-size:10px;color:${s.color};font-weight:600">${s.name}</div>
+          <div style="font-size:16px;font-weight:700;color:#e6edf3;margin:2px 0">${count}</div>
+          <div style="height:4px;background:#1a1f35;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${s.color};border-radius:2px;transition:width .3s"></div></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <!-- Pipeline Table -->
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="border-bottom:1px solid #2a3050">
+        <th style="padding:8px 12px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Contato</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Telefone</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Estágio</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;color:#8b9dc3;font-weight:500">Tag</th>
+        <th style="padding:8px 12px;text-align:center;font-size:11px;color:#8b9dc3;font-weight:500">Ações</th>
+      </tr></thead>
+      <tbody>
+        ${filtered.length === 0 ? `<tr><td colspan="5" style="text-align:center;padding:40px;color:#8b9dc3">Nenhum contato</td></tr>` :
+          filtered.map(c => {
+            const stage = PIPELINE_STAGES.find(s => s.id === (c.stage || 'lead')) || PIPELINE_STAGES[0];
+            const avatarColor = getAvatarColor(c.name || 'U');
+            return `<tr style="border-bottom:1px solid #1e2d3d">
+              <td style="padding:10px 12px;display:flex;align-items:center;gap:8px">
+                <div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:10px;color:white;font-weight:600">${(c.name||'?')[0]?.toUpperCase()}</div>
+                <span style="font-size:12px;color:#e6edf3">${c.name||'N/A'}</span>
+              </td>
+              <td style="padding:10px 12px;font-size:12px;color:#8b9dc3">${c.phone||'-'}</td>
+              <td style="padding:10px 12px">
+                <select onchange="moveContactStage('${c.id}',this.value)" style="padding:4px 8px;border-radius:6px;border:1px solid ${stage.color}44;background:${stage.color}15;color:${stage.color};font-size:10px;cursor:pointer">
+                  ${PIPELINE_STAGES.map(s => `<option value="${s.id}" ${s.id===(c.stage||'lead')?'selected':''}>${s.name}</option>`).join('')}
+                </select>
+              </td>
+              <td style="padding:10px 12px"><span style="padding:2px 8px;border-radius:8px;font-size:10px;background:#6c5ce722;color:#6c5ce7">${c.tag||'lead'}</span></td>
+              <td style="padding:10px 12px;text-align:center">
+                <button onclick="showContactDetail('${c.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-eye"></i></button>
+              </td>
+            </tr>`;
+          }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+async function moveContactStage(id, stage) {
+  await api(`/api/crm/contacts/${id}`, { method: 'PUT', body: JSON.stringify({ stage }) });
+  const c = allContacts.find(x => x.id === id); if (c) c.stage = stage;
+  renderCrmView();
+  showToast('Estágio atualizado', 'success');
+}
+
+// ─── Contact CRUD ───────────────────────────────────────────────
+const CONTACT_FIELDS = [
+  { key: 'name', label: 'Nome', placeholder: 'Nome completo', required: true },
+  { key: 'phone', label: 'Telefone', placeholder: '+5511999999999', required: true },
+  { key: 'email', label: 'Email', placeholder: 'email@exemplo.com' },
+  { key: 'company', label: 'Empresa', placeholder: 'Nome da empresa' },
+  { key: 'tag', label: 'Tag', type: 'select', options: [{ value: 'lead', label: 'Lead' }, { value: 'cliente', label: 'Cliente' }, { value: 'vip', label: 'VIP' }, { value: 'fornecedor', label: 'Fornecedor' }] },
+  { key: 'stage', label: 'Estágio', type: 'select', options: PIPELINE_STAGES.map(s => ({ value: s.id, label: s.name })) }
+];
+
+function showCreateContact() {
+  const area = document.getElementById('contact-form-area');
+  if (!area) return;
+  area.innerHTML = `
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:20px;animation:slideUp .3s ease">
+      <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-user-plus" style="color:#6c5ce7;margin-right:8px"></i>Novo Contato</h3>
+      ${crudForm({ fields: CONTACT_FIELDS, id: 'contact-create' })}
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="saveContact()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
+        <button onclick="document.getElementById('contact-form-area').innerHTML=''" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+async function saveContact(editId) {
+  const data = getFormData(CONTACT_FIELDS, editId ? `contact-edit-${editId}` : 'contact-create');
+  if (!validateForm(CONTACT_FIELDS, data)) return;
+  if (editId) {
+    await api(`/api/crm/contacts/${editId}`, { method: 'PUT', body: JSON.stringify(data) });
+    showToast('Contato atualizado!', 'success');
+  } else {
+    await api('/api/crm/contacts', { method: 'POST', body: JSON.stringify(data) });
+    showToast('Contato criado!', 'success');
+  }
+  document.getElementById('contact-form-area').innerHTML = '';
+  loadContacts(document.getElementById('content'));
+}
+
+function showEditContact(id) {
+  const c = allContacts.find(x => x.id === id);
+  if (!c) return;
+  const area = document.getElementById('contact-form-area');
+  if (!area) return;
+  area.innerHTML = `
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:20px;animation:slideUp .3s ease">
+      <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-pen" style="color:#3b82f6;margin-right:8px"></i>Editar Contato</h3>
+      ${crudForm({ fields: CONTACT_FIELDS, values: c, id: `contact-edit-${id}` })}
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="saveContact('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
+        <button onclick="document.getElementById('contact-form-area').innerHTML=''" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+async function deleteContact(id) {
+  confirmModal({ title: 'Excluir contato', message: 'Tem certeza que deseja excluir este contato?', danger: true, onConfirm: async () => {
+    await api(`/api/crm/contacts/${id}`, { method: 'DELETE' });
+    showToast('Contato excluído', 'success');
+    loadContacts(document.getElementById('content'));
+  }});
+}
+
+// ─── Contact Detail Modal ────────────────────────────────────────
+async function showContactDetail(id) {
+  const c = allContacts.find(x => x.id === id);
+  if (!c) return;
+  const avatarColor = getAvatarColor(c.name || 'U');
+  const stage = PIPELINE_STAGES.find(s => s.id === (c.stage || 'lead')) || PIPELINE_STAGES[0];
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay show';
+  modal.id = 'contact-detail-modal';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-user" style="color:#6c5ce7;margin-right:8px"></i>${c.name || 'Contato'}</h3>
+        <button class="modal-close" onclick="document.getElementById('contact-detail-modal').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+          <div style="width:56px;height:56px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:22px;color:white;font-weight:700">${(c.name||'?')[0]?.toUpperCase()}</div>
+          <div>
+            <div style="font-size:16px;font-weight:600;color:#e6edf3">${c.name||'N/A'}</div>
+            <div style="font-size:12px;color:#8b9dc3">${c.phone||'Sem telefone'}</div>
+            <div style="font-size:12px;color:#8b9dc3">${c.email||'Sem email'}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div style="background:#161b22;border:1px solid #1e2d3d;border-radius:8px;padding:12px">
+            <div style="font-size:10px;color:#8b9dc3;margin-bottom:4px">Empresa</div>
+            <div style="font-size:12px;color:#e6edf3">${c.company||'-'}</div>
+          </div>
+          <div style="background:#161b22;border:1px solid #1e2d3d;border-radius:8px;padding:12px">
+            <div style="font-size:10px;color:#8b9dc3;margin-bottom:4px">Tag</div>
+            <span style="padding:3px 10px;border-radius:10px;font-size:10px;background:#6c5ce722;color:#6c5ce7">${c.tag||'lead'}</span>
+          </div>
+          <div style="background:#161b22;border:1px solid #1e2d3d;border-radius:8px;padding:12px">
+            <div style="font-size:10px;color:#8b9dc3;margin-bottom:4px">Estágio</div>
+            <span style="padding:3px 10px;border-radius:10px;font-size:10px;background:${stage.color}22;color:${stage.color}">${stage.name}</span>
+          </div>
+          <div style="background:#161b22;border:1px solid #1e2d3d;border-radius:8px;padding:12px">
+            <div style="font-size:10px;color:#8b9dc3;margin-bottom:4px">Criado em</div>
+            <div style="font-size:12px;color:#e6edf3">${c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '-'}</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('contact-detail-modal').remove()">Fechar</button>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('contact-detail-modal').remove();showEditContact('${id}')"><i class="fa-solid fa-pen"></i> Editar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+// ─── Custom Fields ───────────────────────────────────────────────
+function showCustomFields() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay show';
+  modal.id = 'custom-fields-modal';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:500px">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-sliders" style="color:#6c5ce7;margin-right:8px"></i>Campos Personalizados</h3>
+        <button class="modal-close" onclick="document.getElementById('custom-fields-modal').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:11px;color:#8b9dc3;margin:0 0 12px">Adicione campos customizados aos seus contatos:</p>
+        <div id="custom-fields-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+          ${customFields.length === 0 ? '<p style="text-align:center;color:#64748b;font-size:12px;padding:16px">Nenhum campo customizado</p>' :
+            customFields.map((f, i) => `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px">
+              <i class="fa-solid fa-grip-vertical" style="color:#64748b;font-size:10px"></i>
+              <span style="flex:1;font-size:12px;color:#e6edf3">${f.name}</span>
+              <span style="font-size:10px;color:#8b9dc3">${f.type}</span>
+              <button onclick="removeCustomField(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:10px"><i class="fa-solid fa-trash"></i></button>
+            </div>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="cf-name" placeholder="Nome do campo" style="flex:1;padding:8px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none">
+          <select id="cf-type" style="padding:8px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px">
+            <option value="text">Texto</option>
+            <option value="number">Número</option>
+            <option value="date">Data</option>
+            <option value="select">Seleção</option>
+            <option value="textarea">Área de texto</option>
+          </select>
+          <button onclick="addCustomField()" style="padding:8px 12px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('custom-fields-modal').remove()">Fechar</button>
+        <button class="btn btn-primary btn-sm" onclick="saveCustomFields()">Salvar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function addCustomField() {
+  const name = document.getElementById('cf-name')?.value;
+  const type = document.getElementById('cf-type')?.value;
+  if (!name) return showToast('Digite o nome do campo', 'error');
+  customFields.push({ name, type });
+  document.getElementById('cf-name').value = '';
+  showCustomFields();
+}
+function removeCustomField(i) { customFields.splice(i, 1); showCustomFields(); }
+function saveCustomFields() { localStorage.setItem('ozion_custom_fields', JSON.stringify(customFields)); document.getElementById('custom-fields-modal')?.remove(); showToast('Campos salvos!', 'success'); }
+
+// ─── Import/Export CSV ──────────────────────────────────────────
+function exportCSV() {
+  const filtered = getFilteredContacts();
+  if (filtered.length === 0) return showToast('Nenhum contato para exportar', 'error');
+  const headers = ['Nome','Telefone','Email','Empresa','Tag','Estágio'];
+  const rows = filtered.map(c => [c.name||'', c.phone||'', c.email||'', c.company||'', c.tag||'', c.stage||'lead']);
+  const csv = [headers, ...rows].map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'contatos_ozion.csv'; link.click();
+  showToast(`${filtered.length} contatos exportados`, 'success');
+}
+
+function showImportCSV() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay show';
+  modal.id = 'import-csv-modal';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-file-import" style="color:#22c55e;margin-right:8px"></i>Importar CSV</h3>
+        <button class="modal-close" onclick="document.getElementById('import-csv-modal').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="border:2px dashed #2a3050;border-radius:12px;padding:40px;text-align:center;cursor:pointer" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#2a3050'" onclick="document.getElementById('csv-file-input').click()">
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size:32px;color:#6c5ce7;margin-bottom:12px;display:block"></i>
+          <p style="font-size:13px;color:#e6edf3;margin:0 0 4px">Arraste um arquivo CSV ou clique para selecionar</p>
+          <p style="font-size:11px;color:#8b9dc3;margin:0">Formato: nome, telefone, email, tag</p>
+          <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="handleCSVImport(this)">
+        </div>
+        <div id="csv-preview" style="margin-top:12px"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function handleCSVImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const lines = e.target.result.split('\n').filter(Boolean);
+    if (lines.length < 2) return showToast('CSV vazio ou inválido', 'error');
+    let imported = 0;
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.replace(/"/g, '').trim());
+      if (cols[0] && cols[1]) {
+        await api('/api/crm/contacts', { method: 'POST', body: JSON.stringify({ name: cols[0], phone: cols[1], email: cols[2] || '', tag: cols[3] || 'lead' }) });
+        imported++;
+      }
+    }
+    document.getElementById('import-csv-modal')?.remove();
+    showToast(`${imported} contatos importados!`, 'success');
+    loadContacts(document.getElementById('content'));
+  };
+  reader.readAsText(file);
+}
+
+function filterByTag(tag) { crmTagFilter = tag; renderCrmView(); }
+function toggleAllContacts(cb) { document.querySelectorAll('tbody input[type=checkbox]').forEach(c => c.checked = cb.checked); }
 
 // ─── Tags (Funcional) ───────────────────────────────────────────
 const TAG_COLORS = ['#6c5ce7','#22c55e','#f59e0b','#ef4444','#3b82f6','#ec4899','#8b5cf6','#06b6d4','#f97316','#84cc16','#14b8a6','#e11d48'];
