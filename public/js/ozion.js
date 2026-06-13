@@ -2311,67 +2311,210 @@ async function loadVoice(el) {
 function selectPresetVoice(name) { showToast(`Voz selecionada: ${name}`, 'success'); }
 async function generateVoice() { showToast('Gerando áudio...', 'info'); }
 
-// ─── Agente IA (Lailla.io exact) ─────────────────────────────────
+// ─── Agente IA (Full Management) ────────────────────────────────
+const AI_MODELS = [
+  { provider: 'groq', model: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Grátis)', speed: '~650ms' },
+  { provider: 'groq', model: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (Grátis)', speed: '~300ms' },
+  { provider: 'deepseek', model: 'deepseek-chat', label: 'DeepSeek Chat ($0.14/M)', speed: '~1.2s' },
+  { provider: 'openai', model: 'gpt-4o', label: 'GPT-4o ($2.50/M)', speed: '~1s' },
+  { provider: 'openai', model: 'gpt-4o-mini', label: 'GPT-4o Mini ($0.15/M)', speed: '~500ms' },
+  { provider: 'anthropic', model: 'claude-sonnet-4-20250514', label: 'Claude Sonnet ($3/M)', speed: '~1.5s' }
+];
+
 async function loadAgents(el) {
   allAgents = await api('/api/agents') || [];
+  
   el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div><h2 style="margin:0;font-size:20px">Agente IA</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">Crie agentes de IA para suas automações • Disponíveis: ${allAgents.length}/5</p></div>
-      <button class="btn btn-primary btn-sm" onclick="showCreateAgent()"><i class="fa-solid fa-plus"></i> Novo Agente</button>
-    </div>
-
-    ${allAgents.length>=5?'<div style="background:var(--accent-light);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;display:flex;justify-content:space-between;align-items:center"><span>Limite de criação de agentes atingido (${allAgents.length}/5)</span><button class="btn btn-sm btn-primary">Comprar novo agente</button></div>':''}
-
-    <!-- Agent Form -->
-    <div id="agent-form" style="display:none" class="card" style="margin-bottom:16px">
-      <div class="card-header"><h3>🤖 Criar Agente IA</h3></div>
-      <div class="card-body">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group"><label>Nome do Agente</label><input type="text" id="agent-name" placeholder="Ex: Safira Astral"></div>
-          <div class="form-group"><label>Provider</label><select id="agent-provider"><option value="groq">Groq (Grátis - Llama 3.3)</option><option value="deepseek">DeepSeek</option><option value="openai">OpenAI (GPT-4o)</option></select></div>
-          <div class="form-group" style="grid-column:span 2"><label>Identidade</label><textarea id="agent-identity" rows="2" placeholder="Você é a Safira, uma atendente virtual profissional..."></textarea></div>
-          <div class="form-group"><label>Objetivo</label><input type="text" id="agent-objective" placeholder="Qualificar leads e agendar demos"></div>
-          <div class="form-group"><label>Estilo</label><input type="text" id="agent-communication" placeholder="Profissional, simpático e direto"></div>
-          <div class="form-group" style="grid-column:span 2"><label>Instruções</label><textarea id="agent-instructions" rows="2" placeholder="Responda em português. Seja objetiva."></textarea></div>
-          <div class="form-group" style="grid-column:span 2"><label>Restrições</label><textarea id="agent-restrictions" rows="2" placeholder="Não envie dados sensíveis."></textarea></div>
-          <div class="form-group"><label>Temperatura</label><input type="number" id="agent-temperature" value="0.7" min="0" max="1" step="0.1"></div>
-          <div class="form-group"><label>Voz</label><select id="agent-voice"><option value="">Sem voz</option></select></div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-primary btn-sm" onclick="createAgent()"><i class="fa-solid fa-save"></i> Criar</button><button class="btn btn-secondary btn-sm" onclick="hideAgentForm()">Cancelar</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <h2 style="margin:0;font-size:20px">Agente IA</h2>
+        <p style="color:#8b9dc3;margin-top:2px;font-size:12px">${allAgents.length} agente(s) criado(s)</p>
       </div>
+      <button onclick="showCreateAgent()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-plus"></i> Novo Agente</button>
     </div>
+
+    <!-- Agent Form Area -->
+    <div id="agent-form-area"></div>
 
     <!-- Agent Cards -->
-    <div class="grid-2">${allAgents.length===0?'<div style="grid-column:span 2;text-align:center;padding:40px;color:var(--text-muted)"><i class="fa-solid fa-robot" style="font-size:48px;margin-bottom:12px;opacity:0.3"></i><p>Nenhum agente criado</p><button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="showCreateAgent()">Criar Primeiro Agente</button></div>':
-      allAgents.map(a => `<div class="card" style="margin-bottom:12px">
-        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:16px">🤖</div>
-            <h3 style="margin:0;font-size:14px">${a.name}</h3>
-          </div>
-          <div style="display:flex;gap:4px">
-            <button class="btn btn-sm btn-secondary" style="padding:3px 6px"><i class="fa-solid fa-chart-bar"></i></button>
-            <button class="btn btn-sm btn-secondary" style="padding:3px 6px"><i class="fa-solid fa-pen"></i></button>
-            <button class="btn btn-sm btn-danger" onclick="deleteAgent('${a.id}')" style="padding:3px 6px"><i class="fa-solid fa-trash"></i></button>
-          </div>
+    ${allAgents.length === 0 ? `
+      <div style="text-align:center;padding:60px 20px;color:#8b9dc3;background:#1a1f35;border:1px solid #2a3050;border-radius:12px">
+        <div style="width:64px;height:64px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><i class="fa-solid fa-robot" style="font-size:24px;opacity:.4"></i></div>
+        <h3 style="font-size:15px;font-weight:600;margin:0 0 6px;color:#e6edf3">Nenhum agente criado</h3>
+        <p style="font-size:12px;margin:0 0 16px">Crie agentes de IA para automatizar atendimentos</p>
+        <button onclick="showCreateAgent()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600">Criar Primeiro Agente</button>
+      </div>` : `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px">
+        ${allAgents.map(a => renderAgentCard(a)).join('')}
+      </div>
+    `}
+  `;
+}
+
+function renderAgentCard(a) {
+  const providerColor = a.provider === 'groq' ? '#22c55e' : a.provider === 'deepseek' ? '#3b82f6' : a.provider === 'openai' ? '#10b981' : '#f59e0b';
+  const status = a.is_active !== false;
+  return `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:16px;transition:all .2s;${status?'border-left:4px solid #22c55e':'border-left:4px solid #ef4444'}" onmouseover="this.style.borderColor='#3a4070'" onmouseout="this.style.borderColor='#2a3050'">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,${providerColor}22,${providerColor}44);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-robot" style="color:${providerColor};font-size:18px"></i></div>
+        <div>
+          <h3 style="font-size:14px;font-weight:600;color:#e6edf3;margin:0">${a.name}</h3>
+          <span style="font-size:10px;color:#8b9dc3">${a.provider||'groq'} • ${a.model||'llama-3.3-70b'}</span>
         </div>
-        <div class="card-body">
-          <p style="color:var(--text-muted);font-size:12px;margin-bottom:10px">${a.description||a.identity||''}</p>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="badge badge-blue">${a.provider||'groq'}</span><span class="badge badge-purple">${a.model||'llama-3.3-70b'}</span><span class="badge badge-yellow">temp: ${a.temperature||0.7}</span></div>
-          <button class="btn btn-sm btn-primary" onclick="manageAgent('${a.id}')" style="width:100%"><i class="fa-solid fa-cog"></i> Gerenciar</button>
+      </div>
+      <div style="position:relative">
+        <button onclick="toggleAgentMenu('${a.id}')" style="background:none;border:none;color:#8b9dc3;cursor:pointer;padding:4px"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+        <div id="agent-menu-${a.id}" style="display:none;position:absolute;right:0;top:100%;background:#1a1f35;border:1px solid #2a3050;border-radius:8px;padding:6px;min-width:160px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.4)">
+          <div onclick="showEditAgent('${a.id}')" style="padding:8px 12px;font-size:12px;color:#e6edf3;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-pen" style="font-size:10px;color:#3b82f6"></i> Editar</div>
+          <div onclick="testAgent('${a.id}')" style="padding:8px 12px;font-size:12px;color:#e6edf3;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-flask" style="font-size:10px;color:#22c55e"></i> Testar</div>
+          <div onclick="duplicateAgent('${a.id}')" style="padding:8px 12px;font-size:12px;color:#e6edf3;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-copy" style="font-size:10px;color:#f59e0b"></i> Duplicar</div>
+          <div onclick="deleteAgent('${a.id}')" style="padding:8px 12px;font-size:12px;color:#ef4444;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-trash" style="font-size:10px"></i> Excluir</div>
         </div>
-      </div>`).join('')}
+      </div>
+    </div>
+    <p style="font-size:11px;color:#8b9dc3;margin:0 0 12px;line-height:1.4">${(a.identity || a.description || '').substring(0, 120)}${(a.identity||'').length > 120 ? '...' : ''}</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <span style="padding:3px 8px;border-radius:6px;font-size:9px;background:${providerColor}22;color:${providerColor}">${a.provider||'groq'}</span>
+      <span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#6c5ce722;color:#6c5ce7">temp: ${a.temperature||0.7}</span>
+      ${a.voice_id ? '<span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#f59e0b22;color:#f59e0b">Voz ativa</span>' : ''}
+      <span style="padding:3px 8px;border-radius:6px;font-size:9px;background:${status?'#22c55e22':'#ef444422'};color:${status?'#22c55e':'#ef4444'}">${status?'Ativo':'Inativo'}</span>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button onclick="testAgent('${a.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;font-weight:500"><i class="fa-solid fa-flask"></i> Testar</button>
+      <button onclick="showEditAgent('${a.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #6c5ce7;background:#6c5ce715;color:#6c5ce7;cursor:pointer;font-size:10px;font-weight:500"><i class="fa-solid fa-pen"></i> Editar</button>
+    </div>
+  </div>`;
+}
+
+const AGENT_FIELDS = [
+  { key: 'name', label: 'Nome', placeholder: 'Ex: Safira IA', required: true },
+  { key: 'provider', label: 'Provider', type: 'select', options: [
+    { value: 'groq', label: 'Groq (Grátis)' },
+    { value: 'deepseek', label: 'DeepSeek' },
+    { value: 'openai', label: 'OpenAI' },
+    { value: 'anthropic', label: 'Anthropic' }
+  ]},
+  { key: 'model', label: 'Modelo', type: 'select', options: AI_MODELS.map(m => ({ value: m.model, label: m.label })) },
+  { key: 'identity', label: 'Identidade / Persona', type: 'textarea', placeholder: 'Você é a Safira, uma atendente virtual...', required: true },
+  { key: 'objective', label: 'Objetivo', placeholder: 'Qualificar leads e agendar demos' },
+  { key: 'communication', label: 'Estilo de Comunicação', placeholder: 'Profissional, simpático e direto' },
+  { key: 'instructions', label: 'Instruções adicionais', type: 'textarea', placeholder: 'Responda em português. Seja objetiva.' },
+  { key: 'restrictions', label: 'Restrições', type: 'textarea', placeholder: 'Não envie dados sensíveis.' },
+  { key: 'temperature', label: 'Temperatura (0-1)', type: 'number', placeholder: '0.7' },
+  { key: 'max_tokens', label: 'Máximo de tokens', type: 'number', placeholder: '1024' }
+];
+
+function showCreateAgent() {
+  const area = document.getElementById('agent-form-area');
+  if (!area) return;
+  area.innerHTML = `
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:20px;animation:slideUp .3s ease">
+      <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-robot" style="color:#6c5ce7;margin-right:8px"></i>Novo Agente IA</h3>
+      ${crudForm({ fields: AGENT_FIELDS, id: 'agent-create' })}
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="saveAgent()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar Agente</button>
+        <button onclick="document.getElementById('agent-form-area').innerHTML=''" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      </div>
     </div>`;
 }
 
-function showCreateAgent() { document.getElementById('agent-form').style.display = 'block'; }
-function hideAgentForm() { document.getElementById('agent-form').style.display = 'none'; }
-async function createAgent() {
-  const data = { name: document.getElementById('agent-name').value, identity: document.getElementById('agent-identity').value, objective: document.getElementById('agent-objective').value, communication: document.getElementById('agent-communication').value, instructions: document.getElementById('agent-instructions').value, restrictions: document.getElementById('agent-restrictions').value, provider: document.getElementById('agent-provider').value, temperature: parseFloat(document.getElementById('agent-temperature').value), voice_id: document.getElementById('agent-voice').value || null };
-  await api('/api/agents', { method: 'POST', body: JSON.stringify(data) }); showToast('Agente criado!', 'success'); loadAgents(document.getElementById('content'));
+async function saveAgent(editId) {
+  const data = getFormData(AGENT_FIELDS, editId ? `agent-edit-${editId}` : 'agent-create');
+  if (!validateForm(AGENT_FIELDS, data)) return;
+  if (editId) {
+    await api(`/api/agents/${editId}`, { method: 'PUT', body: JSON.stringify(data) });
+    showToast('Agente atualizado!', 'success');
+  } else {
+    await api('/api/agents', { method: 'POST', body: JSON.stringify(data) });
+    showToast('Agente criado!', 'success');
+  }
+  document.getElementById('agent-form-area').innerHTML = '';
+  loadAgents(document.getElementById('content'));
 }
-function manageAgent(id) { showToast('Gerenciar agente em breve', 'info'); }
-async function deleteAgent(id) { if (!confirm('Excluir?')) return; await api(`/api/agents/${id}`, { method: 'DELETE' }); showToast('Excluído', 'success'); loadAgents(document.getElementById('content')); }
+
+function showEditAgent(id) {
+  document.querySelectorAll('[id^="agent-menu-"]').forEach(m => m.style.display = 'none');
+  const agent = allAgents.find(a => a.id === id);
+  if (!agent) return;
+  const area = document.getElementById('agent-form-area');
+  if (!area) return;
+  area.innerHTML = `
+    <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:20px;animation:slideUp .3s ease">
+      <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-pen" style="color:#3b82f6;margin-right:8px"></i>Editar Agente</h3>
+      ${crudForm({ fields: AGENT_FIELDS, values: agent, id: `agent-edit-${id}` })}
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="saveAgent('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
+        <button onclick="document.getElementById('agent-form-area').innerHTML=''" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+function toggleAgentMenu(id) {
+  const menu = document.getElementById(`agent-menu-${id}`);
+  if (!menu) return;
+  const isVisible = menu.style.display === 'block';
+  document.querySelectorAll('[id^="agent-menu-"]').forEach(m => m.style.display = 'none');
+  if (!isVisible) menu.style.display = 'block';
+}
+
+function duplicateAgent(id) {
+  document.querySelectorAll('[id^="agent-menu-"]').forEach(m => m.style.display = 'none');
+  const agent = allAgents.find(a => a.id === id);
+  if (!agent) return;
+  api('/api/agents', { method: 'POST', body: JSON.stringify({ ...agent, name: agent.name + ' (cópia)' }) });
+  showToast('Agente duplicado!', 'success');
+  loadAgents(document.getElementById('content'));
+}
+
+async function deleteAgent(id) {
+  document.querySelectorAll('[id^="agent-menu-"]').forEach(m => m.style.display = 'none');
+  confirmModal({ title: 'Excluir agente', message: 'Tem certeza? Todas as configurações serão perdidas.', danger: true, onConfirm: async () => {
+    await api(`/api/agents/${id}`, { method: 'DELETE' });
+    showToast('Agente excluído', 'success');
+    loadAgents(document.getElementById('content'));
+  }});
+}
+
+function testAgent(id) {
+  document.querySelectorAll('[id^="agent-menu-"]').forEach(m => m.style.display = 'none');
+  const agent = allAgents.find(a => a.id === id);
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay show';
+  modal.id = 'test-agent-modal';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:500px">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-flask" style="color:#22c55e;margin-right:8px"></i>Testar: ${agent?.name || 'Agente'}</h3>
+        <button class="modal-close" onclick="document.getElementById('test-agent-modal').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="test-agent-messages" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:12px;padding:12px;background:#161b22;border-radius:8px;min-height:100px">
+          <div style="text-align:center;color:#64748b;font-size:12px;padding:20px">Envie uma mensagem para testar</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="test-agent-input" placeholder="Digite sua mensagem..." onkeydown="if(event.key==='Enter')testAgentSend('${id}')" style="flex:1;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;outline:none">
+          <button onclick="testAgentSend('${id}')" style="padding:8px 16px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function testAgentSend(id) {
+  const input = document.getElementById('test-agent-input');
+  const msgs = document.getElementById('test-agent-messages');
+  if (!input?.value.trim() || !msgs) return;
+  const text = input.value.trim();
+  input.value = '';
+  msgs.innerHTML += `<div style="align-self:flex-end;padding:8px 12px;border-radius:10px;background:#6c5ce7;color:white;font-size:12px;max-width:80%">${text}</div>`;
+  msgs.innerHTML += `<div style="align-self:flex-start;padding:8px 12px;border-radius:10px;background:#1a1f35;color:#e6edf3;font-size:12px;max-width:80%"><i class="fa-solid fa-spinner fa-spin"></i> Pensando...</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+  const resp = await api(`/api/agents/${id}/test`, { method: 'POST', body: JSON.stringify({ message: text }) });
+  const lastMsg = msgs.lastElementChild;
+  if (lastMsg) lastMsg.innerHTML = resp?.response || resp?.error || 'Erro ao obter resposta';
+  msgs.scrollTop = msgs.scrollHeight;
+}
 
 // ─── Campanhas Kanban (Lailla.io exact) ──────────────────────────
 async function loadCampaigns(el) {
