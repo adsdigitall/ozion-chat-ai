@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ozion Chat AI
 
-## Getting Started
+CRM multicanal com atendimento em equipe, WhatsApp Cloud API oficial, automações visuais, agentes de IA, campanhas CTWA, vendas e voz.
 
-First, run the development server:
+## Recursos
+
+- Caixa de entrada em equipe com múltiplos números oficiais
+- CRM de contatos e histórico de conversas
+- Editor visual de fluxos com 17 tipos de bloco
+- Agentes de IA com múltiplos provedores
+- WhatsApp Cloud API para envio e recebimento
+- Campanhas, CTWA, vendas e indicadores
+- Voice Studio com OpenAI e ElevenLabs
+- Integrações com credenciais protegidas no servidor
+- Usuários, permissões, configurações e logs
+
+## Instalação
+
+Requisitos: Node.js 20 ou mais recente e um projeto Supabase.
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Banco de dados
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Execute as migrações da pasta `supabase/migrations` na ordem numérica:
 
-## Learn More
+1. `001_initial_schema.sql`
+2. `002_security_hardening.sql`
 
-To learn more about Next.js, take a look at the following resources:
+Revise as políticas de segurança antes de aplicá-las em um banco que já tenha usuários em produção.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## WhatsApp oficial
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Cadastre cada número em **WhatsApp** usando os dados da Meta Cloud API. Configure na Meta:
 
-## Deploy on Vercel
+- URL do webhook: `https://seu-dominio.com/api/whatsapp/webhook`
+- Token de verificação: mesmo valor de `WHATSAPP_VERIFY_TOKEN`
+- Assinatura: defina `WHATSAPP_APP_SECRET`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Assine ao menos os eventos de mensagens. As credenciais dos números e integrações nunca são retornadas ao navegador.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Verificação
+
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+## Produção
+
+Configure todas as variáveis no provedor de hospedagem, aplique as migrações, use HTTPS e mantenha `SUPABASE_SERVICE_ROLE_KEY`, tokens da Meta e chaves de IA somente no servidor.

@@ -32,6 +32,13 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+.db-url
+.vercel-token
+setup_envs.py
+setup-vercel-envs.py
+apply_migration.py
+run_migration.js
 
 # vercel
 .vercel
