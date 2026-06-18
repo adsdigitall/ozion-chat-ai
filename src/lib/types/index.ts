@@ -1,4 +1,4 @@
-export type UserRole = "master" | "admin" | "agent" | "viewer";
+export type UserRole = "admin_master" | "client" | "manager" | "attendant";
 
 export interface User {
   id: string;
@@ -46,7 +46,7 @@ export interface Contact {
   updated_at: string;
 }
 
-export type ContactStatus = "new" | "interested" | "qualified" | "proposal" | "won" | "lost" | "risk";
+export type ContactStatus = "new" | "in_service" | "qualified" | "pix_sent" | "waiting_payment" | "paid" | "lost" | "risk";
 
 export interface Tag {
   id: string;

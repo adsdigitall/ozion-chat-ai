@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { parseWebhookMessage } from "@/lib/services/whatsapp";
 import { executeConversationFlow } from "@/lib/server/flow-engine";
+import { slugifyTag } from "@/lib/server/tags";
 
 type WebhookEnvelope = {
   object?: string;
@@ -49,15 +50,22 @@ function riskReason(content: string) {
 }
 
 async function tagRiskContact(admin: ReturnType<typeof getSupabaseAdmin>, workspaceId: string, contactId: string) {
+  const { data: contact, error: contactError } = await admin
+    .from("contacts")
+    .select("customer_id")
+    .eq("id", contactId)
+    .maybeSingle();
+  if (contactError) throw contactError;
+
   const { data: tag, error: tagError } = await admin
     .from("tags")
-    .upsert({ workspace_id: workspaceId, name: "Risco", color: "#f97316" }, { onConflict: "workspace_id,name" })
+    .upsert({ workspace_id: workspaceId, customer_id: contact?.customer_id ?? null, name: "Risco", slug: slugifyTag("Risco"), color: "#f97316", category: "Risco", status: "active" }, { onConflict: "workspace_id,slug" })
     .select("id")
     .single();
   if (tagError) throw tagError;
   const { error } = await admin
     .from("contact_tags")
-    .upsert({ contact_id: contactId, tag_id: tag.id }, { onConflict: "contact_id,tag_id" });
+    .upsert({ workspace_id: workspaceId, customer_id: contact?.customer_id ?? null, contact_id: contactId, tag_id: tag.id }, { onConflict: "contact_id,tag_id" });
   if (error) throw error;
 }
 

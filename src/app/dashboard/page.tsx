@@ -205,7 +205,7 @@ export default function DashboardPage() {
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-colors"
+                className="oz-card rounded-xl p-5 hover:border-zinc-700 transition-colors"
               >
                 <div className={`w-10 h-10 rounded-lg ${stat.iconBackground} flex items-center justify-center mb-4`}>
                   <stat.icon className={`w-5 h-5 ${stat.iconClass}`} />
@@ -218,7 +218,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <section className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
+            <section className="oz-card rounded-xl p-5">
               <h2 className="text-sm font-medium text-white mb-4">Conversas por Status</h2>
               <div className="space-y-3">
                 {conversationStats.map((item) => (
@@ -235,7 +235,7 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <section className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
+            <section className="oz-card rounded-xl p-5">
               <h2 className="text-sm font-medium text-white mb-4">Tags Mais Usadas</h2>
               <div className="space-y-3">
                 {data.tags.slice(0, 5).map((tag) => (
@@ -251,7 +251,7 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <section className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
+            <section className="oz-card rounded-xl p-5">
               <h2 className="text-sm font-medium text-white mb-4">Fluxos</h2>
               <div className="space-y-3">
                 {data.flows.slice(0, 4).map((flow) => (
@@ -275,7 +275,7 @@ export default function DashboardPage() {
             </section>
           </div>
 
-          <section className="bg-zinc-900/50 border border-zinc-800 rounded-xl">
+          <section className="oz-card rounded-xl">
             <div className="p-5 border-b border-zinc-800">
               <h2 className="text-sm font-medium text-white">Conversas Recentes</h2>
             </div>

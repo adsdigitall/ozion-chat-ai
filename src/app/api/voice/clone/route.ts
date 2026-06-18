@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ElevenLabsService } from "@/lib/services/elevenlabs";
-import { getConnectedIntegrationSecret, getRequestContext, publicServerError } from "@/lib/server/supabase-admin";
+import { getConnectedIntegrationSecret, getRequestContext, publicServerError, requireActiveCustomer } from "@/lib/server/supabase-admin";
+import { requirePlanLimit, requirePlanModule } from "@/lib/server/plan-guards";
 
 export async function POST(request: NextRequest) {
   try {
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    await requirePlanModule({ context, request, module: "voice" });
+    const { admin, workspaceId, profileId } = context;
     const formData = await request.formData();
     const name = String(formData.get("name") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
@@ -18,6 +22,18 @@ export async function POST(request: NextRequest) {
     if (!files.length) {
       return NextResponse.json({ error: "Envie pelo menos um áudio de amostra." }, { status: 400 });
     }
+
+    const { count } = await admin
+      .from("voice_configs")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId);
+    await requirePlanLimit({
+      context,
+      request,
+      limit: "voices",
+      currentCount: count ?? 0,
+      message: "Limite de vozes atingido. Faça upgrade do plano.",
+    });
 
     const apiKey = await getConnectedIntegrationSecret({
       admin,
@@ -36,6 +52,7 @@ export async function POST(request: NextRequest) {
       .from("voice_configs")
       .insert({
         workspace_id: workspaceId,
+        created_by: profileId,
         name: cloned.name || name,
         provider: "elevenlabs",
         voice_id: cloned.voice_id,

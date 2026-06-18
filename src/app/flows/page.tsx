@@ -40,6 +40,7 @@ import {
   Settings2,
   Sparkles,
   Split,
+  Tag,
   Trash2,
   UsersRound,
   Webhook,
@@ -52,6 +53,9 @@ type FlowBlockType =
   | "content"
   | "question"
   | "action"
+  | "add-tag"
+  | "remove-tag"
+  | "has-tag"
   | "delay"
   | "office-hours"
   | "condition"
@@ -104,6 +108,9 @@ const BLOCKS: BlockDefinition[] = [
   { type: "content", label: "Conteúdo", description: "Texto, imagem, áudio, vídeo ou documento", color: "#7c3aed", icon: MessageSquareText, outputs: ["Próximo"], defaults: { contentType: "text", message: "Digite sua mensagem", delay: 0, mediaUrl: "" } },
   { type: "question", label: "Pergunta", description: "Pergunta e armazenamento da resposta", color: "#ea580c", icon: MessageCircleQuestion, outputs: ["Respondeu", "Expirou"], defaults: { message: "Qual é o seu nome?", saveAs: "resposta", expiresIn: "1 hora" } },
   { type: "action", label: "Ação", description: "Contato, etiqueta, conversa ou outro fluxo", color: "#4f46e5", icon: Zap, outputs: ["Próximo"], defaults: { action: "add_label", value: "", field: "" } },
+  { type: "add-tag", label: "Adicionar Tag", description: "Aplicar etiqueta no contato atual", color: "#10b981", icon: Tag, outputs: ["Próximo"], defaults: { tag: "Novo Lead" } },
+  { type: "remove-tag", label: "Remover Tag", description: "Remover etiqueta do contato atual", color: "#ef4444", icon: Tag, outputs: ["Próximo"], defaults: { tag: "Risco" } },
+  { type: "has-tag", label: "Verificar Tag", description: "Direcionar fluxo se o contato possui etiqueta", color: "#06b6d4", icon: Tag, outputs: ["Possui", "Não possui"], defaults: { tag: "Qualificado" } },
   { type: "delay", label: "Delay", description: "Aguardar período fixo ou inteligente", color: "#64748b", icon: Clock3, outputs: ["Próximo"], defaults: { amount: 10, unit: "segundos", presence: "typing" } },
   { type: "office-hours", label: "Expediente", description: "Dias, horários e fuso de atendimento", color: "#ca8a04", icon: Clock3, outputs: ["Dentro do horário", "Fora do horário"], defaults: { timezone: "America/Sao_Paulo", days: "Seg-Sex", start: "08:00", end: "18:00" } },
   { type: "condition", label: "Condição", description: "Regras sobre contato, campos e horário", color: "#dc2626", icon: CheckCircle2, outputs: ["Verdadeiro", "Falso"], defaults: { match: "all", source: "contact", field: "status", operator: "equal", value: "qualified" } },

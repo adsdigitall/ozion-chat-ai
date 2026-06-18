@@ -728,8 +728,8 @@ export default function AgentsPage() {
   ];
 
   return (
-    <div className="space-y-6 p-6">
-      <section className="overflow-hidden rounded-[28px] border border-zinc-800 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.16),_transparent_32%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(10,10,10,0.98))]">
+    <div className="oz-page space-y-6 p-6">
+      <section className="oz-card overflow-hidden rounded-[28px] border-emerald-500/20">
         <div className="flex flex-col gap-6 p-6 lg:flex-row lg:items-center lg:justify-between lg:p-7">
           <div className="max-w-3xl">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-300">
@@ -748,7 +748,7 @@ export default function AgentsPage() {
               type="button"
               onClick={() => void fetchAgents(selectedAgentId)}
               disabled={loading}
-              className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-900/80 px-5 text-sm font-semibold text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+              className="pulse-button oz-button-secondary h-12 px-5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               Atualizar agentes
@@ -756,7 +756,7 @@ export default function AgentsPage() {
             <button
               type="button"
               onClick={openCreateModal}
-              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition hover:from-emerald-400 hover:to-emerald-500"
+              className="pulse-button oz-button-primary h-12 px-5 text-sm"
             >
               <Plus className="h-4 w-4" />
               Criar novo agente
@@ -780,7 +780,7 @@ export default function AgentsPage() {
           const Icon = stat.icon;
 
           return (
-            <div key={stat.label} className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
+            <div key={stat.label} className="oz-card rounded-3xl p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${metricAccent(stat.accent)}`}>
                   <Icon className="h-5 w-5" />
@@ -796,7 +796,7 @@ export default function AgentsPage() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(380px,0.9fr)]">
         <div className="space-y-5">
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-4">
+          <div className="oz-card rounded-3xl p-4">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div className="relative w-full xl:max-w-2xl">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
@@ -805,12 +805,12 @@ export default function AgentsPage() {
                   placeholder="Buscar por nome, objetivo, regra ou base de conhecimento..."
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  className="h-12 w-full rounded-2xl border border-zinc-800 bg-zinc-900 pl-10 pr-4 text-sm text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  className="oz-input h-12 w-full rounded-2xl pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                 />
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <label className="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-3 py-2">
+                <label className="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/70 px-3 py-2">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Status</span>
                   <select
                     value={statusFilter}
@@ -823,7 +823,7 @@ export default function AgentsPage() {
                   </select>
                 </label>
 
-                <label className="relative flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-3 py-2 pr-8">
+                <label className="relative flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/70 px-3 py-2 pr-8">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Provider</span>
                   <select
                     value={providerFilter}
@@ -844,7 +844,7 @@ export default function AgentsPage() {
           </div>
 
           {loading ? (
-            <div className="flex min-h-[320px] items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-950/70">
+            <div className="oz-card flex min-h-[320px] items-center justify-center rounded-3xl">
               <Loader2 className="h-6 w-6 animate-spin text-emerald-400" />
             </div>
           ) : filteredAgents.length > 0 ? (
@@ -862,7 +862,7 @@ export default function AgentsPage() {
                     className={`group rounded-[28px] border p-5 text-left transition duration-200 ${
                       active
                         ? "border-emerald-500/40 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(24,24,27,0.92))] shadow-[0_0_0_1px_rgba(16,185,129,0.06)]"
-                        : "border-zinc-800 bg-zinc-950/80 hover:border-zinc-700 hover:bg-zinc-950"
+                        : "border-zinc-800 bg-zinc-950/80 hover:border-emerald-500/30 hover:bg-zinc-950"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -1089,7 +1089,7 @@ export default function AgentsPage() {
                       onClick={() => setDetailTab(tab.id)}
                       className={`flex items-center gap-2 rounded-2xl px-3 py-3 text-left text-sm font-semibold transition ${
                         active
-                          ? "bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/20"
+                          ? "bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/20"
                           : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
                       }`}
                     >
@@ -1252,8 +1252,8 @@ export default function AgentsPage() {
 
       {showWizard ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="max-h-[96vh] w-full max-w-6xl overflow-hidden rounded-[32px] border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40">
-            <div className="border-b border-zinc-800 bg-gradient-to-r from-emerald-500 via-emerald-500 to-teal-500 px-6 py-5">
+          <div className="oz-modal max-h-[96vh] w-full max-w-6xl overflow-hidden rounded-[32px]">
+            <div className="border-b border-zinc-800 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.32),_transparent_35%),linear-gradient(135deg,rgba(16,185,129,0.2),rgba(5,8,7,0.98))] px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-black uppercase tracking-[0.22em] text-white/90">Assistente de criação</p>
@@ -1267,7 +1267,7 @@ export default function AgentsPage() {
                 <button
                   type="button"
                   onClick={() => setShowWizard(false)}
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-zinc-900 transition hover:scale-[1.03]"
+                  className="pulse-button flex h-12 w-12 items-center justify-center rounded-full border border-zinc-700 bg-zinc-950 text-zinc-200 transition hover:border-emerald-500/40 hover:text-white"
                   aria-label="Fechar assistente"
                 >
                   <X className="h-6 w-6" />

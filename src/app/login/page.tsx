@@ -108,7 +108,9 @@ export default function LoginPage() {
         <div>
           <div className="mb-2 flex items-center justify-between">
             <label className="block text-sm font-bold text-zinc-700">Senha</label>
-            <span className="text-sm font-semibold text-zinc-400">Esqueceu a senha?</span>
+            <Link href="/forgot-password" className="text-sm font-semibold text-emerald-600 hover:text-emerald-700">
+              Esqueceu a senha?
+            </Link>
           </div>
           <div className="relative">
             <KeyRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-rose-500" />

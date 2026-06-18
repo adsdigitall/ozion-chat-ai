@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
   // Skip auth for public routes
-  const publicPaths = ["/login", "/register", "/api/auth/register", "/api/auth/me", "/api/whatsapp/webhook", "/api/health"];
+  const publicPaths = ["/login", "/register", "/forgot-password", "/api/auth/register", "/api/auth/me", "/api/whatsapp/webhook", "/api/health"];
   const isPublicPath = publicPaths.some((p) => request.nextUrl.pathname.startsWith(p));
 
   if (isPublicPath) {

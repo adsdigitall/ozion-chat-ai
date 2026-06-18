@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getRequestContext, publicServerError } from "@/lib/server/supabase-admin";
+import { getRequestContext, publicServerError, requireActiveCustomer } from "@/lib/server/supabase-admin";
+import { requirePlanLimit, requirePlanModule } from "@/lib/server/plan-guards";
 
 const flowInput = z.object({
   id: z.string().uuid().optional(),
@@ -15,7 +16,9 @@ const flowInput = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    const { admin, workspaceId } = context;
     const id = request.nextUrl.searchParams.get("id");
 
     let query = admin
@@ -36,7 +39,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    const { admin, workspaceId, profileId } = context;
+    await requirePlanModule({ context, request, module: "flows" });
     const parsed = flowInput.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid flow." }, { status: 400 });
@@ -46,7 +52,7 @@ export async function POST(request: NextRequest) {
     if (id) {
       const { data, error } = await admin
         .from("flows")
-        .update({ ...input, updated_at: new Date().toISOString() })
+        .update({ ...input, updated_by: profileId, updated_at: new Date().toISOString() })
         .eq("id", id)
         .eq("workspace_id", workspaceId)
         .select()
@@ -55,9 +61,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ flow: data });
     }
 
+    const { count, error: countError } = await admin
+      .from("flows")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId);
+    if (countError) throw countError;
+    await requirePlanLimit({
+      context,
+      request,
+      limit: "flows",
+      currentCount: count ?? 0,
+      message: "Limite de fluxos atingido. Faça upgrade do plano.",
+    });
+
     const { data, error } = await admin
       .from("flows")
-      .insert({ ...input, workspace_id: workspaceId })
+      .insert({ ...input, workspace_id: workspaceId, created_by: profileId })
       .select()
       .single();
     if (error) throw error;

@@ -29,7 +29,7 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   colorScheme: "dark",
-  themeColor: "#10b981",
+  themeColor: "#050807",
 };
 
 export default function RootLayout({
@@ -39,7 +39,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className="h-full antialiased dark">
-      <body className="min-h-full bg-zinc-950">
+      <body className="min-h-full bg-[#050807]">
         <AuthProvider>
           <AppLayout>{children}</AppLayout>
         </AuthProvider>

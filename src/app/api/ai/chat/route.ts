@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createAIProvider, type AIMessage } from "@/lib/services/ai-router";
-import { getRequestContext, publicServerError } from "@/lib/server/supabase-admin";
+import { getRequestContext, publicServerError, requireActiveCustomer } from "@/lib/server/supabase-admin";
+import { requirePlanModule } from "@/lib/server/plan-guards";
 
 const chatInput = z.object({
   agentId: z.string().uuid(),
@@ -48,7 +49,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid AI request." }, { status: 400 });
     }
 
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    await requirePlanModule({ context, request, module: "agents" });
+    const { admin, workspaceId, profileId } = context;
     const { data: agent, error: agentError } = await admin
       .from("ai_agents")
       .select("*")
@@ -87,10 +91,19 @@ export async function POST(request: NextRequest) {
 
     let messages: AIMessage[] = parsed.data.messages;
     if (parsed.data.conversationId && messages.length === 0) {
+      const { data: conversation } = await admin
+        .from("conversations")
+        .select("id")
+        .eq("id", parsed.data.conversationId)
+        .eq("workspace_id", workspaceId)
+        .maybeSingle();
+      if (!conversation) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+
       const { data: history, error: historyError } = await admin
         .from("messages")
         .select("sender,content")
         .eq("conversation_id", parsed.data.conversationId)
+        .eq("workspace_id", workspaceId)
         .order("created_at", { ascending: true })
         .limit(50);
       if (historyError) throw historyError;
@@ -123,19 +136,21 @@ export async function POST(request: NextRequest) {
       if (conversation) {
         await admin.from("messages").insert({
           conversation_id: conversation.id,
+          workspace_id: workspaceId,
           content: result.content,
           type: "text",
           sender: "ai",
           sender_name: agent.name,
+          created_by: profileId,
           read: false,
         });
-        await admin.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversation.id);
+        await admin.from("conversations").update({ updated_by: profileId, updated_at: new Date().toISOString() }).eq("id", conversation.id);
       }
     }
 
     await admin
       .from("ai_agents")
-      .update({ conversations_handled: (agent.conversations_handled ?? 0) + 1, updated_at: new Date().toISOString() })
+      .update({ conversations_handled: (agent.conversations_handled ?? 0) + 1, updated_by: profileId, updated_at: new Date().toISOString() })
       .eq("id", agent.id)
       .eq("workspace_id", workspaceId);
 

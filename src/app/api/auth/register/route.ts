@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     if (existingProfile?.workspace_id) {
       await admin
         .from("users")
-        .update({ name, email: normalizedEmail, role: "master" })
+        .update({ name, email: normalizedEmail, role: "admin_master" })
         .eq("id", existingProfile.id);
 
       return NextResponse.json({
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         auth_id: authUser.user.id,
         email: normalizedEmail,
         name,
-        role: "master",
+        role: "admin_master",
         workspace_id: workspace.id,
       })
       .select("id,workspace_id")

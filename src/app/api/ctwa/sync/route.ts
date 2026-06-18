@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchMetaCampaigns } from "@/lib/services/meta-ctwa";
-import { getRequestContext, publicServerError, writeAuditLog } from "@/lib/server/supabase-admin";
+import { getRequestContext, publicServerError, requireActiveCustomer, writeAuditLog } from "@/lib/server/supabase-admin";
+import { requirePlanModule } from "@/lib/server/plan-guards";
 
 export async function POST(request: NextRequest) {
   try {
-    const { admin, workspaceId, profileId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    await requirePlanModule({ context, request, module: "ctwa" });
+    const { admin, workspaceId, profileId } = context;
     const { data: integration, error } = await admin
       .from("integrations")
       .select("id,credentials,config")

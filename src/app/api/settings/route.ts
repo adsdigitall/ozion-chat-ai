@@ -13,6 +13,9 @@ const settingsInput = z.object({
   company: z
     .object({
       name: z.string().trim().min(1).max(160).optional(),
+      description: z.string().trim().max(1000).optional(),
+      logo_url: z.string().trim().url().max(1000).optional().or(z.literal("")),
+      color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
       document: z.string().trim().max(40).optional(),
       website: z.string().trim().max(300).optional(),
       timezone: z.string().trim().max(80).optional(),
@@ -37,7 +40,7 @@ export async function GET(request: NextRequest) {
   try {
     const { admin, workspaceId, profileId } = await getRequestContext(request);
     const [workspaceResult, profileResult] = await Promise.all([
-      admin.from("workspaces").select("id,name,slug,plan,logo,settings").eq("id", workspaceId).single(),
+      admin.from("workspaces").select("id,name,slug,plan,logo,logo_url,description,color,status,settings").eq("id", workspaceId).single(),
       profileId
         ? admin.from("users").select("id,name,email,avatar,role").eq("id", profileId).single()
         : admin
@@ -62,7 +65,10 @@ export async function GET(request: NextRequest) {
         name: workspaceResult.data.name,
         slug: workspaceResult.data.slug,
         plan: workspaceResult.data.plan,
-        logo: workspaceResult.data.logo,
+        logo: workspaceResult.data.logo_url ?? workspaceResult.data.logo,
+        description: workspaceResult.data.description ?? "",
+        color: workspaceResult.data.color ?? "#10b981",
+        status: workspaceResult.data.status ?? "active",
         document: typeof settings.companyDocument === "string" ? settings.companyDocument : "",
         website: typeof settings.companyWebsite === "string" ? settings.companyWebsite : "",
         timezone:
@@ -138,6 +144,9 @@ export async function PATCH(request: NextRequest) {
 
     const workspaceFields: Record<string, unknown> = { settings: nextSettings };
     if (parsed.data.company?.name) workspaceFields.name = parsed.data.company.name;
+    if (parsed.data.company?.description !== undefined) workspaceFields.description = parsed.data.company.description;
+    if (parsed.data.company?.logo_url !== undefined) workspaceFields.logo_url = parsed.data.company.logo_url || null;
+    if (parsed.data.company?.color) workspaceFields.color = parsed.data.company.color;
     updates.push(admin.from("workspaces").update(workspaceFields).eq("id", workspaceId));
 
     const results = await Promise.all(updates);

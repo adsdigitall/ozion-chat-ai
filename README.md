@@ -37,13 +37,18 @@ Revise as políticas de segurança antes de aplicá-las em um banco que já tenh
 
 ## WhatsApp oficial
 
-Cadastre cada número em **WhatsApp** usando os dados da Meta Cloud API. Configure na Meta:
+A Ozion usa Embedded Signup da Meta. O cliente clica em **Conectar WhatsApp Oficial**, faz login no popup oficial da Meta, escolhe a empresa/conta WhatsApp Business, confirma o número e volta automaticamente para o SaaS.
 
-- URL do webhook: `https://seu-dominio.com/api/whatsapp/webhook`
-- Token de verificação: mesmo valor de `WHATSAPP_VERIFY_TOKEN`
-- Assinatura: defina `WHATSAPP_APP_SECRET`
+O cliente nunca digita nem visualiza App ID, App Secret, Configuration ID, tokens, webhook ou IDs técnicos. Esses dados ficam no ambiente do servidor:
 
-Assine ao menos os eventos de mensagens. As credenciais dos números e integrações nunca são retornadas ao navegador.
+- `META_APP_ID`
+- `META_APP_SECRET`
+- `META_EMBEDDED_SIGNUP_CONFIGURATION_ID`
+- `META_SYSTEM_USER_ACCESS_TOKEN`
+- `WHATSAPP_VERIFY_TOKEN`
+- `WHATSAPP_APP_SECRET`
+
+Webhook oficial da Ozion: `https://seu-dominio.com/api/whatsapp/webhook`. As credenciais dos números e integrações nunca são retornadas ao navegador.
 
 ## Verificação
 

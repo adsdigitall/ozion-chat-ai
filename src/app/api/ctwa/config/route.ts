@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getRequestContext, publicServerError, writeAuditLog } from "@/lib/server/supabase-admin";
+import { getRequestContext, publicServerError, requireActiveCustomer, writeAuditLog } from "@/lib/server/supabase-admin";
+import { requirePlanModule } from "@/lib/server/plan-guards";
 import { validateMetaCTWA } from "@/lib/services/meta-ctwa";
 
 const input = z.object({
@@ -41,7 +42,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { admin, workspaceId, profileId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    await requirePlanModule({ context, request, module: "ctwa" });
+    const { admin, workspaceId, profileId } = context;
     const parsed = input.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Dados da Meta inválidos." }, { status: 400 });
@@ -52,6 +56,8 @@ export async function POST(request: NextRequest) {
       .upsert(
         {
           workspace_id: workspaceId,
+          created_by: profileId,
+          updated_by: profileId,
           type: "meta_ctwa",
           name: "Meta CTWA",
           status: "connected",

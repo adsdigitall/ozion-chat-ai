@@ -17,6 +17,7 @@ function singleRelation<T>(value: T | T[] | null): T | null {
 export async function GET(request: NextRequest) {
   try {
     const { admin, workspaceId } = await getRequestContext(request);
+    const tagFilter = request.nextUrl.searchParams.get("tag");
 
     const [
       contactsResult,
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
         .order("created_at", { ascending: true }),
       admin
         .from("contact_tags")
-        .select("tag_id,contact:contacts!inner(workspace_id)")
+        .select("tag_id,contact_id,contact:contacts!inner(workspace_id)")
         .eq("contact.workspace_id", workspaceId),
       admin
         .from("flows")
@@ -94,16 +95,20 @@ export async function GET(request: NextRequest) {
     ].find(Boolean);
     if (firstError) throw firstError;
 
-    const contacts = contactsResult.data ?? [];
+    const contactTagRows = contactTagsResult.data ?? [];
+    const tagContactIds = tagFilter && tagFilter !== "all"
+      ? new Set(contactTagRows.filter((item) => item.tag_id === tagFilter).map((item) => item.contact_id))
+      : null;
+    const contacts = tagContactIds ? (contactsResult.data ?? []).filter((contact) => tagContactIds.has(contact.id)) : contactsResult.data ?? [];
     const conversations = conversationsResult.data ?? [];
     const sales = salesResult.data ?? [];
     const campaigns = campaignsResult.data ?? [];
     const completedSales = sales.filter((sale) => sale.status === "completed");
     const revenue = completedSales.reduce((total, sale) => total + Number(sale.amount ?? 0), 0);
-    const wonContacts = contacts.filter((contact) => contact.status === "won").length;
+    const wonContacts = contacts.filter((contact) => contact.status === "paid").length;
     const tagUsage = new Map<string, number>();
 
-    for (const item of contactTagsResult.data ?? []) {
+    for (const item of contactTagRows) {
       tagUsage.set(item.tag_id, (tagUsage.get(item.tag_id) ?? 0) + 1);
     }
 

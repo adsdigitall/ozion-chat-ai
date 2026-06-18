@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { WhatsAppService } from "@/lib/services/whatsapp";
-import { getRequestContext, publicServerError } from "@/lib/server/supabase-admin";
+import { getRequestContext, publicServerError, requireActiveCustomer } from "@/lib/server/supabase-admin";
 
 const sendInput = z.object({
   to: z.string().trim().min(7),
@@ -28,7 +28,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid message." }, { status: 400 });
     }
 
-    const { admin, workspaceId, profileId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    const { admin, workspaceId, profileId } = context;
     const { data: connection, error: connectionError } = await admin
       .from("whatsapp_connections")
       .select("*")

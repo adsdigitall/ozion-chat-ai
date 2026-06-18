@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ElevenLabsService } from "@/lib/services/elevenlabs";
-import { getConnectedIntegrationSecret, getRequestContext, publicServerError } from "@/lib/server/supabase-admin";
+import { getConnectedIntegrationSecret, getRequestContext, publicServerError, requireActiveCustomer } from "@/lib/server/supabase-admin";
+import { requirePlanModule } from "@/lib/server/plan-guards";
 
 const generateInput = z.object({
   text: z.string().trim().min(1).max(5000),
@@ -12,7 +13,10 @@ const generateInput = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    await requirePlanModule({ context, request, module: "voice" });
+    const { admin, workspaceId } = context;
     const parsed = generateInput.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid voice request." }, { status: 400 });
 

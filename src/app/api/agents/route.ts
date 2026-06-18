@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getRequestContext, publicServerError } from "@/lib/server/supabase-admin";
+import { getRequestContext, publicServerError, requireActiveCustomer } from "@/lib/server/supabase-admin";
+import { requirePlanLimit, requirePlanModule } from "@/lib/server/plan-guards";
 
 const agentInput = z.object({
   name: z.string().trim().min(1).max(120),
@@ -36,14 +37,30 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    const { admin, workspaceId, profileId } = context;
+    await requirePlanModule({ context, request, module: "agents" });
     const parsed = agentInput.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid agent." }, { status: 400 });
     }
+    const { count, error: countError } = await admin
+      .from("ai_agents")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId);
+    if (countError) throw countError;
+    await requirePlanLimit({
+      context,
+      request,
+      limit: "agents",
+      currentCount: count ?? 0,
+      message: "Limite de agentes IA atingido. Faça upgrade do plano.",
+    });
+
     const { data, error } = await admin
       .from("ai_agents")
-      .insert({ ...parsed.data, workspace_id: workspaceId, conversations_handled: 0 })
+      .insert({ ...parsed.data, workspace_id: workspaceId, conversations_handled: 0, created_by: profileId })
       .select()
       .single();
     if (error) throw error;
@@ -58,14 +75,16 @@ export async function PATCH(request: NextRequest) {
   try {
     const id = request.nextUrl.searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Agent id is required." }, { status: 400 });
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    const { admin, workspaceId, profileId } = context;
     const parsed = agentInput.partial().safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid agent." }, { status: 400 });
     }
     const { data, error } = await admin
       .from("ai_agents")
-      .update({ ...parsed.data, updated_at: new Date().toISOString() })
+      .update({ ...parsed.data, updated_by: profileId, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("workspace_id", workspaceId)
       .select()
@@ -82,7 +101,9 @@ export async function DELETE(request: NextRequest) {
   try {
     const id = request.nextUrl.searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Agent id is required." }, { status: 400 });
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    const { admin, workspaceId } = context;
     const { error } = await admin.from("ai_agents").delete().eq("id", id).eq("workspace_id", workspaceId);
     if (error) throw error;
     return new NextResponse(null, { status: 204 });

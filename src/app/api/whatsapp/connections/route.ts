@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getRequestContext, publicServerError } from "@/lib/server/supabase-admin";
+import { getRequestContext, publicServerError, requireActiveCustomer } from "@/lib/server/supabase-admin";
+import { requirePlanLimit, requirePlanModule } from "@/lib/server/plan-guards";
 
 const connectionInput = z.object({
   display_name: z.string().trim().min(1).max(120),
@@ -12,12 +13,16 @@ const connectionInput = z.object({
   type: z.enum(["cloud_api", "qrcode"]).default("cloud_api"),
 });
 
+const safeConnectionSelect = "id,workspace_id,phone_number,display_name,status,type,created_at,updated_at";
+
 export async function GET(request: NextRequest) {
   try {
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    const { admin, workspaceId } = context;
     const { data, error } = await admin
       .from("whatsapp_connections")
-      .select("id,workspace_id,phone_number,display_name,waba_id,phone_number_id,business_id,status,type,config,created_at,updated_at")
+      .select(safeConnectionSelect)
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false });
     if (error) throw error;
@@ -30,7 +35,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    const { admin, workspaceId, profileId } = context;
+    await requirePlanModule({ context, request, module: "whatsapp" });
     const parsed = connectionInput.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid connection." }, { status: 400 });
@@ -56,6 +64,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { count, error: countError } = await admin
+      .from("whatsapp_connections")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .eq("status", "connected");
+    if (countError) throw countError;
+    await requirePlanLimit({
+      context,
+      request,
+      limit: "whatsapp_numbers",
+      currentCount: count ?? 0,
+      message: "Limite de números WhatsApp atingido.",
+    });
+
     const { data, error } = await admin
       .from("whatsapp_connections")
       .insert({
@@ -63,10 +85,11 @@ export async function POST(request: NextRequest) {
         display_name: verification.verified_name || parsed.data.display_name,
         phone_number: verification.display_phone_number || parsed.data.phone_number,
         workspace_id: workspaceId,
+        created_by: profileId,
         status: "connected",
         config: { graph_api_version: graphVersion, verified_at: new Date().toISOString() },
       })
-      .select("id,workspace_id,phone_number,display_name,waba_id,phone_number_id,business_id,status,type,config,created_at,updated_at")
+      .select(safeConnectionSelect)
       .single();
     if (error) throw error;
     return NextResponse.json({ connection: data }, { status: 201 });
@@ -81,7 +104,9 @@ export async function DELETE(request: NextRequest) {
     const id = request.nextUrl.searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Connection id is required." }, { status: 400 });
 
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    const { admin, workspaceId } = context;
     const { error } = await admin
       .from("whatsapp_connections")
       .delete()

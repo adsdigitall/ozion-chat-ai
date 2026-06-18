@@ -577,7 +577,7 @@ export default function VoicePage() {
             <button type="button" onClick={() => setDetailsVoice(null)}><X className="h-5 w-5 text-zinc-500" /></button>
           </div>
           <div className="space-y-4 p-5">
-            <div className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+            <div className="flex items-center gap-3 oz-card rounded-xl p-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-800"><Volume2 className="h-5 w-5 text-emerald-400" /></span>
               <div>
                 <p className="font-medium text-white">{detailsVoice.name}</p>

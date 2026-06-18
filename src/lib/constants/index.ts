@@ -2,10 +2,10 @@ export const APP_NAME = 'Ozion Chat AI';
 export const APP_DESCRIPTION = 'WhatsApp + CRM + IA - Plataforma completa para automatizar vendas e atendimento';
 
 export const PLANS = {
-  free: { name: 'Free', price: 0, contacts: 100, conversations: 50, flows: 1, agents: 1, numbers: 1 },
-  starter: { name: 'Starter', price: 197, contacts: 1000, conversations: 500, flows: 5, agents: 3, numbers: 2 },
-  pro: { name: 'Pro', price: 497, contacts: 10000, conversations: 5000, flows: -1, agents: 10, numbers: 5 },
-  enterprise: { name: 'Enterprise', price: 997, contacts: -1, conversations: -1, flows: -1, agents: -1, numbers: -1 },
+  start: { name: 'Start', price: 197, contacts: 1000, conversations: 3000, flows: 2, agents: 1, numbers: 1 },
+  pro: { name: 'Pro', price: 497, contacts: 10000, conversations: 30000, flows: 10, agents: 3, numbers: 3 },
+  scale: { name: 'Scale', price: 997, contacts: -1, conversations: -1, flows: -1, agents: -1, numbers: -1 },
+  enterprise: { name: 'Enterprise', price: 0, contacts: -1, conversations: -1, flows: -1, agents: -1, numbers: -1 },
 } as const;
 
 export const AI_PROVIDERS = [

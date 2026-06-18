@@ -153,7 +153,7 @@ export default function SalesPage() {
       {error && <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map(({ label, value, currency, icon: Icon }) => (
-          <div key={label} className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div key={label} className="oz-card rounded-xl p-5">
             <Icon className="mb-4 h-5 w-5 text-emerald-400" />
             <p className="text-2xl font-bold text-white">{currency ? `R$ ${value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}` : value}</p>
             <p className="mt-1 text-sm text-zinc-500">{label}</p>
@@ -166,7 +166,7 @@ export default function SalesPage() {
         <select value={platform} onChange={(event) => setPlatform(event.target.value)} className="h-9 rounded-lg border border-zinc-800 bg-zinc-900 px-3 text-sm text-zinc-300"><option value="all">Todas as plataformas</option>{platforms.map((item) => <option key={item}>{item}</option>)}</select>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
+      <div className="overflow-hidden oz-card rounded-xl">
         {loading ? <Loader2 className="mx-auto my-20 h-6 w-6 animate-spin text-emerald-400" /> : (
           <table className="w-full">
             <thead><tr className="border-b border-zinc-800 text-left text-xs uppercase text-zinc-500"><th className="p-4">Contato</th><th>Produto</th><th>Valor</th><th>Plataforma</th><th>Status</th><th>Data</th><th /></tr></thead>

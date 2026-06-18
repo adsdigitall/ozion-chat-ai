@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ElevenLabsService } from "@/lib/services/elevenlabs";
-import { getConnectedIntegrationSecret, getRequestContext, publicServerError } from "@/lib/server/supabase-admin";
+import { getConnectedIntegrationSecret, getRequestContext, publicServerError, requireActiveCustomer } from "@/lib/server/supabase-admin";
+import { requirePlanLimit, requirePlanModule } from "@/lib/server/plan-guards";
 
 const voiceInput = z.object({
   name: z.string().trim().min(1).max(120),
@@ -92,10 +93,27 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    const { admin, workspaceId, profileId } = context;
+    await requirePlanModule({ context, request, module: "voice" });
     const parsed = voiceInput.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid voice." }, { status: 400 });
-    const { data, error } = await admin.from("voice_configs").insert({ ...parsed.data, workspace_id: workspaceId }).select().single();
+
+    const { count, error: countError } = await admin
+      .from("voice_configs")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId);
+    if (countError) throw countError;
+    await requirePlanLimit({
+      context,
+      request,
+      limit: "voices",
+      currentCount: count ?? 0,
+      message: "Limite de vozes atingido. Faça upgrade do plano.",
+    });
+
+    const { data, error } = await admin.from("voice_configs").insert({ ...parsed.data, workspace_id: workspaceId, created_by: profileId }).select().single();
     if (error) throw error;
     return NextResponse.json({ voice: data }, { status: 201 });
   } catch (error) {
@@ -108,10 +126,12 @@ export async function PATCH(request: NextRequest) {
   try {
     const id = request.nextUrl.searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Voice id is required." }, { status: 400 });
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    const { admin, workspaceId, profileId } = context;
     const parsed = voiceInput.partial().safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid voice." }, { status: 400 });
-    const { data, error } = await admin.from("voice_configs").update(parsed.data).eq("id", id).eq("workspace_id", workspaceId).select().single();
+    const { data, error } = await admin.from("voice_configs").update({ ...parsed.data, updated_by: profileId }).eq("id", id).eq("workspace_id", workspaceId).select().single();
     if (error) throw error;
     return NextResponse.json({ voice: data });
   } catch (error) {
@@ -124,7 +144,9 @@ export async function DELETE(request: NextRequest) {
   try {
     const id = request.nextUrl.searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Voice id is required." }, { status: 400 });
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    const { admin, workspaceId } = context;
     const deleteRemote = request.nextUrl.searchParams.get("remote") === "1";
     const remoteVoiceId = request.nextUrl.searchParams.get("voiceId");
 

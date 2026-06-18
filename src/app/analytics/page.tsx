@@ -60,6 +60,12 @@ type AnalyticsData = {
     role: string;
     conversations: number;
   }[];
+  tags?: {
+    id: string;
+    name: string;
+    color: string;
+    count: number;
+  }[];
 };
 
 type Metric = {
@@ -112,6 +118,7 @@ function EmptyRow({ columns, text }: { columns: number; text: string }) {
 
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState("all");
+  const [tagFilter, setTagFilter] = useState("all");
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [data, setData] = useState<AnalyticsData>(emptyData);
   const [loading, setLoading] = useState(true);
@@ -120,7 +127,10 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch("/api/dashboard", { signal: controller.signal })
+    const params = new URLSearchParams();
+    if (tagFilter !== "all") params.set("tag", tagFilter);
+
+    fetch(`/api/dashboard?${params.toString()}`, { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error ?? "Não foi possível carregar as análises.");
@@ -134,7 +144,7 @@ export default function AnalyticsPage() {
       .finally(() => setLoading(false));
 
     return () => controller.abort();
-  }, []);
+  }, [tagFilter]);
 
   const metrics = useMemo<Metric[]>(
     () => [
@@ -203,16 +213,26 @@ export default function AnalyticsPage() {
           <h1 className="text-2xl font-bold text-white">Análises</h1>
           <p className="text-sm text-zinc-500 mt-1">Métricas consolidadas do seu negócio</p>
         </div>
-        <select
-          value={period}
-          onChange={(event) => setPeriod(event.target.value)}
-          className="h-9 px-3 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-        >
-          <option value="all">Todo o período</option>
-          <option value="month">Este mês</option>
-          <option value="quarter">Este trimestre</option>
-          <option value="year">Este ano</option>
-        </select>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={tagFilter}
+            onChange={(event) => setTagFilter(event.target.value)}
+            className="h-9 px-3 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          >
+            <option value="all">Todas as tags</option>
+            {(data.tags ?? []).map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
+          </select>
+          <select
+            value={period}
+            onChange={(event) => setPeriod(event.target.value)}
+            className="h-9 px-3 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          >
+            <option value="all">Todo o período</option>
+            <option value="month">Este mês</option>
+            <option value="quarter">Este trimestre</option>
+            <option value="year">Este ano</option>
+          </select>
+        </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto">
@@ -247,7 +267,7 @@ export default function AnalyticsPage() {
       {!loading && activeTab === "overview" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {metrics.map((metric) => (
-            <div key={metric.label} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
+            <div key={metric.label} className="oz-card rounded-xl p-5">
               <div className={`w-10 h-10 rounded-lg ${metric.iconBackground} flex items-center justify-center mb-4`}>
                 <metric.icon className={`w-5 h-5 ${metric.iconClass}`} />
               </div>
@@ -260,7 +280,7 @@ export default function AnalyticsPage() {
       )}
 
       {!loading && activeTab === "flows" && (
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="oz-card rounded-xl overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800">
@@ -288,7 +308,7 @@ export default function AnalyticsPage() {
       )}
 
       {!loading && activeTab === "campaigns" && (
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-x-auto">
+        <div className="oz-card rounded-xl overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800">
@@ -318,7 +338,7 @@ export default function AnalyticsPage() {
       )}
 
       {!loading && activeTab === "agents" && (
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="oz-card rounded-xl overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800">
@@ -344,7 +364,7 @@ export default function AnalyticsPage() {
       )}
 
       {!loading && activeTab === "attendants" && (
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="oz-card rounded-xl overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800">

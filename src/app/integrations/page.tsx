@@ -180,19 +180,19 @@ export default function IntegrationsPage() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 flex items-center gap-3">
+        <div className="oz-card rounded-xl p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
             <Plug className="w-5 h-5 text-emerald-400" />
           </div>
           <div><p className="text-2xl font-bold text-white">{connectedCount}</p><p className="text-xs text-zinc-500">Conectadas</p></div>
         </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 flex items-center gap-3">
+        <div className="oz-card rounded-xl p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-zinc-500/10 flex items-center justify-center">
             <Globe className="w-5 h-5 text-zinc-400" />
           </div>
           <div><p className="text-2xl font-bold text-white">{catalog.length}</p><p className="text-xs text-zinc-500">Disponíveis</p></div>
         </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 flex items-center gap-3">
+        <div className="oz-card rounded-xl p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
             <Bot className="w-5 h-5 text-purple-400" />
           </div>
@@ -228,7 +228,7 @@ export default function IntegrationsPage() {
                   const integration = savedByType.get(item.id);
                   const status = statusConfig[integration?.status ?? "disconnected"];
                   return (
-                    <article key={item.id} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
+                    <article key={item.id} className="oz-card rounded-xl p-5">
                       <div className="flex items-start justify-between mb-5">
                         <div className="flex items-center gap-3">
                           <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center">

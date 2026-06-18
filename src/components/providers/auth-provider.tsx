@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         return;
       }
-      await getCurrentUser();
+      window.setTimeout(() => void getCurrentUser(), 0);
     });
 
     return () => subscription.unsubscribe();

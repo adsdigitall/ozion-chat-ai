@@ -231,7 +231,7 @@ export default function CTWAPage() {
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar campanhas Meta..." className="w-full h-9 pl-10 pr-3 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white" />
       </label>
 
-      <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-x-auto">
+      <div className="oz-card rounded-xl overflow-x-auto">
         <table className="w-full">
           <thead><tr className="border-b border-zinc-800"><th className="text-left p-4 text-xs text-zinc-500 uppercase">Campanha</th><th className="text-left p-4 text-xs text-zinc-500 uppercase">Estado</th><th className="text-left p-4 text-xs text-zinc-500 uppercase">Orçamento</th><th className="text-left p-4 text-xs text-zinc-500 uppercase">Gasto</th><th className="text-left p-4 text-xs text-zinc-500 uppercase">Leads</th><th className="text-left p-4 text-xs text-zinc-500 uppercase">Compras</th><th className="text-left p-4 text-xs text-zinc-500 uppercase">CPA</th><th className="text-left p-4 text-xs text-zinc-500 uppercase">ROAS</th></tr></thead>
           <tbody className="divide-y divide-zinc-800">
@@ -279,7 +279,7 @@ export default function CTWAPage() {
 }
 
 function Metric({ icon: Icon, value, label, color }: { icon: typeof Users; value: string; label: string; color: string }) {
-  return <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5"><Icon className={`w-5 h-5 ${color} mb-4`} /><p className="text-2xl font-bold text-white">{value}</p><p className="text-sm text-zinc-500 mt-1">{label}</p></div>;
+  return <div className="oz-card rounded-xl p-5"><Icon className={`w-5 h-5 ${color} mb-4`} /><p className="text-2xl font-bold text-white">{value}</p><p className="text-sm text-zinc-500 mt-1">{label}</p></div>;
 }
 
 function Modal({ title, description, onClose, children }: { title: string; description: string; onClose: () => void; children: React.ReactNode }) {

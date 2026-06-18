@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getRequestContext, publicServerError, writeAuditLog } from "@/lib/server/supabase-admin";
+import { getRequestContext, publicServerError, requireActiveCustomer, writeAuditLog } from "@/lib/server/supabase-admin";
+import { requirePlanModule } from "@/lib/server/plan-guards";
 
 const integrationInput = z.object({
   type: z.string().trim().min(1).max(80),
@@ -46,7 +47,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { admin, workspaceId, profileId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    await requirePlanModule({ context, request, module: "integrations" });
+    const { admin, workspaceId, profileId } = context;
     const parsed = integrationInput.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json(
@@ -76,6 +80,8 @@ export async function POST(request: NextRequest) {
         {
           ...input,
           workspace_id: workspaceId,
+          created_by: profileId,
+          updated_by: profileId,
           credentials,
           config: mergedConfig,
           last_error: null,
@@ -112,7 +118,10 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "O ID da integração é obrigatório." }, { status: 400 });
     }
 
-    const { admin, workspaceId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    await requirePlanModule({ context, request, module: "integrations" });
+    const { admin, workspaceId, profileId } = context;
     const body = z
       .object({
         status: z.enum(["connected", "disconnected", "error"]).optional(),
@@ -128,6 +137,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const updates: Record<string, unknown> = {
+      updated_by: profileId,
       updated_at: new Date().toISOString(),
     };
     if (body.data.status) updates.status = body.data.status;
@@ -157,7 +167,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "O ID da integração é obrigatório." }, { status: 400 });
     }
 
-    const { admin, workspaceId, profileId } = await getRequestContext(request);
+    const context = await getRequestContext(request);
+    requireActiveCustomer(context);
+    await requirePlanModule({ context, request, module: "integrations" });
+    const { admin, workspaceId, profileId } = context;
     const { data: integration, error: lookupError } = await admin
       .from("integrations")
       .select("name,type")

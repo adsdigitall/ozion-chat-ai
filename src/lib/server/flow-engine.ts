@@ -5,6 +5,7 @@ import { createAIProvider, type AIMessage } from "@/lib/services/ai-router";
 import { ElevenLabsService } from "@/lib/services/elevenlabs";
 import { sendMetaPurchaseEvent } from "@/lib/services/meta-ctwa";
 import { WhatsAppService } from "@/lib/services/whatsapp";
+import { slugifyTag } from "@/lib/server/tags";
 
 type FlowConfig = Record<string, string | number | boolean>;
 type FlowNode = {
@@ -128,6 +129,7 @@ async function saveOutgoingMessage(
 async function addContactTag(
   admin: SupabaseClient,
   workspaceId: string,
+  customerId: string | null,
   contactId: string,
   tagName: string,
   color = "#f97316",
@@ -136,14 +138,41 @@ async function addContactTag(
   if (!cleanName) return;
   const { data: tag, error: tagError } = await admin
     .from("tags")
-    .upsert({ workspace_id: workspaceId, name: cleanName, color }, { onConflict: "workspace_id,name" })
+    .upsert({ workspace_id: workspaceId, customer_id: customerId, name: cleanName, slug: slugifyTag(cleanName), color, category: "Funil", status: "active" }, { onConflict: "workspace_id,slug" })
     .select("id")
     .single();
   if (tagError) throw tagError;
   const { error } = await admin
     .from("contact_tags")
-    .upsert({ contact_id: contactId, tag_id: tag.id }, { onConflict: "contact_id,tag_id" });
+    .upsert({ workspace_id: workspaceId, customer_id: customerId, contact_id: contactId, tag_id: tag.id }, { onConflict: "contact_id,tag_id" });
   if (error) throw error;
+}
+
+async function removeContactTag(admin: SupabaseClient, workspaceId: string, contactId: string, tagName: string) {
+  const cleanName = tagName.trim();
+  if (!cleanName) return;
+  const { data: tag, error: tagError } = await admin
+    .from("tags")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("slug", slugifyTag(cleanName))
+    .maybeSingle();
+  if (tagError) throw tagError;
+  if (!tag?.id) return;
+  const { error } = await admin.from("contact_tags").delete().eq("workspace_id", workspaceId).eq("contact_id", contactId).eq("tag_id", tag.id);
+  if (error) throw error;
+}
+
+async function contactHasTag(admin: SupabaseClient, workspaceId: string, contactId: string, tagName: string) {
+  const { data, error } = await admin
+    .from("contact_tags")
+    .select("id,tag:tags!inner(slug)")
+    .eq("workspace_id", workspaceId)
+    .eq("contact_id", contactId)
+    .eq("tag.slug", slugifyTag(tagName))
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data?.id);
 }
 
 async function loadAIResponse(
@@ -333,7 +362,9 @@ export async function executeConversationFlow({
           })
           .eq("id", contact.id);
       } else if (action === "add_tag") {
-        await addContactTag(admin, currentConversation.workspace_id, contact.id, value || String(config.tag ?? "Tag"));
+        await addContactTag(admin, currentConversation.workspace_id, contact.customer_id ?? null, contact.id, value || String(config.tag ?? "Tag"));
+      } else if (action === "remove_tag") {
+        await removeContactTag(admin, currentConversation.workspace_id, contact.id, value || String(config.tag ?? "Tag"));
       } else if (action === "pause_ai" || action === "handoff") {
         await admin
           .from("conversations")
@@ -351,6 +382,15 @@ export async function executeConversationFlow({
         await admin.from("conversations").update({ status: "closed" }).eq("id", conversationId);
       }
       output = "Próximo";
+    } else if (type === "add-tag") {
+      await addContactTag(admin, currentConversation.workspace_id, contact.customer_id ?? null, contact.id, interpolate(String(config.tag ?? config.value ?? "Tag"), variables));
+      output = "Próximo";
+    } else if (type === "remove-tag") {
+      await removeContactTag(admin, currentConversation.workspace_id, contact.id, interpolate(String(config.tag ?? config.value ?? "Tag"), variables));
+      output = "Próximo";
+    } else if (type === "has-tag") {
+      const hasTag = await contactHasTag(admin, currentConversation.workspace_id, contact.id, interpolate(String(config.tag ?? config.value ?? "Tag"), variables));
+      output = hasTag ? "Possui" : "Não possui";
     } else if (type === "delay") {
       const amount = Math.max(0, Number(config.amount ?? 0));
       const unit = String(config.unit ?? "segundos");
