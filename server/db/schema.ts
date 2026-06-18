@@ -14,6 +14,7 @@ export const tenants = sqliteTable('tenants', {
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  customerId: text('customer_id').references(() => customers.id),
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
   passwordHash: text('password_hash'),
@@ -35,6 +36,12 @@ export const customers = sqliteTable('customers', {
   company: text('company'),
   planId: text('plan_id'),
   status: text('status').default('active'),
+  lastAccessAt: text('last_access_at'),
+  tokenUsage: real('token_usage').default(0),
+  voiceUsage: real('voice_usage').default(0),
+  storageUsage: real('storage_usage').default(0),
+  notes: text('notes'),
+  tags: text('tags').default('[]'),
   maxContacts: integer('max_contacts').default(0),
   maxFlows: integer('max_flows').default(0),
   maxWorkspaces: integer('max_workspaces').default(1),
@@ -65,6 +72,7 @@ export const workspaces = sqliteTable('workspaces', {
 export const contacts = sqliteTable('contacts', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  customerId: text('customer_id').references(() => customers.id),
   waId: text('wa_id'),
   name: text('name'),
   phone: text('phone'),
@@ -95,6 +103,7 @@ export const contacts = sqliteTable('contacts', {
 export const conversations = sqliteTable('conversations', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  customerId: text('customer_id').references(() => customers.id),
   workspaceId: text('workspace_id'),
   contactId: text('contact_id').references(() => contacts.id).notNull(),
   phoneNumberId: text('phone_number_id'),
@@ -136,6 +145,7 @@ export const messages = sqliteTable('messages', {
 export const tags = sqliteTable('tags', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  customerId: text('customer_id').references(() => customers.id),
   name: text('name').notNull(),
   color: text('color').default('#6366f1'),
   isSystem: integer('is_system', { mode: 'boolean' }).default(false),
@@ -145,6 +155,7 @@ export const tags = sqliteTable('tags', {
 export const customFields = sqliteTable('custom_fields', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  customerId: text('customer_id').references(() => customers.id),
   name: text('name').notNull(),
   type: text('type').notNull(),
   isRequired: integer('is_required', { mode: 'boolean' }).default(false),
@@ -154,6 +165,7 @@ export const customFields = sqliteTable('custom_fields', {
 export const flows = sqliteTable('flows', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  customerId: text('customer_id').references(() => customers.id),
   workspaceId: text('workspace_id'),
   name: text('name').notNull(),
   description: text('description'),
@@ -190,6 +202,7 @@ export const flowEdges = sqliteTable('flow_edges', {
 export const agents = sqliteTable('agents', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  customerId: text('customer_id').references(() => customers.id),
   name: text('name').notNull(),
   description: text('description'),
   identity: text('identity').default('Você é um assistente virtual'),
@@ -215,6 +228,7 @@ export const agents = sqliteTable('agents', {
 export const voices = sqliteTable('voices', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  customerId: text('customer_id').references(() => customers.id),
   provider: text('provider').notNull(),
   name: text('name').notNull(),
   voiceId: text('voice_id').notNull(),
@@ -226,6 +240,7 @@ export const voices = sqliteTable('voices', {
 export const whatsappCredentials = sqliteTable('whatsapp_credentials', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull().unique(),
+  customerId: text('customer_id').references(() => customers.id),
   businessId: text('business_id'),
   businessName: text('business_name'),
   wabaId: text('waba_id'),
@@ -249,6 +264,7 @@ export const whatsappCredentials = sqliteTable('whatsapp_credentials', {
 export const integrations = sqliteTable('integrations', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  customerId: text('customer_id').references(() => customers.id),
   provider: text('provider').notNull(),
   name: text('name').notNull(),
   status: text('status').default('disconnected'),
@@ -277,6 +293,7 @@ export const providerVersions = sqliteTable('provider_versions', {
 export const webhooks = sqliteTable('webhooks', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  customerId: text('customer_id').references(() => customers.id),
   name: text('name').notNull(),
   url: text('url').notNull(),
   events: text('events').default('[]'),
@@ -291,6 +308,7 @@ export const webhooks = sqliteTable('webhooks', {
 export const sales = sqliteTable('sales', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  customerId: text('customer_id').references(() => customers.id),
   contactId: text('contact_id').references(() => contacts.id),
   conversationId: text('conversation_id'),
   product: text('product'),
@@ -343,6 +361,7 @@ export const riskWords = sqliteTable('risk_words', {
 export const analyticsEvents = sqliteTable('analytics_events', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  customerId: text('customer_id').references(() => customers.id),
   flowId: text('flow_id'),
   blockId: text('block_id'),
   event: text('event').notNull(),
@@ -411,4 +430,67 @@ export const subscriptions = sqliteTable('subscriptions', {
   canceledAt: text('canceled_at'),
   createdAt: text('created_at').default('datetime("now")').notNull(),
   updatedAt: text('updated_at').default('datetime("now")').notNull(),
+});
+
+export const sessions = sqliteTable('sessions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id).notNull(),
+  token: text('token').notNull().unique(),
+  expiresAt: text('expires_at').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  createdAt: text('created_at').default('datetime("now")').notNull(),
+});
+
+export const auditLogs = sqliteTable('audit_logs', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenant_id').notNull(),
+  customerId: text('customer_id').references(() => customers.id),
+  userId: text('user_id').references(() => users.id),
+  action: text('action').notNull(),
+  entity: text('entity').notNull(),
+  entityId: text('entity_id'),
+  oldData: text('old_data'),
+  newData: text('new_data'),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: text('created_at').default('datetime("now")').notNull(),
+});
+
+export const saasRevenue = sqliteTable('saas_revenue', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenant_id').notNull(),
+  customerId: text('customer_id').references(() => customers.id).notNull(),
+  subscriptionId: text('subscription_id').references(() => subscriptions.id),
+  planId: text('plan_id').references(() => plans.id).notNull(),
+  amount: real('amount').notNull(),
+  currency: text('currency').default('BRL'),
+  status: text('status').default('pending'),
+  paymentMethod: text('payment_method'),
+  gateway: text('gateway'),
+  gatewayPaymentId: text('gateway_payment_id'),
+  invoiceNumber: text('invoice_number'),
+  dueDate: text('due_date'),
+  paidAt: text('paid_at'),
+  createdAt: text('created_at').default('datetime("now")').notNull(),
+});
+
+export const modulesEnabled = sqliteTable('modules_enabled', {
+  id: text('id').primaryKey(),
+  customerId: text('customer_id').references(() => customers.id).notNull(),
+  moduleName: text('module_name').notNull(),
+  isEnabled: integer('is_enabled', { mode: 'boolean' }).default(true),
+  customSettings: text('custom_settings').default('{}'),
+  createdAt: text('created_at').default('datetime("now")').notNull(),
+});
+
+export const customerUsage = sqliteTable('customer_usage', {
+  id: text('id').primaryKey(),
+  customerId: text('customer_id').references(() => customers.id).notNull(),
+  metric: text('metric').notNull(),
+  value: real('value').default(0),
+  periodStart: text('period_start'),
+  periodEnd: text('period_end'),
+  createdAt: text('created_at').default('datetime("now")').notNull(),
 });

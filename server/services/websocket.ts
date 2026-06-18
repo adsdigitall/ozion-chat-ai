@@ -3,7 +3,11 @@ import { Server as HttpServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'ozion-chat-ai-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('Missing required environment variable: JWT_SECRET');
+}
 
 let io: SocketServer | null = null;
 

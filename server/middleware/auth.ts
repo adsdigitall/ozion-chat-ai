@@ -2,8 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { getSupabase } from '../db/supabase.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'ozion-chat-ai-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET;
 const TOKEN_EXPIRY = '7d';
+
+if (!JWT_SECRET) {
+  throw new Error('Missing required environment variable: JWT_SECRET');
+}
 
 export interface AuthUser {
   id: string;

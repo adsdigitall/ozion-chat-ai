@@ -23,10 +23,14 @@
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.45.2",
     "express": "^4.21.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
     "zod": "^3.23.8"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.5.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

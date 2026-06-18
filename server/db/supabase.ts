@@ -1,7 +1,16 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://dpwqqszrhizqdncifkee.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwd3Fxc3pyaGl6cWRuY2lma2VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExODEzNDcsImV4cCI6MjA5Njc1NzM0N30.TZ-3X2knNNXDeKQWHNaleqH-ECw1cwZ0X0L03U7xnJQ';
+const SUPABASE_URL = getRequiredEnv('SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL');
+const SUPABASE_KEY = getRequiredEnv('SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY');
+
+function getRequiredEnv(primary: string, fallback?: string): string {
+  const value = process.env[primary] || (fallback ? process.env[fallback] : undefined);
+  if (!value) {
+    const names = fallback ? `${primary} (ou ${fallback})` : primary;
+    throw new Error(`Missing required environment variable: ${names}`);
+  }
+  return value;
+}
 
 let supabase: SupabaseClient;
 
