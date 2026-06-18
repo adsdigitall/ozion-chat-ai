@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   Archive,
   Bot,
@@ -32,6 +32,25 @@ type SenderType = "lead" | "human" | "ai" | "system" | "flow";
 type MessageType = "text" | "image" | "audio" | "video" | "document" | "template" | "internal_note" | "flow";
 type Toast = { type: "success" | "error"; message: string } | null;
 
+type FlowExecutionStatus = "running" | "completed" | "failed" | "cancelled";
+type FlowExecution = {
+  id: string;
+  flowId: string;
+  flowName: string;
+  status: FlowExecutionStatus;
+  startedAt: string;
+  completedAt?: string | null;
+  nodeCount: number;
+};
+type CtwaEvent = {
+  id: string;
+  eventName: string;
+  eventTime: string;
+  status: "pending" | "sent" | "confirmed" | "failed";
+  conversionValue?: number | null;
+  currency?: string | null;
+};
+
 type TagRow = { id: string; name: string; color: string; category?: string; status?: string };
 type UserRow = { id: string; name: string; email?: string; role?: string; avatar?: string | null };
 type FlowRow = { id: string; name: string; status: string };
@@ -47,6 +66,8 @@ type ChatMessage = {
   status?: "sent" | "delivered" | "read" | "failed";
   mediaUrl?: string | null;
   senderName?: string | null;
+  viaFlowName?: string | null;
+  transcription?: string | null;
 };
 
 type Lead = {
@@ -87,6 +108,12 @@ type Conversation = {
   notes: string;
   messages: ChatMessage[];
   persisted?: boolean;
+  flowExecutions?: FlowExecution[];
+  ctwaEvents?: CtwaEvent[];
+  lastMessageAt?: string | null;
+  isFromCtwa?: boolean;
+  activeFlowName?: string | null;
+  ctwaPhone?: string | null;
 };
 
 type ApiMessage = {
@@ -167,6 +194,16 @@ const mockTemplates = [
   { id: "template-pos", name: "pos_venda", category: "Pós-venda", language: "pt_BR", status: "rascunho", text: "Tudo certo com seu acesso? Posso ajudar em algo?" },
 ];
 
+const mockFlowExecutions: FlowExecution[] = [
+  { id: "flow-exec-1", flowId: "flow-boas-vindas", flowName: "Boas Vindas", status: "completed", startedAt: "14:22", completedAt: "14:23", nodeCount: 3 },
+  { id: "flow-exec-2", flowId: "flow-qualifica", flowName: "Qualificação", status: "running", startedAt: "14:25", nodeCount: 2 },
+];
+
+const mockCtwaEvents: CtwaEvent[] = [
+  { id: "ctwa-ev-1", eventName: "Lead", eventTime: "14:22", status: "confirmed", conversionValue: null, currency: null },
+  { id: "ctwa-ev-2", eventName: "Purchase", eventTime: "14:30", status: "pending", conversionValue: 197, currency: "BRL" },
+];
+
 const previewConversations: Conversation[] = [
   {
     id: "preview-ctwa",
@@ -187,10 +224,19 @@ const previewConversations: Conversation[] = [
     channelPhone: "+55 11 4002-8922",
     notes: "Preview da caixa de entrada.",
     persisted: false,
+    isFromCtwa: true,
+    ctwaPhone: "+55 11 90000-0001",
+    activeFlowName: "Qualificação",
+    flowExecutions: mockFlowExecutions,
+    ctwaEvents: mockCtwaEvents,
+    lastMessageAt: new Date().toISOString(),
     messages: [
       { id: "pv-1", senderType: "system", messageType: "text", content: "Conversa iniciada por anúncio Click-to-WhatsApp", time: "14:22" },
       { id: "pv-2", senderType: "lead", messageType: "text", content: "Oi, vim pelo anúncio e quero saber como funciona.", time: "14:23" },
       { id: "pv-3", senderType: "ai", messageType: "text", content: "Olá! Posso te explicar e também chamar um especialista.", time: "14:23", status: "read" },
+      { id: "pv-flow-1", senderType: "flow", messageType: "flow", content: "Fluxo Boas Vindas executado com sucesso.", time: "14:23", viaFlowName: "Boas Vindas" },
+      { id: "pv-ai-1", senderType: "ai", messageType: "text", content: "Ótimo! Pelo seu interesse, você se encaixa no perfil ideal. Posso seguir com a oferta?", time: "14:24", status: "read" },
+      { id: "pv-audio-1", senderType: "lead", messageType: "audio", content: "Áudio: quanto tempo leva para configurar?", time: "14:25" },
     ],
   },
   {
@@ -212,6 +258,9 @@ const previewConversations: Conversation[] = [
     channelPhone: "+55 11 4002-8933",
     notes: "Conversa transferida para humano.",
     persisted: false,
+    flowExecutions: [],
+    ctwaEvents: [],
+    lastMessageAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
     messages: [
       { id: "pv-4", senderType: "system", messageType: "text", content: "IA pausada e conversa movida para aguardando", time: "13:55" },
       { id: "pv-5", senderType: "lead", messageType: "audio", content: "Áudio recebido", time: "13:56" },
@@ -236,6 +285,9 @@ const previewConversations: Conversation[] = [
     channelPhone: "+55 11 4002-8922",
     notes: "Atendimento pausado automaticamente.",
     persisted: false,
+    flowExecutions: [],
+    ctwaEvents: [],
+    lastMessageAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
     messages: [
       { id: "pv-6", senderType: "lead", messageType: "text", content: "Isso parece golpe, quero suporte.", time: "12:40" },
       { id: "pv-7", senderType: "system", messageType: "internal_note", content: "Palavra de risco detectada: golpe", time: "12:40" },
@@ -260,6 +312,7 @@ function mapSender(message: ApiMessage): SenderType {
 }
 
 function formatMessage(message: ApiMessage): ChatMessage {
+  const metadata = (message as Record<string, unknown>).metadata_json as Record<string, unknown> | null ?? (message as Record<string, unknown>).metadata as Record<string, unknown> | null ?? {};
   return {
     id: message.id,
     senderType: mapSender(message),
@@ -269,6 +322,8 @@ function formatMessage(message: ApiMessage): ChatMessage {
     status: message.status ?? (message.read ? "read" : "sent"),
     mediaUrl: message.media_url,
     senderName: message.sender_name,
+    viaFlowName: typeof metadata.via_flow_name === "string" ? metadata.via_flow_name : null,
+    transcription: typeof metadata.transcription === "string" ? metadata.transcription : null,
   };
 }
 
@@ -294,6 +349,12 @@ function mapConversation(conversation: ApiConversation): Conversation {
     channelLabel: conversation.connection?.display_name || "WhatsApp oficial",
     channelPhone: conversation.connection?.phone_number || conversation.phone_number || "",
     notes: typeof metadata.notes === "string" ? metadata.notes : "",
+    flowExecutions: (conversation as Record<string, unknown>).flow_executions as FlowExecution[] | undefined,
+    ctwaEvents: (conversation as Record<string, unknown>).ctwa_events as CtwaEvent[] | undefined,
+    lastMessageAt: conversation.last_message_at,
+    isFromCtwa: typeof metadata.is_from_ctwa === "boolean" ? metadata.is_from_ctwa : (conversation.source ?? "").toLowerCase().includes("ctwa") || (contact.campaign_id ?? "").toLowerCase().includes("ctwa"),
+    activeFlowName: typeof metadata.active_flow_name === "string" ? metadata.active_flow_name : null,
+    ctwaPhone: typeof metadata.ctwa_phone === "string" ? metadata.ctwa_phone : null,
     messages: (conversation.messages ?? []).map(formatMessage),
     persisted: true,
   };
@@ -334,11 +395,16 @@ export default function ChatPage() {
   const [messageInput, setMessageInput] = useState("");
   const [noteInput, setNoteInput] = useState("");
   const [filterName, setFilterName] = useState("");
-  const [modal, setModal] = useState<"quick" | "templates" | "flows" | "transfer" | "note" | null>(null);
+  const [modal, setModal] = useState<"quick" | "templates" | "flows" | "transfer" | "note" | "flow-executions" | "send-flow" | "ctwa" | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [ctwaEventName, setCtwaEventName] = useState("Purchase");
+  const [ctwaValue, setCtwaValue] = useState("");
+  const [ctwaCurrency, setCtwaCurrency] = useState("BRL");
   const [showTags, setShowTags] = useState(false);
   const [showDetails, setShowDetails] = useState(true);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<Toast>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   function showToast(type: "success" | "error", message: string) {
     setToast({ type, message });
@@ -401,6 +467,15 @@ export default function ChatPage() {
     return () => controller.abort();
   }, [activeStatus, filters, search]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClick(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
+
   const counts = useMemo(() => ({
     open: conversations.filter((conversation) => conversation.status === "open").length,
     waiting: conversations.filter((conversation) => conversation.status === "waiting").length,
@@ -412,6 +487,12 @@ export default function ChatPage() {
     conversations.forEach((conversation) => map.set(conversation.numberId, { id: conversation.numberId, label: conversation.channelLabel, phone: conversation.channelPhone }));
     return [...map.values()];
   }, [conversations]);
+
+  const now = useSyncExternalStore(
+    (onStoreChange) => { const timer = setInterval(onStoreChange, 60_000); return () => clearInterval(timer); },
+    () => Date.now(),
+  );
+  const isWithin24h = selected.lastMessageAt && (now - new Date(selected.lastMessageAt).getTime()) < 24 * 60 * 60 * 1000;
 
   function updateSelected(update: Partial<Conversation>) {
     setConversations((current) => current.map((conversation) => conversation.id === selected.id ? { ...conversation, ...update } : conversation));
@@ -644,7 +725,12 @@ export default function ChatPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h2 className="truncate text-sm font-black text-white">{selected.lead.name}</h2>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${selected.aiStatus === "active" ? "bg-violet-500/10 text-violet-300" : "bg-zinc-800 text-zinc-400"}`}>{selected.aiStatus === "active" ? "IA ativa" : "IA pausada"}</span>
+                    <div className="flex items-center gap-1">
+                      {isWithin24h && <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">24h</span>}
+                      {selected.isFromCtwa && <span className="rounded-full bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-bold text-sky-300">CTWA</span>}
+                      {selected.activeFlowName && <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">{selected.activeFlowName}</span>}
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${selected.aiStatus === "active" ? "bg-violet-500/10 text-violet-300" : "bg-zinc-800 text-zinc-400"}`}>{selected.aiStatus === "active" ? "IA ativa" : "IA pausada"}</span>
+                    </div>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
                     <span>{selected.lead.phone}</span><span>•</span><span>{selected.channelLabel}</span><span>•</span><span>{selected.assignedTo}</span>
@@ -654,11 +740,22 @@ export default function ChatPage() {
               <div className="flex items-center gap-1.5">
                 <button onClick={() => patchConversation("assume").catch((error) => showToast("error", error.message))} className="rounded-lg border border-zinc-800 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-900">Assumir</button>
                 <button onClick={() => setModal("transfer")} className="rounded-lg border border-zinc-800 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-900">Transferir</button>
-                {selected.status === "closed" ? (
-                  <button onClick={() => patchConversation("reopen").catch((error) => showToast("error", error.message))} className="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-black text-zinc-950">Reabrir</button>
-                ) : (
-                  <button onClick={() => patchConversation("close").catch((error) => showToast("error", error.message))} className="rounded-lg border border-zinc-800 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-900">Finalizar</button>
-                )}
+                <div ref={menuRef} className="relative">
+                  <button onClick={() => setMenuOpen((current) => !current)} className="rounded-lg border border-zinc-800 px-2 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-900"><span className="text-lg leading-none">⋮</span></button>
+                  {menuOpen && (
+                    <div className="absolute right-0 top-full z-[60 mt-1 w-56 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+                      <div className="grid gap-0.5 p-1.5">
+                        <ActionMenuItem icon={Play} label="Fluxos executados" onClick={() => { setMenuOpen(false); setModal("flow-executions"); }} />
+                        <ActionMenuItem icon={Send} label="Disparar fluxo" onClick={() => { setMenuOpen(false); setModal("send-flow"); }} />
+                        <ActionMenuItem icon={Phone} label="Notificar compra Meta" onClick={() => { setMenuOpen(false); setModal("ctwa"); }} />
+                        <div className="my-1 border-t border-zinc-800" />
+                        <ActionMenuItem icon={Tag} label="Tags" onClick={() => { setMenuOpen(false); setShowTags(true); setShowDetails(true); }} />
+                        <ActionMenuItem icon={Bot} label={selected.aiStatus === "active" ? "Pausar IA" : "Ativar IA"} onClick={() => { setMenuOpen(false); patchConversation(selected.aiStatus === "active" ? "pause_ai" : "activate_ai").catch((error) => showToast("error", error.message)); }} />
+                        <ActionMenuItem icon={X} label="Finalizar" onClick={() => { setMenuOpen(false); patchConversation("close").catch((error) => showToast("error", error.message)); }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <button onClick={() => setShowDetails((current) => !current)} className="rounded-lg border border-zinc-800 p-2 text-zinc-500 hover:bg-zinc-900"><Info className="h-4 w-4" /></button>
               </div>
             </header>
@@ -667,15 +764,51 @@ export default function ChatPage() {
               <div className="mx-auto flex max-w-3xl flex-col gap-3">
                 <div className="mb-2 flex items-center gap-3"><div className="h-px flex-1 bg-zinc-800" /><span className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Histórico</span><div className="h-px flex-1 bg-zinc-800" /></div>
                 {selected.messages.map((message) => {
-                  if (message.senderType === "system" || message.messageType === "internal_note" || message.senderType === "flow") {
+                  if (message.senderType === "system" || message.messageType === "internal_note") {
                     return <div key={message.id} className="my-1 flex justify-center"><span className="rounded-full border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-[10px] text-zinc-500">{message.content} • {message.time}</span></div>;
                   }
                   const outbound = message.senderType === "human" || message.senderType === "ai";
+                  const isFlow = message.senderType === "flow";
                   return (
-                    <div key={message.id} className={`flex ${outbound ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[72%] rounded-2xl px-4 py-3 shadow-sm ${message.senderType === "lead" ? "rounded-tl-md border border-zinc-800 bg-zinc-900 text-zinc-200" : message.senderType === "ai" ? "rounded-tr-md border border-violet-500/20 bg-violet-500/10 text-zinc-100" : "rounded-tr-md bg-emerald-600 text-white"}`}>
-                        <div className="mb-1 flex items-center gap-1.5 text-[10px] opacity-75">{message.senderType === "ai" ? <Sparkles className="h-3 w-3" /> : <MessageIcon type={message.messageType} />}{message.senderType === "lead" ? "Lead" : message.senderType === "ai" ? "IA" : "Humano"}</div>
+                    <div key={message.id} className={`flex ${outbound || isFlow ? "justify-end" : "justify-start"}`}>
+                      <div className={`max-w-[72%] rounded-2xl px-4 py-3 shadow-sm ${message.senderType === "lead" ? "rounded-tl-md border border-zinc-800 bg-zinc-900 text-zinc-200" : isFlow ? "rounded-tr-md border border-emerald-600/20 bg-emerald-600/10 text-zinc-100" : message.senderType === "ai" ? "rounded-tr-md border border-violet-500/20 bg-violet-500/10 text-zinc-100" : "rounded-tr-md bg-emerald-600 text-white"}`}>
+                        <div className="mb-1 flex items-center gap-1.5 text-[10px] opacity-75">
+                          {message.senderType === "ai" ? <Sparkles className="h-3 w-3" /> : isFlow ? <Play className="h-3 w-3" /> : <MessageIcon type={message.messageType} />}
+                          <span>{isFlow ? "Fluxo" : message.senderType === "lead" ? "Lead" : message.senderType === "ai" ? "IA" : "Humano"}</span>
+                          {isFlow && message.viaFlowName && <span className="rounded bg-emerald-600/20 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-emerald-300">VIA {message.viaFlowName}</span>}
+                          {message.senderType === "ai" && <span className="rounded bg-violet-500/20 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-violet-300">IA</span>}
+                        </div>
+                        {message.messageType === "audio" && (
+                          <div className="mb-2 flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20"><Play className="h-3.5 w-3.5 text-emerald-400" /></div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /><span className="h-1 w-8 rounded-full bg-zinc-700" /><span className="h-1 w-12 rounded-full bg-zinc-700" /><span className="h-1 w-6 rounded-full bg-zinc-700" /></div>
+                              <span className="mt-1 block text-[10px] text-zinc-500">00:12 • Pré-visualização de áudio</span>
+                            </div>
+                          </div>
+                        )}
+                        {message.messageType === "image" && (
+                          <div className="mb-2 flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2">
+                            <FileImage className="h-6 w-6 shrink-0 text-zinc-500" />
+                            <span className="text-xs text-zinc-400">[Imagem]</span>
+                          </div>
+                        )}
+                        {message.messageType === "document" && (
+                          <div className="mb-2 flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2">
+                            <Paperclip className="h-5 w-5 shrink-0 text-zinc-500" />
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-bold text-zinc-300">documento.pdf</p>
+                              <p className="text-[10px] text-zinc-500">Documento anexado</p>
+                            </div>
+                          </div>
+                        )}
                         <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
+                        {message.transcription && (
+                          <div className="mt-2 rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Transcrição</p>
+                            <p className="mt-0.5 text-xs italic text-zinc-400">{message.transcription}</p>
+                          </div>
+                        )}
                         <div className="mt-1.5 flex items-center justify-end gap-1 text-[10px] opacity-70"><span>{message.time}</span>{outbound && <StatusIcon status={message.status} />}</div>
                       </div>
                     </div>
@@ -774,10 +907,78 @@ export default function ChatPage() {
       )}
 
       {modal && (
-        <ModalShell title={modal === "quick" ? "Respostas rápidas" : modal === "templates" ? "Templates" : modal === "flows" ? "Fluxos rápidos" : modal === "transfer" ? "Transferir atendimento" : "Nota interna"} onClose={() => setModal(null)}>
+        <ModalShell title={modal === "quick" ? "Respostas rápidas" : modal === "templates" ? "Templates" : modal === "flows" || modal === "send-flow" ? "Disparar fluxo" : modal === "flow-executions" ? "Fluxos executados" : modal === "ctwa" ? "Notificar compra Meta" : modal === "transfer" ? "Transferir atendimento" : "Nota interna"} onClose={() => setModal(null)}>
           {modal === "quick" && <div className="grid gap-2">{quickReplies.map((reply) => <button key={reply.id} onClick={() => insertQuickReply(reply)} className="rounded-lg border border-zinc-800 p-3 text-left hover:bg-zinc-900"><p className="text-sm font-bold text-white">{reply.title}</p><p className="mt-1 text-xs text-zinc-500">{reply.message}</p><span className="mt-2 inline-block text-[10px] text-emerald-300">{reply.shortcut || reply.category}</span></button>)}</div>}
           {modal === "templates" && <div className="grid gap-2">{mockTemplates.map((template) => <button key={template.id} onClick={() => sendTemplate(template)} className="rounded-lg border border-zinc-800 p-3 text-left hover:bg-zinc-900"><p className="text-sm font-bold text-white">{template.name}</p><p className="mt-1 text-xs text-zinc-500">{template.text}</p><span className="mt-2 inline-block text-[10px] text-emerald-300">{template.category} • {template.language} • {template.status}</span></button>)}</div>}
-          {modal === "flows" && <div className="grid gap-2">{flows.length ? flows.map((flow) => <button key={flow.id} onClick={() => triggerFlow(flow)} className="rounded-lg border border-zinc-800 p-3 text-left hover:bg-zinc-900"><p className="text-sm font-bold text-white">{flow.name}</p><span className="mt-2 inline-block text-[10px] text-emerald-300">{flow.status}</span></button>) : <p className="text-sm text-zinc-500">Nenhum fluxo encontrado.</p>}</div>}
+          {(modal === "flows" || modal === "send-flow") && <div className="grid gap-2">{flows.length ? flows.map((flow) => <button key={flow.id} onClick={() => triggerFlow(flow)} className="rounded-lg border border-zinc-800 p-3 text-left hover:bg-zinc-900"><p className="text-sm font-bold text-white">{flow.name}</p><span className="mt-2 inline-block text-[10px] text-emerald-300">{flow.status}</span></button>) : <p className="text-sm text-zinc-500">Nenhum fluxo encontrado.</p>}</div>}
+          {modal === "flow-executions" && (
+            <div className="grid gap-2">
+              {(selected.flowExecutions ?? []).length === 0 ? (
+                <p className="py-8 text-center text-sm text-zinc-500">Nenhum fluxo executado nesta conversa.</p>
+              ) : (
+                (selected.flowExecutions ?? []).map((execution) => (
+                  <div key={execution.id} className="rounded-lg border border-zinc-800 p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold text-white">{execution.flowName}</p>
+                      <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${execution.status === "completed" ? "bg-emerald-500/10 text-emerald-300" : execution.status === "running" ? "bg-amber-500/10 text-amber-300" : execution.status === "failed" ? "bg-red-500/10 text-red-300" : "bg-zinc-800 text-zinc-400"}`}>{execution.status === "completed" ? "Concluído" : execution.status === "running" ? "Executando" : execution.status === "failed" ? "Falha" : "Cancelado"}</span>
+                    </div>
+                    <p className="mt-2 text-[11px] text-zinc-500">Início: {execution.startedAt}{execution.completedAt ? ` • Término: ${execution.completedAt}` : ""}</p>
+                    <p className="text-[11px] text-zinc-500">{execution.nodeCount} {execution.nodeCount === 1 ? "etapa" : "etapas"} executadas</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+          {modal === "ctwa" && (
+            <div className="grid gap-4">
+              <p className="text-xs text-zinc-500">Registre uma compra ou conversão para a Meta otimizar seus anúncios CTWA.</p>
+              <div>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-600">Evento</p>
+                <select value={ctwaEventName} onChange={(event) => setCtwaEventName(event.target.value)} className="h-10 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 text-sm text-white outline-none">
+                  <option value="Purchase">Purchase (Compra)</option>
+                  <option value="Lead">Lead (Lead)</option>
+                  <option value="Subscribe">Subscribe (Inscrição)</option>
+                  <option value="AddToCart">AddToCart (Adicionou ao carrinho)</option>
+                  <option value="CompleteRegistration">CompleteRegistration (Completou cadastro)</option>
+                </select>
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-600">Valor da conversão</p>
+                <input value={ctwaValue} onChange={(event) => setCtwaValue(event.target.value)} type="number" step="0.01" min="0" placeholder="199,90" className="h-10 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 text-sm text-white outline-none" />
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-600">Moeda</p>
+                <select value={ctwaCurrency} onChange={(event) => setCtwaCurrency(event.target.value)} className="h-10 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 text-sm text-white outline-none">
+                  <option value="BRL">BRL (R$)</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                </select>
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-600">Telefone do lead</p>
+                <input value={selected.lead.phone} disabled className="h-10 w-full rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 text-sm text-zinc-400 outline-none" />
+              </div>
+              <div className="grid gap-2">
+                <button onClick={() => { setModal(null); showToast("success", "Conversão enviada para Meta (mock)."); }} className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-black text-zinc-950">Enviar evento para Meta</button>
+                {selected.ctwaEvents && selected.ctwaEvents.length > 0 && (
+                  <div className="mt-4">
+                    <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-zinc-600">Eventos enviados</p>
+                    <div className="grid gap-2">
+                      {selected.ctwaEvents.map((event) => (
+                        <div key={event.id} className="flex items-center justify-between rounded-lg border border-zinc-800 p-3">
+                          <div>
+                            <p className="text-xs font-bold text-white">{event.eventName}</p>
+                            <p className="text-[10px] text-zinc-500">{event.eventTime}{event.conversionValue ? ` • ${event.currency} ${event.conversionValue}` : ""}</p>
+                          </div>
+                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${event.status === "confirmed" ? "bg-emerald-500/10 text-emerald-300" : event.status === "sent" ? "bg-sky-500/10 text-sky-300" : event.status === "failed" ? "bg-red-500/10 text-red-300" : "bg-amber-500/10 text-amber-300"}`}>{event.status === "confirmed" ? "Confirmado" : event.status === "sent" ? "Enviado" : event.status === "failed" ? "Falha" : "Pendente"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           {modal === "transfer" && <div className="grid gap-2">{users.map((user) => <button key={user.id} onClick={() => patchConversation("transfer", { assigned_user_id: user.id }).then(() => setModal(null)).catch((error) => showToast("error", error.message))} className="rounded-lg border border-zinc-800 p-3 text-left hover:bg-zinc-900"><p className="text-sm font-bold text-white">{user.name}</p><p className="text-xs text-zinc-500">{user.email}</p></button>)}</div>}
           {modal === "note" && <div className="grid gap-3"><textarea value={noteInput} onChange={(event) => setNoteInput(event.target.value)} rows={5} placeholder="Nota visível apenas para a equipe" className="rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm text-white outline-none" /><button onClick={() => addInternalNote().catch((error) => showToast("error", error.message))} className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-black text-zinc-950">Adicionar nota interna</button></div>}
         </ModalShell>
@@ -800,6 +1001,10 @@ function FilterInput({ label, value, onChange, type = "text" }: { label: string;
 
 function FilterSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode }) {
   return <label><span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-600">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 text-sm text-white outline-none"><option value="all">Todos</option>{children}</select></label>;
+}
+
+function ActionMenuItem({ icon: Icon, label, onClick }: { icon: typeof Play; label: string; onClick: () => void }) {
+  return <button onClick={onClick} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-bold text-zinc-300 transition hover:bg-zinc-900 hover:text-white"><Icon className="h-4 w-4 shrink-0 text-zinc-500" />{label}</button>;
 }
 
 function ModalShell({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
