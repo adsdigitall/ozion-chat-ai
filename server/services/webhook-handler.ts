@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { getSupabase } from '../db/supabase.js';
 import crypto from 'crypto';
+import { recordStatusEvent } from './message-status-history.js';
+import type { StatusTransition } from './message-status-history.js';
 
 interface WebhookMessage {
   from: string;
@@ -158,7 +160,7 @@ export async function processIncomingMessage(
 export async function processStatusUpdate(
   tenantId: string,
   metadata: { phone_number_id: string },
-  status: { id: string; status: string; timestamp: string }
+  status: { id: string; status: string; timestamp: string; errors?: Array<{ message: string }> }
 ) {
   const sb = getSupabase();
 
@@ -170,16 +172,41 @@ export async function processStatusUpdate(
   const existingMessage = existingMessages?.[0];
   if (!existingMessage) return;
 
-  const updateData: any = { updated_at: new Date().toISOString() };
-  if (status.status === 'delivered') {
-    updateData.status = 'delivered';
-    updateData.delivered_at = new Date(parseInt(status.timestamp) * 1000).toISOString();
-  } else if (status.status === 'read') {
-    updateData.status = 'read';
-    updateData.read_at = new Date(parseInt(status.timestamp) * 1000).toISOString();
+  const previousStatus = existingMessage.status;
+  const occurredAt = new Date(parseInt(status.timestamp) * 1000).toISOString();
+  const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+  switch (status.status) {
+    case 'sent':
+      updateData.status = 'sent';
+      break;
+    case 'delivered':
+      updateData.status = 'delivered';
+      updateData.delivered_at = occurredAt;
+      break;
+    case 'read':
+      updateData.status = 'read';
+      updateData.read_at = occurredAt;
+      break;
+    case 'failed':
+      updateData.status = 'failed';
+      updateData.failed_at = occurredAt;
+      if (status.errors?.[0]?.message) {
+        updateData.error_message = status.errors[0].message;
+      }
+      break;
   }
 
-  if (Object.keys(updateData).length > 1) {
-    await sb.from('messages').update(updateData).eq('id', existingMessage.id);
-  }
+  await sb.from('messages').update(updateData).eq('id', existingMessage.id);
+
+  await recordStatusEvent({
+    messageId: existingMessage.id,
+    tenantId,
+    provider: existingMessage.provider || 'meta',
+    newStatus: status.status as StatusTransition,
+    previousStatus,
+    errorMessage: status.errors?.[0]?.message,
+    raw: status as unknown as Record<string, unknown>,
+    occurredAt,
+  });
 }

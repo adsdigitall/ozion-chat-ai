@@ -171,6 +171,21 @@ export const messages = sqliteTable('messages', {
   sentAt: text('sent_at').default('datetime("now")').notNull(),
   deliveredAt: text('delivered_at'),
   readAt: text('read_at'),
+  failedAt: text('failed_at'),
+});
+
+export const messageStatusEvents = sqliteTable('message_status_events', {
+  id: text('id').primaryKey(),
+  messageId: text('message_id').notNull(),
+  tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  provider: text('provider'),
+  previousStatus: text('previous_status'),
+  newStatus: text('new_status').notNull(),
+  errorMessage: text('error_message'),
+  errorCode: integer('error_code'),
+  raw: text('raw').default('{}'),
+  occurredAt: text('occurred_at').default('datetime("now")').notNull(),
+  createdAt: text('created_at').default('datetime("now")').notNull(),
 });
 
 export const tags = sqliteTable('tags', {
