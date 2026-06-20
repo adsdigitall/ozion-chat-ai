@@ -1,7 +1,7 @@
 -- Create webhook_events table for idempotent webhook processing
 CREATE TABLE IF NOT EXISTS webhook_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id),
+  tenant_id TEXT NOT NULL REFERENCES tenants(id),
   provider TEXT NOT NULL DEFAULT 'meta',
   event_id TEXT NOT NULL,
   event_type TEXT NOT NULL DEFAULT 'message',
