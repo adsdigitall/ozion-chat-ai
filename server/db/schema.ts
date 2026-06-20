@@ -69,6 +69,29 @@ export const workspaces = sqliteTable('workspaces', {
   updatedAt: text('updated_at').default('datetime("now")').notNull(),
 });
 
+export const utalkIntegrations = sqliteTable('utalk_integrations', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  organizationId: text('organization_id'),
+  apiTokenEncrypted: text('api_token_encrypted').notNull(),
+  baseUrl: text('base_url').default('https://app-utalk.umbler.com/api'),
+  status: text('status').default('disconnected'),
+  lastSyncAt: text('last_sync_at'),
+  createdAt: text('created_at').default('datetime("now")'),
+  updatedAt: text('updated_at').default('datetime("now")'),
+});
+
+export const utalkMappings = sqliteTable('utalk_mappings', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  entityType: text('entity_type').notNull(),
+  ozionEntityId: text('ozion_entity_id').notNull(),
+  utalkEntityId: text('utalk_entity_id').notNull(),
+  rawData: text('raw_data').default('{}'),
+  createdAt: text('created_at').default('datetime("now")'),
+  updatedAt: text('updated_at').default('datetime("now")'),
+});
+
 export const contacts = sqliteTable('contacts', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
@@ -76,6 +99,9 @@ export const contacts = sqliteTable('contacts', {
   waId: text('wa_id'),
   name: text('name'),
   phone: text('phone'),
+  provider: text('provider').default('meta'),
+  externalId: text('external_id'),
+  rawProviderData: text('raw_provider_data').default('{}'),
   email: text('email'),
   avatarUrl: text('avatar_url'),
   tags: text('tags').default('[]'),
@@ -106,6 +132,9 @@ export const conversations = sqliteTable('conversations', {
   customerId: text('customer_id').references(() => customers.id),
   workspaceId: text('workspace_id'),
   contactId: text('contact_id').references(() => contacts.id).notNull(),
+  provider: text('provider').default('meta'),
+  externalId: text('external_id'),
+  rawProviderData: text('raw_provider_data').default('{}'),
   phoneNumberId: text('phone_number_id'),
   contactWaId: text('contact_wa_id'),
   status: text('status').default('open').notNull(),
@@ -128,7 +157,9 @@ export const conversations = sqliteTable('conversations', {
 export const messages = sqliteTable('messages', {
   id: text('id').primaryKey(),
   conversationId: text('conversation_id').references(() => conversations.id).notNull(),
+  provider: text('provider').default('meta'),
   externalId: text('external_id'),
+  rawProviderData: text('raw_provider_data').default('{}'),
   direction: text('direction').notNull(),
   type: text('type').notNull(),
   content: text('content').notNull(),
@@ -259,6 +290,10 @@ export const whatsappCredentials = sqliteTable('whatsapp_credentials', {
   connectedAt: text('connected_at'),
   createdAt: text('created_at').default('datetime("now")').notNull(),
   updatedAt: text('updated_at').default('datetime("now")').notNull(),
+  provider: text('provider').default('meta').notNull(),
+  instanceName: text('instance_name'),
+  evolutionApiUrl: text('evolution_api_url'),
+  evolutionApiKey: text('evolution_api_key'),
 });
 
 export const integrations = sqliteTable('integrations', {
