@@ -340,6 +340,25 @@ export const webhooks = sqliteTable('webhooks', {
   updatedAt: text('updated_at').default('datetime("now")').notNull(),
 });
 
+export const webhookEvents = sqliteTable('webhook_events', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  provider: text('provider').default('meta'),
+  eventId: text('event_id').notNull(),
+  eventType: text('event_type').default('message'),
+  payload: text('payload').default('{}'),
+  rawBodyHash: text('raw_body_hash'),
+  signatureValid: integer('signature_valid', { mode: 'boolean' }),
+  status: text('status').default('received'),
+  attempts: integer('attempts').default(1),
+  errorMessage: text('error_message'),
+  receivedAt: text('received_at').default('datetime("now")').notNull(),
+  processedAt: text('processed_at'),
+  failedAt: text('failed_at'),
+  createdAt: text('created_at').default('datetime("now")').notNull(),
+  updatedAt: text('updated_at').default('datetime("now")').notNull(),
+});
+
 export const sales = sqliteTable('sales', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),

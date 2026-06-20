@@ -3,6 +3,13 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { getSupabase } from '../db/supabase.js';
 import { processIncomingMessage, processStatusUpdate } from '../services/webhook-handler.js';
+import {
+  createWebhookEvent,
+  markWebhookEventProcessing,
+  markWebhookEventProcessed,
+  markWebhookEventFailed,
+  hashRawBody,
+} from '../services/webhook-events.js';
 
 const router = Router();
 
@@ -25,15 +32,41 @@ router.get('/whatsapp', (req: Request, res: Response) => {
   }
 });
 
-// POST /api/webhooks/whatsapp - Receive events
+// Verify Meta webhook signature
+function verifyMetaSignature(rawBody: string, signatureHeader: string, appSecret: string): boolean {
+  if (!signatureHeader.startsWith('sha256=')) return false;
+  const expected = crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+  const received = signatureHeader.slice(7);
+  if (expected.length !== received.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(received));
+  } catch {
+    return false;
+  }
+}
+
+// POST /api/webhooks/whatsapp - Receive events with idempotency
 router.post('/whatsapp', async (req: Request, res: Response) => {
   try {
+    // Verify webhook signature if app secret is configured
+    const appSecret = process.env.META_APP_SECRET;
+    let signatureValid: boolean | undefined;
+    if (appSecret) {
+      const signature = req.headers['x-hub-signature-256'] as string | undefined;
+      signatureValid = !!(signature && verifyMetaSignature(req.rawBody, signature, appSecret));
+      if (!signatureValid) {
+        console.error('❌ Invalid webhook signature');
+        return res.sendStatus(403);
+      }
+    }
+
     const body = req.body;
 
     if (body.object !== 'whatsapp_business_account') {
       return res.sendStatus(404);
     }
 
+    const rawBodyHash = req.rawBody ? hashRawBody(req.rawBody) : undefined;
     const sb = getSupabase();
 
     for (const entry of body.entry || []) {
@@ -56,35 +89,93 @@ router.post('/whatsapp', async (req: Request, res: Response) => {
 
           const tenantId = cred.tenant_id;
 
-          // Process incoming messages
+          // Process incoming messages with idempotency
           if (value.messages) {
             for (const message of value.messages) {
-              const contact = value.contacts?.[0];
-              if (contact) {
-                const result = await processIncomingMessage(tenantId, metadata, message, contact);
-                console.log(`📨 Message from ${message.from}`);
+              const eventId = `message:${message.id}`;
 
-                // Process with Flowise if configured
-                if (FLOWISE_URL && FLOWISE_CHATFLOW_ID && message.text?.body) {
-                  try {
-                    const flowiseResponse = await callFlowise(message.text.body, message.from, tenantId);
-                    if (flowiseResponse) {
-                      await sendWhatsAppMessage(metadata.phone_number_id, message.from, flowiseResponse);
-                      console.log(`🤖 Flowise response sent to ${message.from}`);
+              const { event, duplicate, error: eventError } = await createWebhookEvent({
+                tenantId,
+                provider: 'meta',
+                eventId,
+                eventType: 'message',
+                payload: { entry_id: entry.id, change_field: change.field, message, contact: value.contacts?.[0] },
+                rawBodyHash,
+                signatureValid,
+              });
+
+              if (eventError) {
+                console.warn(`Webhook event error: ${eventError}`);
+              }
+              if (duplicate) {
+                console.log(`⏭️ Duplicate message ${message.id} skipped`);
+                continue;
+              }
+              if (!event) continue;
+
+              await markWebhookEventProcessing(event.id);
+
+              try {
+                const contact = value.contacts?.[0];
+                if (contact) {
+                  await processIncomingMessage(tenantId, metadata, message, contact);
+                  console.log(`📨 Message from ${message.from}`);
+
+                  // Process with Flowise if configured
+                  if (FLOWISE_URL && FLOWISE_CHATFLOW_ID && message.text?.body) {
+                    try {
+                      const flowiseResponse = await callFlowise(message.text.body, message.from, tenantId);
+                      if (flowiseResponse) {
+                        await sendWhatsAppMessage(metadata.phone_number_id, message.from, flowiseResponse);
+                        console.log(`🤖 Flowise response sent to ${message.from}`);
+                      }
+                    } catch (flowiseError) {
+                      console.error('Flowise error:', flowiseError);
                     }
-                  } catch (flowiseError) {
-                    console.error('Flowise error:', flowiseError);
                   }
                 }
+                await markWebhookEventProcessed(event.id);
+              } catch (procError: any) {
+                console.error(`Process message error:`, procError);
+                await markWebhookEventFailed(event.id, procError.message);
               }
             }
           }
 
-          // Process status updates
+          // Process status updates with idempotency
           if (value.statuses) {
             for (const status of value.statuses) {
-              await processStatusUpdate(tenantId, metadata, status);
-              console.log(`📊 Status: ${status.id} → ${status.status}`);
+              const eventId = `status:${status.id}`;
+
+              const { event, duplicate, error: eventError } = await createWebhookEvent({
+                tenantId,
+                provider: 'meta',
+                eventId,
+                eventType: 'status',
+                payload: { entry_id: entry.id, change_field: change.field, status },
+                rawBodyHash,
+                signatureValid,
+              });
+
+              if (eventError) {
+                console.warn(`Webhook event error: ${eventError}`);
+              }
+              if (duplicate) {
+                console.log(`⏭️ Duplicate status ${status.id} skipped`);
+                continue;
+              }
+              if (!event) continue;
+
+              await markWebhookEventProcessing(event.id);
+
+              try {
+                await processStatusUpdate(tenantId, metadata, status);
+                console.log(`📊 Status: ${status.id} → ${status.status}`);
+                await markWebhookEventProcessed(event.id);
+              } catch (procError: any) {
+                console.error(`Process status error:`, procError);
+                await markWebhookEventFailed(event.id, procError.message);
+              }
             }
           }
         }
