@@ -79,19 +79,22 @@ app.get('/api/ping', (req, res) => {
 });
 
 async function start() {
+  app.listen(PORT, () => {
+    console.log(`🚀 Ozion Chat AI: http://localhost:${PORT}`);
+  });
+
   try {
     const supabase = getSupabase();
-    const { data, error } = await supabase.from('tenants').select('id').limit(1);
-    if (error) throw error;
+    const result = await Promise.race([
+      supabase.from('tenants').select('id').limit(1),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout after 5s')), 5000)),
+    ]);
+    if ((result as any)?.error) throw (result as any).error;
     console.log('✅ Supabase PostgreSQL connected');
   } catch (error: any) {
     console.error('❌ Supabase connection failed:', error.message);
     console.log('⚠️  Continuing without database...');
   }
-
-  app.listen(PORT, () => {
-    console.log(`🚀 Ozion Chat AI: http://localhost:${PORT}`);
-  });
 }
 
 start();

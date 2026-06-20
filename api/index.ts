@@ -34,7 +34,11 @@ const app = express();
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
-app.use(express.json());
+app.use(express.json({
+  verify: (req: any, _res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  },
+}));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/webhooks', webhookRoutes);

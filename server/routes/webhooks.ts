@@ -16,6 +16,7 @@ const router = Router();
 const FLOWISE_URL = process.env.FLOWISE_URL || '';
 const FLOWISE_API_KEY = process.env.FLOWISE_API_KEY || '';
 const FLOWISE_CHATFLOW_ID = process.env.FLOWISE_CHATFLOW_ID || '';
+const WEBHOOK_VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || 'ozion-verify-token-123';
 
 // GET /api/webhooks/whatsapp - Webhook verification
 router.get('/whatsapp', (req: Request, res: Response) => {
@@ -23,7 +24,7 @@ router.get('/whatsapp', (req: Request, res: Response) => {
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  if (mode === 'subscribe' && token === process.env.WEBHOOK_VERIFY_TOKEN) {
+  if (mode === 'subscribe' && token === WEBHOOK_VERIFY_TOKEN) {
     console.log('✅ Webhook verified');
     res.status(200).send(challenge);
   } else {
