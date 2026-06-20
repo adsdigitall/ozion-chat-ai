@@ -28,6 +28,8 @@ let contactFilter = { tag: null, search: '' };
 let bulkSelected = [];
 let currentUser = null;
 
+function h(str) { return String(str).replace(/[&<>"']/g, function(m) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]; }); }
+
 function getAuthToken() {
   return localStorage.getItem('ozion_token');
 }
@@ -180,6 +182,7 @@ function getNavItems() {
   // Client navigation (based on plan)
   return [
     { id: 'dashboard', icon: 'fa-chart-pie', label: 'Dashboard' },
+    { id: 'inbox', icon: 'fa-inbox', label: 'Inbox' },
     { id: 'chat', icon: 'fa-comments', label: 'Chat ao vivo' },
     { id: 'contacts', icon: 'fa-address-book', label: 'Contatos' },
     { id: 'tags', icon: 'fa-tags', label: 'Tags' },
@@ -395,6 +398,7 @@ async function loadPage(page) {
   // Client pages
   const clientPages = { 
     dashboard: loadDashboard, 
+    inbox: loadInbox,
     chat: loadChat, 
     contacts: loadContacts, 
     tags: loadTags, 
@@ -2101,12 +2105,13 @@ function renderFlowListItems(flows) {
         <div style="font-size:11px;color:var(--text-muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px">
           <span><i class="fa-solid fa-bolt" style="font-size:9px"></i> ${triggerLabel}</span>
           <span><i class="fa-solid fa-link" style="font-size:9px"></i> ${connLabel}</span>
+          <span><i class="fa-solid fa-cube" style="font-size:9px"></i> ${f.node_count ?? '---'} blocos</span>
           ${f.keywords ? `<span style="font-size:10px;color:var(--accent)"><i class="fa-solid fa-key" style="font-size:8px"></i> ${f.keywords.split(',').slice(0,2).join(', ')}</span>` : ''}
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:10px;color:var(--text-muted)">${f.updated_at ? timeAgo(f.updated_at) : '---'}</span>
-        <div class="flow-toggle" onclick="toggleFlow('${f.id}')" style="position:relative;width:36px;height:20px;cursor:pointer">
+        <div class="flow-toggle" onclick="toggleFlow('${f.id}', event)" style="position:relative;width:36px;height:20px;cursor:pointer">
           <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:${f.is_active?'var(--accent)':'var(--border)'};border-radius:20px;transition:all .3s"></div>
           <div style="position:absolute;top:2px;${f.is_active?'left:18px':'left:2px'};width:16px;height:16px;border-radius:50%;background:white;transition:all .3s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>
         </div>
@@ -2127,14 +2132,26 @@ function renderFlowListItems(flows) {
 }
 
 // ─── Flow Toggle ─────────────────────────────────────────────
-async function toggleFlow(id) {
+async function toggleFlow(id, event) {
+  if (event) event.stopPropagation();
+  const flow = allFlows.find(f => f.id === id);
+  if (!flow) return;
+
+  // Optimistic update
+  const prevState = flow.is_active;
+  flow.is_active = !prevState;
+  renderFlowList();
+
   const result = await api(`/api/flows/${id}/toggle`, { method: 'POST' });
-  if (result?.is_active !== undefined) {
-    const flow = allFlows.find(f => f.id === id);
-    if (flow) flow.is_active = result.is_active;
-    renderFlowList();
+  if (result?.ok) {
+    flow.is_active = result.is_active;
     showToast(result.is_active ? 'Fluxo ativado!' : 'Fluxo desativado', 'success');
+  } else {
+    // Rollback on error
+    flow.is_active = prevState;
+    showToast(result?.error || 'Erro ao alterar status do fluxo', 'error');
   }
+  renderFlowList();
 }
 
 // ─── Flow Menu ───────────────────────────────────────────────
@@ -2416,17 +2433,33 @@ function showFlowEditor(flowId) {
   const el = document.getElementById('content');
   el.innerHTML = `
     <div style="display:flex;flex-direction:column;height:calc(100vh - 120px)">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:12px">
-          <button class="btn btn-sm btn-secondary" onclick="loadFlows(document.getElementById('content'))"><i class="fa-solid fa-arrow-left"></i> Voltar</button>
-          <div>
-            <h3 style="margin:0;font-size:15px">${flow?.name || 'Editor de Fluxos'}</h3>
-            <span style="font-size:10px;color:var(--text-muted)">ID: ${flowId}</span>
+      <div style="display:flex;flex-direction:column;gap:8px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;padding:12px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:12px">
+            <button class="btn btn-sm btn-secondary" onclick="loadFlows(document.getElementById('content'))"><i class="fa-solid fa-arrow-left"></i> Voltar</button>
+            <div>
+              <h3 style="margin:0;font-size:15px">${flow?.name || 'Editor de Fluxos'}</h3>
+              <span style="font-size:10px;color:var(--text-muted)">ID: ${flowId}</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="flowise-status" style="font-size:11px;color:var(--text-muted)">Verificando...</span>
+            <button class="btn btn-sm btn-secondary" onclick="showFlowiseConfig()"><i class="fa-solid fa-cog"></i></button>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span id="flowise-status" style="font-size:11px;color:var(--text-muted)">Verificando...</span>
-          <button class="btn btn-sm btn-secondary" onclick="showFlowiseConfig()"><i class="fa-solid fa-cog"></i></button>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px">
+          <button id="flow-power-btn" onclick="toggleFlowPower('${flowId}')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid ${flow?.is_active ? '#22c55e' : '#f59e0b'};background:${flow?.is_active ? 'rgba(34,197,94,.1)' : 'rgba(245,158,11,.1)'};color:${flow?.is_active ? '#22c55e' : '#f59e0b'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s">
+            <i class="fa-solid fa-power-off"></i> ${flow?.is_active ? 'Ativo' : 'Inativo'}
+          </button>
+          <button onclick="finishFlowExecutions('${flowId}')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s" title="Finalizar fluxos em execução">
+            <i class="fa-solid fa-ban"></i> Finalizar
+          </button>
+          <button onclick="clearFlowAnalytics('${flowId}')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid #f59e0b;background:rgba(245,158,11,.1);color:#f59e0b;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s" title="Limpar analytics">
+            <i class="fa-solid fa-rotate"></i> Limpar
+          </button>
+          <button onclick="showConnectedDevices('${flowId}')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid #6c5ce7;background:rgba(108,92,231,.1);color:#6c5ce7;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s" title="Dispositivos conectados">
+            <i class="fa-solid fa-mobile-screen"></i> Dispositivos
+          </button>
         </div>
       </div>
       <div style="flex:1;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
@@ -2450,6 +2483,165 @@ async function checkFlowiseConnection() {
 function handleFlowiseError() {
   const statusEl = document.getElementById('flowise-status');
   if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444"><i class="fa-solid fa-exclamation-triangle"></i> Erro ao carregar</span>';
+}
+
+// ─── Flow Editor Toolbar Actions ──────────────────────────────
+async function toggleFlowPower(flowId) {
+  const btn = document.getElementById('flow-power-btn');
+  if (btn) btn.style.opacity = '0.5';
+  try {
+    const flow = allFlows.find(f => f.id === flowId);
+    const result = await api(`/api/flows/${flowId}/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: !flow?.is_active })
+    });
+    if (result?.ok) {
+      if (flow) flow.is_active = result.is_active;
+      showToast(result.is_active ? 'Fluxo ativado!' : 'Fluxo desativado', 'success');
+    } else {
+      showToast(result?.error || 'Erro ao alterar status', 'error');
+    }
+    showFlowEditor(flowId);
+  } catch (err) {
+    showToast('Erro ao alterar status do fluxo', 'error');
+    showFlowEditor(flowId);
+  }
+}
+
+async function finishFlowExecutions(flowId) {
+  if (!confirm('Deseja finalizar todas as execuções em andamento deste fluxo?')) return;
+  try {
+    const result = await api(`/api/flows/${flowId}/finish-running`, { method: 'POST' });
+    if (result?.ok) {
+      showToast(`${result.finished_count || 0} execução(ões) finalizada(s).`, 'success');
+    } else {
+      showToast(result?.error || 'Erro ao finalizar execuções', 'error');
+    }
+  } catch (err) {
+    showToast('Erro ao finalizar execuções', 'error');
+  }
+}
+
+async function clearFlowAnalytics(flowId) {
+  if (!confirm('Tem certeza que deseja limpar os analytics deste fluxo? Essa ação não apaga os blocos, apenas as métricas.')) return;
+  try {
+    const result = await api(`/api/flows/${flowId}/clear-analytics`, { method: 'POST' });
+    if (result?.ok) {
+      showToast('Analytics limpos com sucesso.', 'success');
+    } else {
+      showToast(result?.error || 'Erro ao limpar analytics', 'error');
+    }
+  } catch (err) {
+    showToast('Erro ao limpar analytics', 'error');
+  }
+}
+
+async function showConnectedDevices(flowId) {
+  const modal = document.getElementById('modal-overlay');
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:600px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0;font-size:16px"><i class="fa-solid fa-mobile-screen" style="color:#6c5ce7"></i> Dispositivos Conectados</h3>
+        <button onclick="closeModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <div id="devices-loading" style="text-align:center;padding:40px;color:var(--text-muted)">
+        <i class="fa-solid fa-spinner fa-spin" style="font-size:24px"></i>
+        <p style="margin-top:12px;font-size:13px">Carregando dispositivos...</p>
+      </div>
+      <div id="devices-list" style="display:none"></div>
+    </div>`;
+  modal.style.display = 'flex';
+  modal.classList.add('show');
+
+  try {
+    const [devicesRes, linkedRes] = await Promise.all([
+      api('/api/whatsapp/numbers'),
+      api(`/api/flows/${flowId}/numbers`)
+    ]);
+    const devices = devicesRes?.numbers || [];
+    const linked = linkedRes || [];
+
+    document.getElementById('devices-loading').style.display = 'none';
+    const listEl = document.getElementById('devices-list');
+    listEl.style.display = 'block';
+
+    if (!devicesRes || devices.length === 0) {
+      listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px">Nenhum dispositivo encontrado. Conecte um número WhatsApp primeiro.</div>';
+      return;
+    }
+
+    const linkedIds = new Set(linked.map(l => l.whatsapp_number_id));
+      return;
+    }
+
+    listEl.innerHTML = devices.map(d => {
+      const isLinked = linkedIds.has(d.id);
+      return `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">
+          <div style="width:40px;height:40px;border-radius:8px;background:${isLinked ? '#22c55e22' : 'var(--bg-secondary)'};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">
+            <i class="fa-brands fa-whatsapp" style="color:${isLinked ? '#22c55e' : 'var(--text-muted)'}"></i>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:500;font-size:13px">${h(d.display_name || 'Sem nome')}</div>
+            <div style="font-size:11px;color:var(--text-muted);display:flex;gap:8px;align-items:center">
+              <span>${h(d.phone_number || '---')}</span>
+              <span style="padding:1px 6px;border-radius:4px;background:${d.connection_type === 'official' ? '#6c5ce722' : '#3b82f622'};color:${d.connection_type === 'official' ? '#6c5ce7' : '#3b82f6'};font-size:9px">${d.connection_type === 'official' ? 'Oficial' : 'API'}</span>
+              <span style="padding:1px 6px;border-radius:4px;background:${d.status === 'connected' ? '#22c55e22' : '#ef444422'};color:${d.status === 'connected' ? '#22c55e' : '#ef4444'};font-size:9px">${d.status === 'connected' ? 'Conectado' : h(d.status)}</span>
+            </div>
+          </div>
+          <button id="device-btn-${d.id}" onclick="${isLinked ? `unlinkDevice('${flowId}','${d.id}')` : `linkDevice('${flowId}','${d.id}')`}" style="padding:6px 12px;border-radius:6px;border:1px solid ${isLinked ? '#ef4444' : '#6c5ce7'};background:${isLinked ? '#ef444422' : '#6c5ce722'};color:${isLinked ? '#ef4444' : '#6c5ce7'};cursor:pointer;font-size:11px;white-space:nowrap">
+            ${isLinked ? 'Remover' : 'Conectar'}
+          </button>
+        </div>`;
+    }).join('');
+
+    if (linked.length > 0) {
+      const info = document.createElement('div');
+      info.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center';
+      info.textContent = `${linked.length} dispositivo(s) vinculado(s) a este fluxo.`;
+      listEl.prepend(info);
+    }
+  } catch (err) {
+    document.getElementById('devices-loading').innerHTML = '<p style="color:#ef4444;font-size:13px">Erro ao carregar dispositivos.</p>';
+  }
+}
+
+async function linkDevice(flowId, numberId) {
+  const btn = document.getElementById('device-btn-' + numberId);
+  if (btn) btn.disabled = true;
+  try {
+    const result = await api(`/api/flows/${flowId}/numbers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ whatsapp_number_id: numberId })
+    });
+    if (result && !result.error) {
+      showToast('Dispositivo vinculado ao fluxo!', 'success');
+      showConnectedDevices(flowId);
+    } else {
+      showToast(result?.error || 'Erro ao vincular dispositivo', 'error');
+    }
+  } catch (err) {
+    showToast('Erro ao vincular dispositivo', 'error');
+  }
+}
+
+async function unlinkDevice(flowId, numberId) {
+  if (!confirm('Remover este dispositivo do fluxo?')) return;
+  const btn = document.getElementById('device-btn-' + numberId);
+  if (btn) btn.disabled = true;
+  try {
+    const result = await api(`/api/flows/${flowId}/numbers/${numberId}`, { method: 'DELETE' });
+    if (result?.ok) {
+      showToast('Dispositivo removido do fluxo.', 'success');
+      showConnectedDevices(flowId);
+    } else {
+      showToast(result?.error || 'Erro ao remover dispositivo', 'error');
+    }
+  } catch (err) {
+    showToast('Erro ao remover dispositivo', 'error');
+  }
 }
 
 // ─── Flowise Config ──────────────────────────────────────────

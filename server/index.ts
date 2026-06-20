@@ -27,6 +27,7 @@ import plansRoutes from './routes/plans.js';
 import deployRoutes from './routes/deploy.js';
 import flowiseRoutes from './routes/flowise.js';
 import tagsRoutes from './routes/tags.js';
+import inboxRoutes from './routes/inbox.js';
 import { getSupabase } from './db/supabase.js';
 import { authMiddleware } from './middleware/auth.js';
 
@@ -38,7 +39,11 @@ const PORT = process.env.PORT || 3000;
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
-app.use(express.json());
+app.use(express.json({
+  verify: (req: any, _res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  },
+}));
 app.use(express.static(join(__dirname, '../public')));
 
 // Public routes
@@ -66,6 +71,7 @@ app.use('/api/plans', authMiddleware, plansRoutes);
 app.use('/api/deploy', authMiddleware, deployRoutes);
 app.use('/api/flowise', authMiddleware, flowiseRoutes);
 app.use('/api/tags', authMiddleware, tagsRoutes);
+app.use('/api/inbox', authMiddleware, inboxRoutes);
 
 // Simple health check (no auth required)
 app.get('/api/ping', (req, res) => {

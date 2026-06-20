@@ -34,7 +34,7 @@ describe('Meta Normalizer', () => {
       id: 'wamid.IMG456',
       timestamp: '1718000100',
       type: 'image',
-      image: { id: 'media-id-123', caption: 'Look at this' },
+      image: { id: 'media-id-123', caption: 'Look at this', mime_type: 'image/jpeg' },
     };
     const contact = { wa_id: '5511888888888', profile: { name: 'Jane' } };
 
@@ -43,6 +43,7 @@ describe('Meta Normalizer', () => {
     assert.equal(result.messageType, 'image');
     assert.equal(result.mediaUrl, 'media-id-123');
     assert.equal(result.caption, 'Look at this');
+    assert.equal(result.mimeType, 'image/jpeg');
   });
 
   it('should normalize an audio message', () => {
@@ -51,14 +52,33 @@ describe('Meta Normalizer', () => {
       id: 'wamid.AUD789',
       timestamp: '1718000200',
       type: 'audio',
-      audio: { id: 'audio-id-456' },
+      audio: { id: 'audio-id-456', mime_type: 'audio/ogg' },
     };
 
     const result = normalizeMetaMessage('tenant-2', msg, undefined);
 
     assert.equal(result.messageType, 'audio');
     assert.equal(result.mediaUrl, 'audio-id-456');
+    assert.equal(result.mimeType, 'audio/ogg');
     assert.equal(result.phone, '5511777777777');
+  });
+
+  it('should normalize a document message with filename and mimeType', () => {
+    const msg = {
+      from: '5511555555555',
+      id: 'wamid.DOC001',
+      timestamp: '1718000600',
+      type: 'document',
+      document: { id: 'doc-id-789', filename: 'relatorio.pdf', mime_type: 'application/pdf', caption: 'Relatório mensal' },
+    };
+
+    const result = normalizeMetaMessage('tenant-1', msg, undefined);
+
+    assert.equal(result.messageType, 'document');
+    assert.equal(result.mediaUrl, 'doc-id-789');
+    assert.equal(result.fileName, 'relatorio.pdf');
+    assert.equal(result.mimeType, 'application/pdf');
+    assert.equal(result.caption, 'Relatório mensal');
   });
 
   it('should normalize a button reply message', () => {
