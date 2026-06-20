@@ -1,4 +1,4 @@
-import type { NormalizedMessage, NormalizedMessageType } from './types.js';
+import type { NormalizedMessage, NormalizedMessageType, NormalizedStatusUpdate } from './types.js';
 
 export function normalizeMetaMessage(
   tenantId: string,
