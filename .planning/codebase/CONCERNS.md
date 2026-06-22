@@ -1,271 +1,533 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-06-20
+**Analysis Date:** 2026-06-22
+
+## Tech Debt
+
+### 1. Multi-Tenant Data Isolation Gap
+
+**Issue:** Most routes rely on `x-tenant-id` header or URL parameters instead of the authenticated user's JWT tenant.
+
+**Files:** `server/routes/chat.ts`, `server/routes/crm.ts`, `server/routes/contacts.ts`, `server/routes/integrations.ts`
+
+**What happens:**
+- `chat.ts` line 10: `const tid = (req.headers['x-tenant-id'] as string) || 'default';`
+- `crm.ts` line 11: `const tid = (req.headers['x-tenant-id'] as string) || 'default';`
+- `contacts.ts` line 10: `const { tenantId } = req.params;` (URL param, not validated)
+- `integrations.ts` line 10: `const tid = (req.headers['x-tenant-id'] as string) || 'default';`
+
+These routes ignore `req.user.tenant_id` set by the auth middleware. A user could modify the `x-tenant-id` header to access another tenant's data. The fallback `'default'` means requests without the header access the master tenant.
+
+**Contrast:** `server/routes/inbox.ts` correctly uses `req.user.tenant_id` (lines 11, 86, 162, 237) — this is the pattern all routes should follow.
+
+**Impact:** HIGH — potential cross-tenant data access for contacts, conversations, integrations, and CRM data.
+
+**Fix approach:** Replace all `req.headers['x-tenant-id']` and `req.params.tenantId` usages with `req.user.tenant_id`. Add middleware to enforce tenant isolation at the route level.
+
+### 2. TypeScript Strict Mode Disabled
+
+**Issue:** `tsconfig.json` has `strict: false` and `noImplicitAny: false`, disabling critical type safety.
+
+**Files:** `tsconfig.json` (line 12-13)
+
+```json
+"strict": false,
+"noImplicitAny": false,
+```
+
+**Impact:** Any type errors are silently ignored. Combined with `// @ts-nocheck` (see below), there's effectively no type safety in most of the codebase.
+
+**Fix approach:** Enable `strict: true` incrementally — start with `noImplicitAny: true`, fix errors, then add `strictNullChecks`, `strictFunctionTypes`, etc.
+
+### 3. 21 Files with `// @ts-nocheck`
+
+**Issue:** Critical source files have TypeScript checking completely disabled.
+
+**Files:**
+```
+server/routes/admin.ts
+server/routes/contacts.ts
+server/routes/chat.ts
+server/routes/crm.ts
+server/routes/webhooks.ts
+server/routes/evolution.ts
+server/routes/flows.ts
+server/routes/flowise.ts
+server/routes/analytics.ts
+server/routes/integrations.ts
+server/routes/agents.ts
+server/routes/sales.ts
+server/routes/voice.ts
+server/routes/health.ts
+server/routes/plans.ts
+server/routes/ctwa.ts
+server/services/webhook-handler.ts
+server/services/websocket.ts
+server/services/evolution-api.ts
+server/services/audio.ts
+server/services/ai-agent.ts
+```
+
+**Impact:** The core business logic and API surface have no type checking. This leads to likely runtime errors, makes refactoring dangerous, and hides bugs.
+
+**Fix approach:** Remove `// @ts-nocheck` incrementally, start with files that have proper type annotations (e.g., `server/routes/health.ts`), then fix type errors in each file.
+
+### 4. Dual-Database Schema Drift
+
+**Issue:** Two separate schema definitions — Drizzle SQLite schema and raw SQL migrations for Supabase PostgreSQL — are maintained separately and have diverged.
+
+**Files:**
+- `server/db/schema.ts` — SQLite schema (via `drizzle-orm/sqlite-core`)
+- `migrations/001_initial.sql` — PostgreSQL schema for Supabase
+- `server/db/schema-deploy.ts` — Additional SQLite tables for deploy system
+
+**Examples of drift:**
+- `messages` table in SQLite has `errorCode`, `errorMessage` fields; in Postgres it has `error_code`, `error_message`
+- `schema.ts` has `message_status_events` table which is not defined in the SQLite schema at all (referenced by `message-status-history.ts`)
+- `db/index.ts` imports `./schema.js` compiled version for SQLite, but the ESM/TypeScript import path is fragile
+
+**Impact:** MEDIUM — local dev uses SQLite, production uses PostgreSQL. Changes to one don't propagate to the other, causing bugs that only surface in production.
+
+**Fix approach:** Unify to a single source of truth — either use Drizzle with PostgreSQL dialect everywhere, or generate SQLite schema from Postgres migrations.
+
+### 5. Drizzle Config Schema/Dialect Mismatch
+
+**Issue:** `drizzle.config.ts` specifies PostgreSQL dialect but the schema uses `drizzle-orm/sqlite-core`.
+
+**Files:** `drizzle.config.ts`, `server/db/schema.ts`
+
+```typescript
+// drizzle.config.ts
+dialect: 'postgresql',
+schema: './server/db/schema.ts'
+```
+
+But `server/db/schema.ts` imports `sqliteTable` from `drizzle-orm/sqlite-core`.
+
+**Impact:** `drizzle-kit` commands (push, generate, migrate) will fail or produce incorrect output because the schema imports are incompatible with the configured dialect.
+
+**Fix approach:** Either switch schema to `drizzle-orm/pg-core` or change config dialect to `sqlite`. The production target is PostgreSQL (Supabase), so the schema should be migrated to `pg-core`.
+
+### 6. Mixed Module System in Database Layer
+
+**Issue:** `server/db/index.ts` uses CommonJS `require()` calls inside an ESM module.
+
+**Files:** `server/db/index.ts` (lines 8-10, 22-23)
+
+```typescript
+const Database = require('better-sqlite3');
+const { join, dirname } = require('path');
+const { fileURLToPath } = require('url');
+const { mkdirSync } = require('fs');
+```
+
+**Impact:** Fragile — relies on Node.js interop between ESM and CJS. The path to `./schema.js` (compiled JS) may break depending on build setup. The schema is imported dynamically via `require()` before Drizzle is initialized.
+
+**Fix approach:** Use ESM `import` syntax consistently. Since `better-sqlite3` is optional, wrap in a try/catch import.
+
+### 7. Monolithic 4890-Line Frontend
+
+**Issue:** The main SPA (`public/js/ozion.js`) is a single 4890-line vanilla JavaScript file with no modules, no types, and no build step.
+
+**Files:** `public/js/ozion.js` (4890 lines)
+
+**Impact:**
+- Impossible to tree-shake or code-split
+- Global mutable state (line 6-29: `let conversations = []; let selectedConv = null;` etc.)
+- No dependency management
+- Inline HTML strings throughout for rendering
+- Every feature and admin panel is in this one file
+
+**Fix approach:** Break into separate modules by feature (inbox, admin, crm, settings, flows). Consider adopting a lightweight framework or at minimum ES modules with type checking via JSDoc.
 
 ## Security Considerations
 
-### Hardcoded Admin Password Fallback
+### 1. Hardcoded Encryption Key
 
-- **Risk:** Legacy admin users (those with `role === 'admin'` whose `password_hash` does not start with `$2`) authenticate with a hardcoded password `admin123`. This bypasses bcrypt entirely.
-- **Files:** `server/routes/auth.ts:37-42` (login), `server/routes/auth.ts:231-235` (change-password)
-- **Current mitigation:** Only triggers for users whose password hash does not look like bcrypt (`$2` prefix). The seed migration (`migrations/002_saas_multitenant.sql:138`) shows a placeholder hash `$2b$10$placeholder_hash_will_be_replaced_by_backend` — no real bcrypt hash is seeded.
-- **Recommendations:** Remove the hardcoded password path. Ensure all admin users have a proper bcrypt hash. Run a migration to set a real hash for the seed admin user.
+**Issue:** Encryption module has a hardcoded fallback key for safeguarding WhatsApp credentials.
 
-### Weak Encryption Key Fallback
+**Files:** `server/lib/encryption.ts` (line 3)
 
-- **Risk:** `server/lib/encryption.ts:3` defines `ENCRYPTION_KEY` with a fallback to `'default-key-change-in-production-32!'`. If the env var is not set in production, WhatsApp access tokens and app secrets stored encrypted in the database (`whatsapp_credentials.access_token_encrypted`, `whatsapp_credentials.app_secret_encrypted`) can be decrypted with this known key.
-- **Files:** `server/lib/encryption.ts:3`
-- **Current mitigation:** None — the fallback is a string literal in source code.
-- **Recommendations:** Make `ENCRYPTION_KEY` required at startup (throw if missing). Rotate any credentials encrypted with the default key.
+```typescript
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-key-change-in-production-32!';
+```
 
-### Helmet Content Security Policy Disabled
+**Impact:** If the `ENCRYPTION_KEY` environment variable is not set (e.g., in some deployment environments), encrypted data (WhatsApp access tokens, app secrets stored in `whatsapp_credentials` table) can be decrypted by anyone who knows the hardcoded key. Since the code is in a public (or team-accessible) repository, this compromises all encrypted credentials.
 
-- **Risk:** The CSP helmet middleware is explicitly disabled with `contentSecurityPolicy: false` in both `server/index.ts:39` and `api/index.ts:34`. This removes XSS protection that CSP would provide.
-- **Files:** `server/index.ts:39`, `api/index.ts:34`
-- **Recommendations:** Enable CSP with a restrictive policy tailored to the SPA. If inline scripts are required (ozion.js), use nonces or hashes.
+**Fix approach:** Make the encryption key a required environment variable — remove the hardcoded default, throw if not set. Rotate any credentials encrypted with the default key.
 
-### WebSocket CORS Allows Any Origin
+### 2. Hardcoded Admin Password
 
-- **Risk:** Socket.io server configured with `origin: '*'` in `server/services/websocket.ts:17`, allowing any website to establish WebSocket connections if they can obtain a valid JWT.
-- **Files:** `server/services/websocket.ts:16-19`
-- **Recommendations:** Restrict WebSocket CORS to the known deployment origin.
+**Issue:** Legacy admin users without bcrypt hashed passwords authenticate with a hardcoded password.
 
-### Long-Lived JWT Tokens (7 Days)
+**Files:** `server/routes/auth.ts` (lines 37-39, 234)
 
-- **Risk:** `server/middleware/auth.ts:6` — `TOKEN_EXPIRY = '7d'`. A leaked token is valid for a full week. The logout endpoint (`server/routes/auth.ts:180-202`) does NOT invalidate the token — it simply logs the action.
-- **Files:** `server/middleware/auth.ts:6`, `server/routes/auth.ts:180-202`
-- **Current mitigation:** The `authMiddleware` checks that the user is still active in the database on every request (`server/middleware/auth.ts:52-61`).
-- **Recommendations:** Reduce token expiry to hours (e.g., 24h). Implement a token blacklist or use short-lived access tokens with refresh tokens. Invalidate tokens on logout.
+```typescript
+// Legacy admin - accept admin123
+passwordValid = password === 'admin123';
+```
 
-### Weak Password Policy
+**Impact:** If an admin user record has a non-bcrypt `password_hash` (e.g., plain text or missing), they can authenticate with the well-known password `admin123`. This bypass is also present in the change-password flow (line 234).
 
-- **Risk:** `server/routes/auth.ts:213` — only checks `newPassword.length < 6`. No complexity requirements (uppercase, numbers, special chars).
-- **Files:** `server/routes/auth.ts:213`
-- **Recommendations:** Enforce a stronger password policy (minimum 8 chars, mixed case, numbers).
+**Fix approach:** Remove the legacy admin password fallback. Ensure all admin users have bcrypt-hashed passwords. Run a migration to hash any legacy admin passwords.
 
-### Full User Object Embedded in JWT
+### 3. Hardcoded Default User Passwords
 
-- **Risk:** The JWT payload contains the entire `AuthUser` object including `id`, `email`, `name`, `role`, `tenant_id`, `customer_id`, `permissions`, and `is_master`. If the JWT is leaked, an attacker gains complete user context.
-- **Files:** `server/middleware/auth.ts:12-21` (type), `server/routes/auth.ts:62-71` (token generation)
-- **Recommendations:** Store only `userId`, `tenantId`, and `role` in the JWT. Look up permissions from the database on each request (or cache with short TTL).
+**Issue:** Admin route creates users with a hardcoded default password `'123456'`.
 
-### Placeholder App Credentials in Source
+**Files:** `server/routes/admin.ts` (lines 89, 341)
 
-- **Risk:** `server/routes/whatsapp.ts:8-9` defaults `FACEBOOK_APP_ID` to `'YOUR_APP_ID'` and `FACEBOOK_APP_SECRET` to `'YOUR_APP_SECRET'`. If the env vars are not set in production, these literal strings are used as actual credentials.
-- **Files:** `server/routes/whatsapp.ts:8-9`
-- **Recommendations:** Throw at startup if these env vars are missing, same as `JWT_SECRET` is handled in `server/middleware/auth.ts:8-10`.
+```typescript
+const passwordHash = await bcrypt.hash('123456', 10);
+```
 
-### No Input Validation on Most Routes
+**Impact:** Every new user created via the admin panel has the same predictable default password. If users don't change it, accounts are vulnerable to credential stuffing.
 
-- **Risk:** The vast majority of routes accept `req.body` directly and pass it to Supabase inserts/updates without any schema validation (e.g., `server/routes/agents.ts:47` — `...req.body` spread directly). A malicious request could set unexpected fields, including SQL injection via Supabase (though parameterized) or overwrite protected fields.
-- **Files:** Most route files — representative example: `server/routes/agents.ts:47`, `server/routes/admin.ts:154`, `server/routes/deploy.ts:18`, `server/routes/plans.ts:21`
-- **Current mitigation:** `@ts-nocheck` suppresses any type-level protection.
-- **Recommendations:** Use Zod schemas to validate request bodies on all mutating endpoints. Never spread `req.body` directly into database operations.
+**Fix approach:** Generate random passwords for new users and force password change on first login. Or send a password set link via email.
 
-## Technical Debt
+### 4. Hardcoded Webhook Verify Token
 
-### `@ts-nocheck` in 17 of 22 Route Files
+**Issue:** Webhook verification has a predictable fallback token.
 
-- **Issue:** 17 route files disable TypeScript checking entirely via `// @ts-nocheck`. This defeats the purpose of using TypeScript — no type safety, no null checks, no shape validation at the type level.
-- **Files:** `server/routes/webhooks.ts`, `server/routes/whatsapp.ts`, `server/routes/chat.ts`, `server/routes/crm.ts`, `server/routes/flows.ts`, `server/routes/agents.ts`, `server/routes/evolution.ts`, `server/routes/voice.ts`, `server/routes/sales.ts`, `server/routes/integrations.ts`, `server/routes/contacts.ts`, `server/routes/plans.ts`, `server/routes/deploy.ts`, `server/routes/ctwa.ts`, `server/routes/analytics.ts`, `server/routes/health.ts`, `server/routes/flowise.ts`. Also: `server/services/webhook-handler.ts`, `server/services/ai-agent.ts`, `server/services/evolution-api.ts`, `server/services/websocket.ts`, `server/services/audio.ts`, `server/services/validate-flow.ts`.
-- **Impact:** Zero type safety in ~85% of the server code. Bugs that TypeScript would catch (wrong argument types, null references, missing properties) go straight to production.
-- **Fix approach:** Remove `@ts-nocheck` file by file, add proper TypeScript types, fix type errors, and enable strict mode.
+**Files:** `server/routes/webhooks.ts` (line 19)
 
-### TypeScript Strict Mode Disabled
+```typescript
+const WEBHOOK_VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || 'ozion-verify-token-123';
+```
 
-- **Issue:** `tsconfig.json:8-10` sets `"strict": false` and `"noImplicitAny": false`. Combined with `@ts-nocheck` in most files, the TypeScript compiler provides minimal value.
-- **Files:** `tsconfig.json:8-10`
-- **Impact:** Any implicit `any` is allowed. Null/undefined safety is not enforced.
-- **Fix approach:** Enable `strict: true`, fix resulting errors incrementally by component.
+**Impact:** If the `WEBHOOK_VERIFY_TOKEN` env var is not set, anyone who knows this code can subscribe to the webhook and receive all incoming WhatsApp messages.
 
-### Dual Database System — Supabase + SQLite
+**Fix approach:** Make the verify token a required environment variable. Remove the hardcoded fallback.
 
-- **Issue:** The codebase uses `better-sqlite3` for local development (via `server/db/index.ts`) and Supabase PostgreSQL for production. The SQLite schema (`server/db/schema.ts`) uses Drizzle ORM with `sqlite-core`, while production migrations (`migrations/001_initial.sql` etc.) are raw PostgreSQL. These are manually kept in sync — there is no single source of truth.
-- **Files:** `server/db/schema.ts` (SQLite via drizzle-orm/sqlite-core), `server/db/index.ts` (SQLite init), `migrations/001_initial.sql` (PostgreSQL), `server/db/supabase.ts` (Supabase client)
-- **Impact:** Schema drift between local SQLite and production PostgreSQL is inevitable. The Drizzle schema references columns (like `customerId` on `users`) that migration 002 adds via `ALTER TABLE`. Columns exist in PostgreSQL but not in the Drizzle schema, and vice versa.
-- **Fix approach:** Either standardize on Supabase (remove SQLite) or use a migration-based tool (like Drizzle Kit) that works with both. Consider using `drizzle-orm/pg-core` instead of `sqlite-core`.
+### 5. Weak Encryption Implementation
 
-### Silent Error Swallowing
+**Issue:** CryptoJS uses AES-ECB mode by default, which is not suitable for encrypting credentials.
 
-- **Issue:** Many try/catch blocks have empty or near-empty catch clauses, swallowing errors that could indicate bugs, security issues, or data loss.
-- **Files (representative examples):** `server/middleware/auth.ts:80` (`} catch (e) {}`), `server/routes/auth.ts:59` (`} catch {}`), `server/routes/auth.ts:95` (`} catch (e) {}`), `server/routes/auth.ts:163` (`} catch (e) {}`), `server/services/webhook-handler.ts:63` (logs `error` but not `Insert contact error:`), `server/services/webhook-handler.ts:131-132` (duplicate check but error is logged only if not duplicate)
-- **Impact:** Silent failures in audit logging, customer status checks, and data persistence operations mean data integrity issues go undetected.
-- **Fix approach:** At minimum log error details. For audit/critical paths, consider alerting or metrics.
+**Files:** `server/lib/encryption.ts`
 
-### Mock Data Masquerading as Real
+```typescript
+import CryptoJS from 'crypto-js';
+// ...
+return CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();
+```
 
-- **Issue:** Several endpoints generate fake data that appears authentic:
-  - `server/routes/deploy.ts:75-80` — Backup "completion" is simulated with `setTimeout` and `Math.floor(Math.random() * 5000000)` as the file size.
-  - `server/routes/deploy.ts:164-168` — Deploy pipeline stages are simulated with chained `setTimeout` calls.
-  - `server/routes/updates.ts:50-60` — Version check endpoint uses hardcoded `MOCK_VERSIONS`.
-  - `server/routes/updates.ts:84` — Provider test latency is random: `Math.floor(Math.random() * 300) + 100`.
-- **Files:** `server/routes/deploy.ts`, `server/routes/updates.ts`
-- **Impact:** These endpoints give the illusion of functionality. A user can "create a backup" and see "completed" status, but no actual data is backed up. The deploy system simulates CI/CD without actually deploying.
-- **Fix approach:** Either implement real backup/deploy functionality or label these as mock/demo endpoints. Never return realistic-looking success for fake operations.
+**Impact:** CryptoJS's `AES.encrypt` with a passphrase (not a proper key/IV) uses an unspecified derivation function and ECB mode. ECB mode encrypts identical blocks identically, leaking information about the plaintext. For credential storage, a proper AEAD scheme (like AES-256-GCM) should be used.
 
-### Duplicate Route Registration Code
+**Fix approach:** Use Node.js built-in `crypto` module with `createCipheriv` (AES-256-GCM) or `crypto-js` with explicit CBC mode and random IV. Store IV alongside ciphertext.
 
-- **Issue:** `server/index.ts` (local dev) and `api/index.ts` (Vercel production) are nearly identical files (93 lines vs 65 lines). Every route addition must be duplicated in both.
-- **Files:** `server/index.ts`, `api/index.ts`
-- **Impact:** Route registration drift between environments. The local dev `server/index.ts` has a Supabase connection check on startup (`server/index.ts:75-84`) that `api/index.ts` lacks.
-- **Fix approach:** Extract route registration into a shared function that both `server/index.ts` and `api/index.ts` import.
+### 6. PII Leakage to External AI Providers
 
-### In-Memory Client-Side Filtering
+**Issue:** Contact phone numbers are sent to third-party AI APIs (Groq, OpenAI, DeepSeek) as part of the system prompt.
 
-- **Issue:** Several routes load all records from the database, then filter/process in memory:
-  - `server/routes/crm.ts:13-28` — Loads all contacts, then filters by `search`, `tag`, `status`, `source`, `stage` in JavaScript.
-  - `server/routes/chat.ts:13-25` — Loads all conversations, then filters by `status`, `assigned`, `search` in memory.
-  - `server/routes/analytics.ts:12-15` — Loads entire tables to compute dashboard counts.
-- **Impact:** Performance degrades as data grows. A tenant with 100K contacts will load all of them into memory and iterate in Node.js for a filtered search.
-- **Fix approach:** Push filtering to the database layer using Supabase query filters (`.eq()`, `.ilike()`, `.in()`, etc.) before executing the query.
+**Files:** `server/services/ai-agent.ts` (line 269)
 
-### Duplicate CRUD Patterns
+```typescript
+content: systemMessage + kbContext + `\n\nContexto do contato:\n- Nome: ${context.contactName}\n- Telefone: ${context.contactPhone}\n- Stage atual: ${context.pipelineStage}`
+```
 
-- **Issue:** Multiple routes implement identical CRUD boilerplate (list, create, update, delete) with minor variations — e.g., `server/routes/voice.ts`, `server/routes/sales.ts`, `server/routes/integrations.ts`, `server/routes/agents.ts`. Each has the same `crypto.randomUUID()` + `sb.from('table').insert()` + error handling pattern.
-- **Files:** `server/routes/voice.ts`, `server/routes/sales.ts`, `server/routes/integrations.ts`, `server/routes/agents.ts`, `server/routes/plans.ts`
-- **Impact:** Massive code duplication (estimated 70%+ of route code is boilerplate). Changes to error handling or response format must be replicated across all files.
-- **Fix approach:** Create generic CRUD route factory or base class that handles list/create/update/delete for any table with column configuration.
+**Impact:** Personal phone numbers (PII) are transmitted to third-party AI API providers for every AI agent interaction. This may violate LGPD/GPDR compliance depending on the data processing agreement with each provider.
 
-### No View Layer Abstraction
+**Fix approach:** Strip or mask phone numbers in AI context prompts. Use identifier references instead of raw PII.
 
-- **Issue:** All routes directly embed Supabase query logic inline. There is no service/repository layer separating HTTP handling from data access.
-- **Files:** All route files under `server/routes/`
-- **Impact:** Routes are hard to unit test (need HTTP server), impossible to reuse query logic, and mix concerns (HTTP parsing + auth + data access + business logic + response formatting).
-- **Fix approach:** Introduce a repository/service layer between routes and Supabase for data access logic.
+### 7. Weak WebSocket CORS and Auth
 
-### Aggressive Cookie Notice in HTML
+**Issue:** WebSocket endpoint allows all origins and has a broken auth implementation.
 
-- **Issue:** `public/index.html` contains a cookie consent banner that automatically accepts and hides after 3 seconds (`setTimeout(acceptCookies, 3000)`). The `acceptCookies` function sets localStorage but never actually configures any cookie tracking.
-- **Files:** `public/index.html`: cookie banner section
-- **Impact:** The cookie banner is cosmetic only — no actual cookie management or consent mechanism. It auto-accepts for the user, which may violate GDPR/ePrivacy requirements.
+**Files:** `server/services/websocket.ts` (lines 16-18, 30-31)
+
+```typescript
+cors: { origin: '*', methods: ['GET', 'POST'] },
+// ...
+const decoded = jwt.verify(token as string, JWT_SECRET) as any;
+(socket as any).userId = decoded.userId;      // WRONG: should be decoded.id
+(socket as any).tenantId = decoded.tenantId;  // WRONG: should be decoded.tenant_id
+```
+
+**Impact:** The JWT payload created by `generateToken()` in `auth.ts` uses `id` and `tenant_id` (snake_case) as field names, but the WebSocket handler reads `userId` and `tenantId` (camelCase). This means WebSocket authentication always fails — the decoded values will be `undefined`, so `userId` and `tenantId` are never set. 
+
+**Fix approach:** Match field names between auth token generation and WebSocket verification. Restrict CORS origin in production.
+
+### 8. Cross-Tenant Contact Access via URL
+
+**Issue:** `contacts.ts` routes accept `tenantId` as a URL parameter without validation.
+
+**Files:** `server/routes/contacts.ts` (lines 8, 21, 35, 47)
+
+**Impact:** A user authenticated for tenant A can call `GET /api/contacts/tenant-b/contact-id` to access tenant B's contact data. The auth middleware sets `req.user.tenant_id` but it's never checked against the URL parameter.
+
+**Fix approach:** Remove `:tenantId` from URLs and use `req.user.tenant_id` exclusively.
+
+### 9. Missing Input Validation in Admin Routes
+
+**Issue:** Admin CRUD routes accept `req.body` directly without schema validation.
+
+**Files:** `server/routes/admin.ts` (lines 154, 281, 292, 380)
+
+```typescript
+// Line 281: Direct spread of request body
+const plan = { id, ...req.body, is_active: 1, ... };
+```
+
+**Impact:** Clients can set arbitrary fields on database records. For example, creating a plan with `is_master: true` or setting arbitrary permissions.
+
+**Fix approach:** Validate request bodies with Zod schemas. Whitelist allowed fields.
+
+## Known Bugs
+
+### 1. WebSocket Authentication Broken
+
+**Symptoms:** WebSocket connections always fail authentication because the JWT field names don't match between `auth.ts` (generates `{ id, tenant_id, ... }`) and `websocket.ts` (reads `decoded.userId`, `decoded.tenantId`). The socket connects but `userId` and `tenantId` are `undefined`, so real-time features (room joins, message broadcasts) don't work correctly.
+
+**Files:** `server/middleware/auth.ts` (JWT payload), `server/services/websocket.ts` (JWT verification)
+
+**Trigger:** Any WebSocket connection attempt.
+
+### 2. Audio Conversion Functions are No-Ops
+
+**Symptoms:** `convertOggToMp3()` and `convertToOpusOgg()` in `server/services/audio.ts` just copy files instead of converting them. The resulting files have incorrect extensions/content types, causing downstream errors in transcription and playback.
+
+**Files:** `server/services/audio.ts` (lines 216-231)
+
+```typescript
+// Line 219: Just copies the file, doesn't convert
+fs.copyFileSync(oggPath, mp3Path);
+// Line 229: Same issue
+fs.copyFileSync(inputPath, outputPath);
+```
+
+**Trigger:** Sending or receiving voice messages triggers futile format conversion.
+
+### 3. Backup and Deploy Systems Are Simulated
+
+**Symptoms:** The deploy and backup systems use `setTimeout` with random data to simulate operations. They don't actually create backups, trigger deployments, or perform rollbacks.
+
+**Files:** `server/routes/deploy.ts` (lines 75-81, 164-168, 194)
+
+```typescript
+// Line 77-78: Fake backup size
+size: Math.floor(Math.random() * 5000000) + 100000,
+// Line 164-168: Fake deploy state machine
+setTimeout(async () => { ... }, 3000);
+setTimeout(async () => { ... }, 6000);
+```
+
+**Trigger:** Triggering a backup or deploy from the admin panel.
+
+### 4. checkPlanLimit Silently Bypasses on Error
+
+**Symptoms:** When `checkPlanLimit` throws an error, the middleware silently calls `next()` instead of returning an error response, allowing the operation to proceed without limit checking.
+
+**Files:** `server/middleware/rbac.ts` (lines 206-208)
+
+```typescript
+try {
+  const { allowed, current, limit } = await limitCheck(req);
+  // ...
+} catch (error) {
+  next();  // Silent bypass on error
+}
+```
+
+**Trigger:** Any error during limit checking (e.g., database timeout, missing relation).
+
+### 5. Schema-Dialect Mismatch Blocks Drizzle CLI
+
+**Symptoms:** Running `drizzle-kit` commands (generate, push, migrate) fails because the schema uses `sqlite-core` imports but the config specifies `postgresql` dialect.
+
+**Files:** `drizzle.config.ts`, `server/db/schema.ts`
+
+**Trigger:** Any attempt to use Drizzle Kit CLI for schema management.
 
 ## Performance Bottlenecks
 
-### No Cursor-Based Pagination
+### 1. Database Query on Every Authenticated Request
 
-- **Issue:** All pagination uses `limit` + `offset` pattern, e.g., `server/routes/contacts.ts:14` (`limit(limit)`), `server/routes/ctwa.ts:97-98` (`limit(limit)`), `server/routes/admin.ts:543` (`.range()`). As offset increases, database performance degrades.
-- **Files:** `server/routes/contacts.ts:14`, `server/routes/ctwa.ts:97-98`, `server/routes/admin.ts:543`, `server/routes/logs.ts:16`
-- **Impact:** Page load times increase linearly with data volume. Large tenants (>100K records) will see slow responses for deep pages.
-- **Fix approach:** Implement cursor-based pagination using `created_at` or `id` as the cursor for list endpoints.
+**Problem:** The auth middleware makes a Supabase query on every request to verify user status.
 
-### No Rate Limiting
+**Files:** `server/middleware/auth.ts` (lines 53-58)
 
-- **Issue:** No rate limiting middleware anywhere. Authentication endpoints (`POST /api/auth/login`) and webhook endpoints (`POST /api/webhooks/whatsapp`) are completely unthrottled.
-- **Files:** `server/index.ts`, `api/index.ts` — no rate limiting middleware present
-- **Impact:** Vulnerable to brute-force attacks on login, DoS on webhook endpoints, and API abuse by compromised tokens.
-- **Fix approach:** Add `express-rate-limit` middleware with strict limits on auth routes and reasonable limits on API routes.
+```typescript
+const { data: dbUser, error } = await supabase
+  .from('users')
+  .select('id, is_active')
+  .eq('id', user.id)
+  .single();
+```
 
-### No Response Caching
+**Impact:** Adds ~20-50ms latency to every API request. For high-traffic WhatsApp webhooks, this can add significant overhead.
 
-- **Issue:** No caching headers or mechanisms for any endpoints, including analytics dashboard (`server/routes/analytics.ts:7`), system health (`server/routes/health.ts:8`), and provider versions (`server/routes/updates.ts:23`).
-- **Files:** All routes
-- **Impact:** Repeated requests for the same data hit the database every time. Analytics dashboards that load entire tables recompute on every page refresh.
-- **Fix approach:** Add `Cache-Control` headers for read-heavy endpoints. Consider in-memory cache (e.g., `node-cache`) for frequently accessed, rarely changing data.
+**Improvement path:** Cache token blacklist in memory, rely on JWT signature verification alone, and only verify user status periodically or on sensitive operations.
 
-### Analytics Loads All Records
+### 2. Inefficient In-Memory Filtering
 
-- **Issue:** `server/routes/analytics.ts:12-15` fires 5 parallel Supabase queries, each loading all records for contacts, conversations, messages, sales, and CTWA attributions — then counts/filters in JavaScript.
-- **Files:** `server/routes/analytics.ts:12-34`
-- **Impact:** Dashboard load time and memory usage scale linearly with total data volume. For a tenant with 500K messages, all 500K records are loaded into memory.
-- **Fix approach:** Use Supabase aggregation queries (`.select('*', { count: 'exact', head: true })`) or database-level aggregation to get counts without transferring rows.
+**Problem:** Several routes fetch all records and filter in-memory instead of using database queries.
+
+**Files:** `server/routes/crm.ts` (lines 22-29), `server/routes/chat.ts` (lines 22-25)
+
+```typescript
+// crm.ts: Fetches ALL contacts for tenant, then filters in-memory
+const { data: rows } = await sb.from('contacts').select('*').eq('tenant_id', tid);
+let enriched = (rows || []).map(...);
+const { search, tag, status, source, stage } = req.query;
+if (search) enriched = enriched.filter(c => ...);  // Client-side filter
+```
+
+**Impact:** For tenants with thousands of contacts, this fetches all records into memory and filters client-side, wasting bandwidth and memory.
+
+**Improvement path:** Push filters to the database query (`.ilike()`, `.eq()`, `.in()`) with proper pagination.
+
+### 3. Sequential Webhook Message Processing
+
+**Problem:** Incoming webhooks with multiple messages process each message sequentially within a serial loop.
+
+**Files:** `server/routes/webhooks.ts` (lines 95-143)
+
+**Impact:** A webhook with 20 messages processes them one by one, each making multiple Supabase queries. This can cause timeouts under load.
+
+**Improvement path:** Process messages in parallel with Promise.all, or queue them for background processing.
 
 ## Fragile Areas
 
-### Webhook Handler — `webhook-handler.ts`
+### 1. Runtime Error Handling via Empty Catches
 
-- **Files:** `server/services/webhook-handler.ts`
-- **Why fragile:** The webhook handler directly constructs DB operations from raw webhook payloads. The message content is serialized with `JSON.stringify(message.text || message.image || message.interactive || {})` — if `message.text` is `undefined`, it falls through to `message.image`, then `message.interactive`, then `{}`. Any unrecognized message type (e.g., new WhatsApp message types) would result in an empty `{}` content string. The `@ts-nocheck` at line 1 suppresses any type mismatch warnings.
-- **Test coverage:** No tests found.
-- **Safe modification:** Always add new message type branches explicitly. Never rely on the `||` fallback chain for unknown types.
+**Files with `catch (e) {}` pattern:**
+- `server/middleware/auth.ts` line 81
+- `server/routes/auth.ts` lines 82, 95, 163, 195, 328
+- `server/services/audio.ts` line 237
 
-### Evolution API Webhook — `server/routes/evolution.ts`
+**Why fragile:** Silent empty catches suppress errors without logging, making debugging nearly impossible. This pattern appears in auth middleware, login, impersonation, and logout flows — masking failures in critical security operations.
 
-- **Files:** `server/routes/evolution.ts`
-- **Why fragile:** This monolithic 253-line handler manages the entire lifecycle: contact creation, conversation management, audio downloading/transcription, AI processing, and message sending. If any step fails (audio download, transcription, AI call), the entire webhook response may still return 200, but side effects are partially applied. The `@ts-nocheck` means schema changes (e.g., column renames) silently break queries.
-- **Test coverage:** No tests found.
-- **Safe modification:** Break this handler into smaller, focused functions. Each stage (contact resolve, message save, AI process, response send) should be independently testable.
+**Safe modification:** Replace all empty catches with at minimum `console.error(e)`. Better: log structured error data and track in monitoring.
 
-### AI Agent — `server/services/ai-agent.ts`
+### 2. AI Agent Tool Execution Without Tenant Validation
 
-- **Files:** `server/services/ai-agent.ts`
-- **Why fragile:** Direct API calls to Groq/OpenAI/DeepSeek with no response validation, no retry logic, no circuit breaker. The tool execution (`executeTool`, line 120) directly mutates the database from AI-generated tool calls — if the AI hallucinates tool arguments, it writes bad data. The `@ts-nocheck` at line 1 removes all safety.
-- **Test coverage:** No tests found.
-- **Safe modification:** Validate AI tool call arguments against a schema before executing. Add response validation for AI provider responses. Add idempotency keys for tool executions.
+**Files:** `server/services/ai-agent.ts` (lines 120-212)
 
-### Encryption Layer — `server/lib/encryption.ts`
+**Why fragile:** The `executeTool` function receives `contactId` and `conversationId` from AI-generated tool arguments. There's no validation that these IDs belong to the requesting tenant. A compromised or hallucinating AI could access or modify data across tenants.
 
-- **Files:** `server/lib/encryption.ts`
-- **Why fragile:** Uses `CryptoJS.AES.encrypt` which uses ECB mode by default (insecure). The encryption key has a hardcoded fallback. There's no IV (initialization vector), making the encryption deterministic. If the same plaintext is encrypted twice, the ciphertext is identical.
-- **Test coverage:** No tests found.
-- **Safe modification:** Replace with Node.js native `crypto` module using AES-256-GCM with a random IV. Never use ECB mode for any purpose.
+**Safe modification:** Validate that `contact_id` and `conversation_id` belong to the specified `tenantId` before executing any tool.
 
-### Tags Route Hardcodes Tenant
+### 3. Unrestricted Changelog and Backup Mutations
 
-- **Files:** `server/routes/tags.ts:28`
-- **Why fragile:** The create tag endpoint hardcodes `tenant_id: 'default'` instead of using the authenticated user's tenant or the `x-tenant-id` header. All tags are created under the master tenant regardless of which tenant the user belongs to.
-- **Test coverage:** No tests found.
-- **Safe modification:** Use `req.headers['x-tenant-id']` or `req.user!.tenant_id` like every other route does.
+**Files:** `server/routes/deploy.ts` (lines 15-47, 58-134)
 
-## Scaling Limits
+**Why fragile:** The deploy routes allow unauthenticated (or poorly scoped) creation, update, and deletion of changelogs, backups, and modules. The routes import `Router` and `getSupabase` but `deploy.ts` properly has auth through `server/index.ts` — but `api/index.ts` also has `authMiddleware` applied. However, the routes don't check tenant ownership.
 
-### Column-Type Limitations
+**Safe modification:** Add tenant-specific scoping to all deploy/backup/changelog operations.
 
-- **Issue:** All timestamps are stored as TEXT (`created_at`, `updated_at`, `sent_at`, etc.) in both the Drizzle schema and PostgreSQL migrations. JSON fields (tags, permissions, settings, config) are stored as TEXT with manual `JSON.parse()` on read.
-- **Files:** `server/db/schema.ts` (all columns), `migrations/001_initial.sql` (all columns using `TEXT DEFAULT (now())::text`)
-- **Impact:** No time-based indexing, no native JSON querying (PostgreSQL `->>` operators), no date arithmetic at the database level. Manual JSON.parse on every read adds overhead. Filtering by date requires string comparison.
-- **Fix approach:** Use `TIMESTAMPTZ` for dates and `JSONB` for JSON data in PostgreSQL. Update the Drizzle schema to match.
+### 4. Raw Body Capture Reliability
 
-### Single `customer_id` per User
+**Files:** `server/index.ts` (lines 42-46), `api/index.ts` (lines 37-41)
 
-- **Issue:** Users can only belong to one customer (single `customer_id` column on `users`). This prevents scenarios where a user manages multiple client accounts.
-- **Files:** `server/db/schema.ts:17`, `migrations/002_saas_multitenant.sql:83`
-- **Impact:** Cannot support multi-account users or cross-tenant admin workflows without workarounds like impersonation.
-- **Fix approach:** Use a user-customer join table for many-to-many relationships.
+```typescript
+app.use(express.json({
+  verify: (req: any, _res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  },
+}));
+```
+
+**Why fragile:** The raw body is captured by overriding a property on the Express request. The `verify` callback runs before body parsing, but if body parsing fails (malformed JSON), the raw body may not be available, breaking webhook signature verification.
+
+**Safe modification:** Add explicit middleware to capture raw body before JSON parsing, and handle JSON parse errors gracefully.
+
+### 5. OAuth2 Redirect Parameter Injection
+
+**Files:** `server/routes/ctwa.ts` (likely) — but looking at `server/routes/webhooks.ts` line 193-214
+
+**Why fragile:** Redirect URIs and callback URLs are passed as query parameters in OAuth flows. Without validation that the redirect URI matches a whitelist, attackers could use open redirect patterns.
+
+**Safe modification:** Validate all callback/redirect URLs against a whitelist of allowed domains.
 
 ## Dependencies at Risk
 
-### `better-sqlite3` as Optional Dependency
+### 1. `better-sqlite3` as Optional Dependency
 
-- **Risk:** `better-sqlite3` is listed under `optionalDependencies` in `package.json:33`. It requires native compilation and may fail on non-standard architectures or serverless environments. The code handles this gracefully (throws warnings), but the dual-database approach means developers may not catch PostgreSQL-specific issues during local development.
-- **Files:** `package.json:33`, `server/db/index.ts:25-27`
-- **Migration plan:** Remove SQLite dependency entirely. Use Supabase local development or Drizzle Kit push for schema development.
+**Risk:** Listed as `optionalDependencies` — if installation fails (e.g., due to native compilation issues), local development breaks silently.
 
-## Missing Critical Features
+**Impact:** The `db/index.ts` wraps SQLite init in try/catch, so it fails silently and falls back to Supabase queries which may not work locally.
 
-### No Test Suite
+### 2. `drizzle-orm` Version Mismatch Concern
 
-- **Problem:** The codebase has zero tests. No test directory, no test files, no test configuration. The `package.json` has no test script.
-- **Files:** N/A — no test files found
-- **Blocks:** Cannot safely refactor the massive duplicated code (routes, CRUD patterns, mock/simulated systems). Changes require manual QA. The `@ts-nocheck` + no strict mode + no tests triple-threat means bugs are guaranteed on any non-trivial change.
-- **Priority:** High
+**Risk:** `drizzle-orm@^0.45.2` is installed but the schema imports `drizzle-orm/sqlite-core` while the config expects `postgresql`. This dual-target approach is not well-supported by Drizzle.
 
-### No Input Validation Library
+**Impact:** Any Drizzle CLI operation will fail. Manual SQL migrations must be crafted instead.
 
-- **Problem:** Zod is listed in `package.json:30` as a dependency but is not used anywhere in the route code. No request body validation exists.
-- **Files:** `package.json:30` (Zod present but unused)
-- **Blocks:** Request body injection vulnerabilities, inability to provide structured error messages.
-- **Priority:** Medium
+### 3. CryptoJS Maintenance
 
-### No Logging Framework
+**Risk:** `crypto-js` is a community-maintained library with known concerns about its default AES mode (ECB). The project may be better served by Node's built-in `crypto` module.
 
-- **Problem:** All logging uses `console.log`, `console.error`, `console.warn`. No structured logging, no log levels, no log transport, no correlation IDs.
-- **Files:** All server files use `console.*`
-- **Blocks:** Debugging production issues requires correlating multiple console output lines. No searchable structured logs.
-- **Priority:** Medium
-
-### No Health Check Route Auth Bypass
-
-- **Issue:** `server/index.ts:71` mounts `GET /api/ping` without authentication, which is correct. However, `server/index.ts:46` mounts `GET /api/health` WITH `authMiddleware`. The `/api/health/system` endpoint (`server/routes/health.ts:8`) queries `system_health` table. This means monitoring systems that need to check health must authenticate.
-- **Files:** `server/index.ts:46`, `server/routes/health.ts:8`
-- **Priority:** Low
+**Impact:** Credential encryption uses a questionable cipher mode with no authentication tag (integrity check). Encrypted data could be tampered with undetected.
 
 ## Test Coverage Gaps
 
-- **What's not tested:** Everything. No test files exist anywhere in the codebase.
-- **Files:** All
-- **Risk:** Any refactor, dependency update, or change to shared patterns risks regression across the entire application.
-- **Priority:** High
+### 1. Multi-Tenant Security Not Tested
+
+**What's not tested:** The critical vulnerability of tenant isolation (routes using `x-tenant-id` vs `req.user.tenant_id`) has zero test coverage.
+
+**Files at risk:** `server/routes/chat.ts`, `server/routes/crm.ts`, `server/routes/contacts.ts`, `server/routes/integrations.ts`
+
+**Risk:** Cross-tenant data leaks go unnoticed until a security incident occurs.
+
+**Priority:** HIGH
+
+### 2. WebSocket Functionality Not Tested
+
+**What's not tested:** The WebSocket endpoint (`server/services/websocket.ts`) has no tests covering authentication, room joining, or event broadcasting.
+
+**Files:** `server/services/websocket.ts`
+
+**Risk:** The broken JWT field mapping bug (`userId` vs `id`) was not caught. Real-time features silently malfunction.
+
+**Priority:** MEDIUM
+
+### 3. AI Agent Tool Execution Not Tested
+
+**What's not tested:** The `server/services/ai-agent.ts` tool execution logic — especially the tool calling, follow-up response, and side effects.
+
+**Files:** `server/services/ai-agent.ts`
+
+**Risk:** AI agent tools can modify CRM data without validation. Costly AI API calls are made without guardrails.
+
+**Priority:** MEDIUM
+
+### 4. No End-to-End or Integration Tests
+
+**What's not tested:** There are no integration tests that exercise the full request lifecycle (auth → route → database). Tests use mocked Supabase with limited fidelity.
+
+**Files in test suite:** All test files mock Supabase completely.
+
+**Risk:** Route-level bugs (like broken auth in middleware or wrong field names) are invisible to unit tests.
+
+**Priority:** MEDIUM
+
+## Known Issues Summary
+
+| Severity | Issue | File(s) |
+|----------|-------|---------|
+| CRITICAL | Multi-tenant data isolation via `x-tenant-id` header | `routes/chat.ts`, `routes/crm.ts`, `routes/contacts.ts`, `routes/integrations.ts` |
+| CRITICAL | WebSocket auth broken (wrong JWT field names) | `services/websocket.ts` |
+| CRITICAL | Hardcoded encryption key fallback | `lib/encryption.ts` |
+| HIGH | Hardcoded admin password `admin123` | `routes/auth.ts` |
+| HIGH | Hardcoded default password `123456` for new users | `routes/admin.ts` |
+| HIGH | 21 files with `@ts-nocheck` | Various |
+| HIGH | Hardcoded webhook verify token | `routes/webhooks.ts` |
+| HIGH | Weak encryption (CryptoJS, ECB mode) | `lib/encryption.ts` |
+| HIGH | PII sent to third-party AI APIs | `services/ai-agent.ts` |
+| HIGH | Drizzle schema/dialect mismatch | `drizzle.config.ts`, `db/schema.ts` |
+| MEDIUM | TypeScript strict mode disabled | `tsconfig.json` |
+| MEDIUM | Audio conversion functions are no-ops | `services/audio.ts` |
+| MEDIUM | Backup/deploy systems are simulated | `routes/deploy.ts` |
+| MEDIUM | Empty catch blocks suppress errors | Multiple files |
+| MEDIUM | WebSocket permissive CORS `origin: *` | `services/websocket.ts` |
+| MEDIUM | Inefficient in-memory filtering | `routes/crm.ts`, `routes/chat.ts` |
+| MEDIUM | AI tool execution lacks tenant validation | `services/ai-agent.ts` |
+| MEDIUM | Sequential webhook processing | `routes/webhooks.ts` |
+| MEDIUM | Monolithic 4890-line frontend | `public/js/ozion.js` |
+| LOW | Database round-trip on every authenticated request | `middleware/auth.ts` |
+| LOW | Mixed module system (require in ESM) | `db/index.ts` |
+| LOW | Duplicate API entry points | `api/index.ts`, `server/index.ts` |
 
 ---
 
-*Concerns audit: 2026-06-20*
+*Concerns audit: 2026-06-22*

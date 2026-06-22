@@ -1,341 +1,281 @@
-<!-- refreshed: 2026-06-19 -->
+<!-- refreshed: 2026-06-22 -->
 # Architecture
 
-**Analysis Date:** 2026-06-19
+**Analysis Date:** 2026-06-22
 
 ## System Overview
 
 ```text
-┌──────────────────────────────────────────────────────────────────────┐
-│                         CLIENT LAYER                                 │
-│  ┌─────────────────────────┐  ┌──────────────────────────────────┐  │
-│  │  Vanilla JS SPA         │  │  Legacy Pages                    │  │
-│  │  `public/js/ozion.js`   │  │  `js/app.js`, `index.html`       │  │
-│  │  `public/index.html`    │  │  `ctwa.html`, `chat.html`        │  │
-│  └───────────┬─────────────┘  └──────────────────────────────────┘  │
-│              │                          Socket.IO                    │
-│              │                          `/ws` path                    │
-└──────────────┼───────────────────────────────────────────────────────┘
-               │ HTTP (JSON) + JWT Bearer Token
-               ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                      API LAYER  (Express.js)                         │
-│                                                                      │
-│  Entry Points:                                                       │
-│  ┌─────────────────────────┐  ┌──────────────────────────────────┐  │
-│  │ Local Dev               │  │ Vercel Production                │  │
-│  │ `server/index.ts`       │  │ `api/index.ts`                  │  │
-│  │ PORT 3000, serves SPA   │  │ No static serving, serverless    │  │
-│  └───────────┬─────────────┘  └───────────┬──────────────────────┘  │
-│              │                              │                         │
-│              ▼                              ▼                         │
-│  ┌────────────────────────────────────────────────────────────────┐  │
-│  │                    Middleware Stack                             │  │
-│  │  helmet() → cors() → express.json() → static files → routes    │  │
-│  │  ┌────────────────────────────────────────────────────────┐     │  │
-│  │  │  authMiddleware  (JWT verification)                    │     │  │
-│  │  │  requireRole / requirePermission / requireMaster       │     │  │
-│  │  │  checkPlanLimit (RBAC + usage limits)                  │     │  │
-│  │  └────────────────────────────────────────────────────────┘     │  │
-│  └────────────────────────────────────────────────────────────────┘  │
-│                                                                      │
-│  ┌────────────────────────────────────────────────────────────────┐  │
-│  │  24 Route Modules  (Express Router)                             │  │
-│  │  `server/routes/*.ts`                                           │  │
-│  │                                                                  │  │
-│  │  Public:      auth, webhooks (whatsapp + evolution)              │  │
-│  │  Protected:   whatsapp, messages, ctwa, analytics, contacts,    │  │
-│  │               admin, crm, flows, agents, chat, voice, sales,    │  │
-│  │               integrations, health, updates, logs, plans,       │  │
-│  │               deploy, flowise, tags, spa                        │  │
-│  └────────────────────────────────────────────────────────────────┘  │
-└──────────────┬───────────────────────────────────────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                     SERVICE LAYER                                    │
-│  `server/services/`                                                  │
-│                                                                      │
-│  ┌─────────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │  AI Agent        │  │  Meta API   │  │  Evolution API          │  │
-│  │  `ai-agent.ts`   │  │  `meta-    │  │  `evolution-api.ts`    │  │
-│  │  OpenAI/Groq/    │  │  api.ts`    │  │  Baileys-based          │  │
-│  │  DeepSeek FC     │  │  Graph v22  │  │  WhatsApp API           │  │
-│  └─────────────────┘  └─────────────┘  └─────────────────────────┘  │
-│  ┌─────────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │  Audio           │  │  WebSocket  │  │  Webhook Handler        │  │
-│  │  `audio.ts`      │  │  `web-     │  │  `webhook-handler.ts`   │  │
-│  │  TTS/STT via     │  │  socket.ts` │  │  Process inbound msgs   │  │
-│  │  Groq/Eleven-    │  │  Socket.IO  │  │  + status updates       │  │
-│  │  Labs/OpenAI     │  │  real-time  │  │                         │  │
-│  └─────────────────┘  └─────────────┘  └─────────────────────────┘  │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │  Flow Validator  `validate-flow.ts`                           │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└──────────────┬───────────────────────────────────────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                    DATA LAYER                                        │
-│                                                                      │
-│  ┌────────────────────────────┐  ┌──────────────────────────────┐   │
-│  │  Production (Supabase)     │  │  Local Dev (SQLite)          │   │
-│  │  `server/db/supabase.ts`   │  │  `server/db/index.ts`        │   │
-│  │  @supabase/supabase-js     │  │  better-sqlite3 + Drizzle    │   │
-│  │  PostgreSQL                │  │  `data/ozion.db`             │   │
-│  │  `migrations/001_initial   │  │  `server/db/schema.ts`       │   │
-│  │  .sql` schema              │  │  (Drizzle SQLite schema)     │   │
-│  └────────────────────────────┘  └──────────────────────────────┘   │
-│                                                                      │
-│  ┌────────────────────────────────────────────────────────────────┐  │
-│  │  Encryption Helper  `server/lib/encryption.ts`                  │  │
-│  │  AES encrypt/decrypt + SHA256 hashing for credentials          │  │
-│  └────────────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────────────┐
-│                    EXTERNAL PROVIDERS                                 │
-│  `providers/*/`  (15 providers, each with 7-file pattern)            │
-│                                                                      │
-│  Payment:     stripe, mercadopago, hotmart, kiwify, perfectpay,     │
-│               asaas                                                  │
-│  AI:          openai, deepseek, claude, gemini, groq                 │
-│  WhatsApp:    meta, webhook, (evolution-api in services)             │
-│  Voice:       elevenlabs                                             │
-│  Tracking:    utmify                                                  │
-└──────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                     PUBLIC FRONTEND (SPA)                         │
+│           `public/index.html` + `public/js/ozion.js`              │
+│           `public/js/inbox.js` + `public/css/ozion.css`           │
+├──────────────┬───────────────────────────┬────────────────────────┤
+│              │                           │                        │
+│  HTTP API    │   WebSocket (socket.io)   │   Static Assets        │
+│  /api/*      │   /ws                     │   /css/, /js/          │
+└──────┬───────┴──────────────┬────────────┴────────────────────────┘
+       │                      │
+       ▼                      ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                     EXPRESS.JS SERVER LAYER                       │
+│   `server/index.ts` (local dev, ESM)                             │
+│   `api/index.ts` (Vercel serverless entrypoint)                  │
+├──────────────────────────────────────────────────────────────────┤
+│  MIDDLEWARE              │  ROUTES                    │ SERVICES │
+│  `auth.ts` (JWT)         │  25 route files            │ 13 srv   │
+│  `rbac.ts` (perms)       │  `/api/{auth,webhooks,     │ files    │
+│                          │   crm,chat,messages,...}`  │          │
+├──────────────┬───────────────────────────┬────────────────────────┤
+│  PROVIDERS   │  NORMALIZERS              │  DB LAYER              │
+│  (15 ext)    │  (2 + types)              │  `db/`                 │
+│  stripe,     │  meta-normalizer          │  schema.ts (Drizzle)   │
+│  claude,     │  evolution-normalizer     │  supabase.ts (client)  │
+│  openai,     │                           │  index.ts (SQLite dev) │
+│  meta, ...   │                           │                         │
+└──────┬───────┴──────────────┬────────────┴────────────────────────┘
+       │                      │
+       ▼                      ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                    DATA LAYER                                      │
+│  Supabase PostgreSQL (production)                                 │
+│  SQLite via better-sqlite3 (local dev, `data/ozion.db`)            │
+│  Drizzle ORM schema in `server/db/schema.ts`                       │
+│  SQL migrations in `migrations/*.sql`                              │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ## Component Responsibilities
 
-| Component | Responsibility | File |
-|-----------|----------------|------|
-| Server Entry (Local) | Mount routes, middleware, serve static SPA, start HTTP server | `server/index.ts` |
-| Vercel Entry (Prod) | Mount routes, middleware, export Express app for serverless | `api/index.ts` |
-| Auth Middleware | JWT generation, verification, user lookup, customer status check | `server/middleware/auth.ts` |
-| RBAC Middleware | Permission definitions, role-based access, plan limit checking | `server/middleware/rbac.ts` |
-| Auth Routes | Login, logout, change password, impersonate customers | `server/routes/auth.ts` |
-| Webhooks Routes | WhatsApp Meta webhook verify + receive, Flowise AI fallback | `server/routes/webhooks.ts` |
-| Chat Routes | Conversations CRUD, message send, AI toggle, transfer, risk word check | `server/routes/chat.ts` |
-| CRM Routes | Contact CRUD, import/export CSV, filter/search | `server/routes/crm.ts` |
-| Flows Routes | Flow CRUD, blocks, edges, toggle, analytics, import/export JSON, bulk ops | `server/routes/flows.ts` |
-| Agents Routes | Agent CRUD, Groq-based test endpoint | `server/routes/agents.ts` |
-| Admin Routes | Customers, plans, users, workspaces CRUD + platform stats, revenue, audit logs | `server/routes/admin.ts` |
-| CTWA Routes | Campaign/stats, attributions, Meta CAPI conversion events | `server/routes/ctwa.ts` |
-| Evolution Routes | Evolution API webhook + AI agent orchestration (transcribe → AI → TTS → reply) | `server/routes/evolution.ts` |
-| AI Agent Service | Function-calling AI (Groq/OpenAI/DeepSeek), 6 tools, knowledge base context | `server/services/ai-agent.ts` |
-| Meta API Service | WhatsApp Business API client (Graph v22), token exchange, messaging, templates, CAPI | `server/services/meta-api.ts` |
-| Evolution API Service | Baileys-based WhatsApp API via external Evolution API instance | `server/services/evolution-api.ts` |
-| Webhook Handler | Process inbound WhatsApp messages: upsert contact/conversation, CTWA attribution | `server/services/webhook-handler.ts` |
-| WebSocket Service | Socket.IO real-time, rooms per tenant/conversation/user, emit helpers | `server/services/websocket.ts` |
-| Audio Service | Audio download, Groq/OpenAI transcription, ElevenLabs TTS | `server/services/audio.ts` |
-| Supabase Client | Singleton Supabase client + query/insert/update/delete helpers | `server/db/supabase.ts` |
-| SQLite Client | Lazy better-sqlite3 init with Drizzle ORM proxy for local dev | `server/db/index.ts` |
-| Drizzle Schema | SQLite table definitions for all 21 entities | `server/db/schema.ts` |
-| Encryption Lib | AES encrypt/decrypt, SHA256 hashing for credentials | `server/lib/encryption.ts` |
+| Component | Responsibility | Files |
+|-----------|----------------|-------|
+| **Routes** | HTTP request handling, parameter extraction, response formatting | `server/routes/*.ts` (25 files) |
+| **Middleware** | Request pre-processing (auth, permissions, plan limits) | `server/middleware/auth.ts`, `server/middleware/rbac.ts` |
+| **Services** | Business logic, external API integration, data processing | `server/services/*.ts` (13 files) |
+| **DB Layer** | Database connection, schema definitions, query helpers | `server/db/*.ts` (4 files) |
+| **Providers** | WhatsApp messaging abstraction (Meta, Evolution) | `server/services/providers/*.ts` |
+| **Normalizers** | Webhook payload normalization to unified types | `server/services/normalizers/*.ts` |
+| **External Providers** | Third-party integrations (Stripe, Claude, OpenAI, etc.) | `providers/*/` (15 directories) |
+| **Frontend SPA** | Single-page application (vanilla JS, no framework) | `public/index.html`, `public/js/ozion.js`, `public/js/inbox.js`, `public/css/ozion.css` |
+| **CI/CD** | GitHub Actions workflows for deploy, backup, versioning | `.github/workflows/*.yml` |
 
 ## Pattern Overview
 
-**Overall:** Route-Layer Architecture with Direct Database Access
-
-The codebase is organized as an Express.js application where each domain (CRM, Chat, Flows, Agents, etc.) maps to a route module. Route files contain both HTTP handling AND database queries — there is no repository/data-access layer abstraction. Services are reserved for external API integrations and complex workflows (AI agent, audio processing, webhook plumbing).
+**Overall:** Modular monolith with route-service-database layering. Express.js handles all HTTP, Socket.IO handles real-time. External integrations abstracted behind provider interfaces and normalizer types.
 
 **Key Characteristics:**
-- Every domain feature is a self-contained Express `Router` in `server/routes/`
-- Route files use `getSupabase()` directly — no dependency injection or service abstraction for data
-- Multi-tenancy via `tenant_id` column on all tables, passed through `x-tenant-id` header
-- External integrations live in `providers/` with a consistent 7-file structure per provider
-- Supabase (PostgreSQL) is the production database; SQLite via Drizzle ORM is the local dev fallback
-- Frontend is a vanilla JavaScript SPA (no React/Vue) — single ~4,890-line file with direct DOM manipulation
-- Real-time updates via Socket.IO with room-based subscriptions
+- **Thin routes, thick services** — Routes extract request params and delegate to services. Services contain business logic.
+- **Fire-and-forget error handling** — Many try/catch blocks silently swallow non-critical errors (especially webhook processing and audit logging).
+- **Tenant-scoped data access** — Every query filters by `tenant_id` from JWT or `x-tenant-id` header.
+- **Dual data layer** — Drizzle schema written for SQLite (local dev), Supabase JS client used in production. No shared query abstraction between the two.
+- **Serverless-compatible** — Both `server/index.ts` (long-running) and `api/index.ts` (Vercel serverless) share the same route imports.
 
 ## Layers
 
-**Client Layer:**
-- Purpose: Browser-based single-page application
-- Location: `public/`
-- Contains: `index.html` (shell), `js/ozion.js` (SPA), `css/ozion.css` (styles)
-- Depends on: API (`/api/*`), Socket.IO (`/ws`)
-- Used by: End users in browser
-
-**Entry Point Layer:**
-- Purpose: Application bootstrap and middleware wiring
-- Location: `server/index.ts` (local), `api/index.ts` (Vercel)
-- Contains: Middleware stack, route mounting, server start
-- Depends on: All route modules, middleware, `server/db/supabase.ts`
-- Used by: HTTP clients / Vercel serverless runtime
-
-**Route Layer:**
-- Purpose: HTTP request handling per domain
+**Routes Layer:**
+- Purpose: HTTP request handling, parameter extraction, response formatting
 - Location: `server/routes/`
-- Contains: 24 Express Router modules
-- Depends on: `server/db/supabase.ts` for data, `server/services/*` for complex operations
-- Used by: HTTP clients via middleware chain
+- Contains: 25 route modules, each exporting an Express `Router`
+- Depends on: `server/db/supabase.js`, `server/middleware/auth.js`, services
+- Used by: `server/index.ts` and `api/index.ts`
 
-**Service Layer:**
-- Purpose: External API integration, complex business workflows
+**Services Layer:**
+- Purpose: Business logic, integration orchestration, data transformation
 - Location: `server/services/`
-- Contains: AI agent, Meta Graph API, Evolution API, audio processing, validation, websocket, webhook handler
-- Depends on: `server/db/supabase.ts`, external HTTP APIs
-- Used by: Route handlers
+- Contains: AI agent, webhook processing, message sending, contact timeline, audio, media library, message status history, WebSocket management
+- Depends on: `server/db/supabase.js`, `server/db/index.js` (SQLite), external APIs
+- Used by: Routes layer
 
-**Data Layer:**
-- Purpose: Database access
+**Provider Abstraction Layer:**
+- Purpose: Unified interface for WhatsApp message providers (Meta Cloud API, Evolution API)
+- Location: `server/services/providers/`
+- Contains: `MessageProvider` interface, Meta implementation, Evolution implementation, factory (`sendByProvider`)
+- Depends on: `server/db/supabase.js` (for credential lookup)
+- Used by: Routes (`messages.ts`, `inbox.ts`)
+
+**Normalizer Layer:**
+- Purpose: Transform provider-specific webhook payloads into unified types
+- Location: `server/services/normalizers/`
+- Contains: `NormalizedMessage`, `NormalizedStatusUpdate` types; Meta and Evolution normalizers
+- Used by: `server/services/webhook-handler.ts`
+
+**Database Layer:**
+- Purpose: Data access, schema definition, connection management
 - Location: `server/db/`
-- Contains: Supabase client wrapper, SQLite/Drizzle initialization, Drizzle schema
-- Depends on: `@supabase/supabase-js`, `better-sqlite3`, `drizzle-orm`
-- Used by: Routes and services
+- Contains:
+  - `schema.ts`: Drizzle ORM schema (SQLite dialect) — 30 tables
+  - `schema-deploy.ts`: Additional Drizzle tables for deployment/changelog/backup tracking
+  - `supabase.ts`: Supabase JS client with query helper functions
+  - `index.ts`: Lazy SQLite initialization via better-sqlite3 proxy
+- Used by: Routes, Services
 
-**Providers Layer:**
-- Purpose: External SaaS integration configuration and client interfaces
+**External Providers Layer:**
+- Purpose: Third-party API integrations with standardized file structure
 - Location: `providers/*/`
-- Contains: 15 provider directories, each with 7 files (config, client, testConnection, types, logs, webhooks, README)
-- Depends on: Nothing from `server/` (standalone)
-- Used by: Route handlers (imported directly)
+- Contains: Each provider has `config.ts`, `client.ts`, `types.ts`, `testConnection.ts`, `logs.ts`, `webhooks.ts`, `README.md`
+- Providers: stripe, claude, asaas, openai, gemini, deepseek, elevenlabs, groq, hotmart, kiwify, mercadopago, meta, perfectpay, utmify, webhook
+- Depends on: Environment variables for API keys
 
 ## Data Flow
 
 ### Primary Request Path (Authenticated API)
 
-1. HTTP request arrives at entry point (`server/index.ts` or `api/index.ts`)
-2. Middleware stack processes: `helmet()` → `cors()` → `express.json()` → static files
-3. `authMiddleware` extracts and verifies JWT Bearer token, looks up user in Supabase, checks customer status (`server/middleware/auth.ts:39`)
-4. `requireRole`/`requirePermission` optionally checks user permissions against the defined `PERMISSIONS` map (`server/middleware/rbac.ts`)
-5. Route handler processes the request:
-   - Parses `tenant_id` from `x-tenant-id` header (or JWT)
-   - Calls `getSupabase()` to get Supabase client
-   - Runs CRUD queries directly
-   - Optionally calls a service for external integration
-6. JSON response returned
+1. **Client Request** — SPA (`ozion.js`) makes `fetch()` call with `Authorization: Bearer <token>` header (`public/js/ozion.js`)
+2. **Express Router** — `server/index.ts` or `api/index.ts` routes to the matching route module
+3. **Auth Middleware** — `server/middleware/auth.ts` verifies JWT, checks user exists and is active, checks customer suspension
+4. **Route Handler** — Route file extracts params/body/query, may check RBAC (`server/middleware/rbac.ts`)
+5. **Service Call** — Route delegates to a service function or calls Supabase directly
+6. **Data Access** — `getSupabase()` returns Supabase client, queries run with tenant_id filter
+7. **Response** — Route sends JSON response to client
 
-### WhatsApp Message Inbound Flow (Webhook)
+### Webhook Message Flow (Inbound WhatsApp)
 
-1. Meta sends POST to `/api/webhooks/whatsapp` (`server/routes/webhooks.ts:29`)
-2. Route iterates entries/changes, looks up tenant by `phone_number_id`
-3. For each message: calls `processIncomingMessage()` (`server/services/webhook-handler.ts:32`)
-   - Upserts contact by `wa_id`
-   - Upserts conversation (open status)
-   - Saves message record
-   - Captures CTWA attribution data from referral
-4. For each status: calls `processStatusUpdate()` (`server/services/webhook-handler.ts:158`)
-5. Optionally sends to Flowise for AI response (inline in webhook route)
+1. **Meta Webhook POST** — `POST /api/webhooks/whatsapp` receives message payload
+2. **Signature Verification** — Verifies `x-hub-signature-256` with META_APP_SECRET
+3. **Tenant Resolution** — Looks up `whatsapp_credentials` by `phone_number_id`
+4. **Idempotency Check** — `server/services/webhook-events.ts` creates event with unique key; skips duplicates
+5. **Message Processing** — `processIncomingMessage()` in `webhook-handler.ts`:
+   - Upserts contact (creates if new `wa_id`)
+   - Extracts CTWA ad data from referral
+   - Upserts conversation (creates if no open one exists)
+   - Saves message
+6. **Status Updates** — `processStatusUpdate()` updates message delivery/read status, records status event
+7. **AI Processing** — If Flowise configured, sends message text to Flowise API and replies via WhatsApp
 
-### AI Agent Response Flow (Evolution API Path)
+### Message Sending Flow (Outbound)
 
-1. Inbound message hits `/api/webhooks/evolution` (`server/routes/evolution.ts:12`)
-2. Message parsed via `parseWebhookEvent()` (`server/services/evolution-api.ts:276`)
-3. Contact/conversation upserted in Supabase
-4. Audio messages downloaded and transcribed via Groq/OpenAI (`server/services/audio.ts:23`)
-5. Conversation history fetched, knowledge base context built
-6. `processWithAI()` called (`server/services/ai-agent.ts:238`)
-   - System prompt built with agent identity + contact context
-   - OpenAI-compatible chat completion called with function-calling tools
-   - Tool calls executed against Supabase (update_contact, create_activity, transfer_to_human, etc.)
-   - Follow-up completion called with tool results for final text
-7. AI response saved as outbound message
-8. Text sent back via Evolution API; optionally converted to speech via ElevenLabs
+1. **Client sends message** — `POST /api/inbox/conversations/:id/send`
+2. **Route handler** validates input, inserts message record with status `pending`
+3. **Provider dispatch** — `sendByProvider()` in `server/services/providers/index.ts`:
+   - Looks up `whatsapp_credentials` for tenant
+   - Creates appropriate provider instance (Meta or Evolution)
+   - Calls `provider.sendText({to, text})`
+4. **Message status update** — Updates DB record to `sent` or `failed` based on provider response
+5. **Real-time broadcast** — Via Socket.IO to tenant room and conversation room
 
-**State Management:**
-- No server-side state; all data persisted in Supabase/SQLite
-- JWT tokens carry auth state, stored in `localStorage` on client
-- Socket.IO rooms manage real-time connection state per tenant/user/conversation
-- Module-level singletons: `getSupabase()` lazily initializes Supabase client, `getIO()` holds Socket.IO server reference
+### State Management
+
+**Backend:** Stateless HTTP — all state in database. JWT contains user identity and permissions. No in-memory session state beyond singleton clients (Supabase, SQLite).
+
+**Frontend:** Module-level singletons in `ozion.js` — global arrays for conversations, contacts, flows, agents, etc. Page rendering clears and re-renders the `#app` element. A `render()` function switches between page modes based on `currentPage`.
 
 ## Key Abstractions
 
-**AuthUser Interface:**
-- Purpose: Standardized user object attached to Express `req.user`
-- File: `server/middleware/auth.ts:12`
-- Pattern: JWT payload + request decoration
+**MessageProvider Interface:**
+- Purpose: Unified contract for WhatsApp message sending across different backends
+- File: `server/services/providers/types.ts`
+- Methods: `sendText`, `sendTemplate`, `sendMedia`, `sendButton?`, `sendList?`
+- Implementations: `MetaMessageProvider` (`server/services/providers/meta-provider.ts`), `EvolutionMessageProvider` (`server/services/providers/evolution-provider.ts`)
+- Usage: Routes call `sendByProvider(tenantId, fn)` which resolves the provider and calls the function
 
-**PERMISSIONS Map:**
-- Purpose: String-based permission keys for RBAC (e.g. `contacts:view`, `chat:send`)
-- File: `server/middleware/rbac.ts:4`
-- Pattern: Enum-like object with `ROLE_PERMISSIONS` maps per role
+**NormalizedMessage / NormalizedStatusUpdate:**
+- Purpose: Provider-agnostic types for webhook event payloads
+- File: `server/services/normalizers/types.ts`
+- Normalizers: `normalizeMetaMessage`, `normalizeEvolutionMessage`, `normalizeMetaStatusUpdate`, `normalizeEvolutionStatusUpdate`
+- Used by: Webhook processing pipeline for unified event handling
 
-**Provider 7-File Structure:**
-- Purpose: Consistent external integration interface
-- Location: `providers/*/`
-- Pattern: Each provider has `config.ts`, `client.ts`, `testConnection.ts`, `types.ts`, `logs.ts`, `webhooks.ts`, `README.md`
+**Webhook Event Idempotency:**
+- Purpose: Deduplication of incoming webhook events
+- File: `server/services/webhook-events.ts`
+- Key function: `getWebhookEventIdempotencyKey(provider, eventType, providerEventId)`
+- Pattern: Unique constraint on `(tenant_id, provider, event_id)`; duplicate detection before processing
 
-**AgentResponse Interface:**
-- Purpose: Structured output from AI agent processing
-- File: `server/services/ai-agent.ts:228`
-- Pattern: Contains text response, action results, audio flag, transfer flag
+**Contact Timeline Builder:**
+- Purpose: Unify messages, notes, tasks, and system events into a chronological feed
+- File: `server/services/contact-timeline.ts`
+- Type: Pure function (`buildContactTimeline`) — no DB calls. Accepts categorized inputs, returns sorted `TimelineItem[]`
 
-**WebSocket Room Namespacing:**
-- Purpose: Targeted real-time event delivery
-- File: `server/services/websocket.ts`
-- Pattern: `tenant:{id}`, `user:{id}`, `conv:{id}` room naming with typed emit helpers
+**Authentication System:**
+- JWT-based with custom `AuthUser` type attached to Express `Request.user`
+- Roles: `admin`, `owner`, `manager`, `agent`, `financial`
+- Permission strings: `resource:action` format (e.g., `contacts:view`, `chat:send`)
+- RBAC middleware: `requirePermission()`, `checkPlanLimit()`
+- File: `server/middleware/auth.ts`, `server/middleware/rbac.ts`
 
 ## Entry Points
 
-**Local Development Server:**
+**Local Dev Server:**
 - Location: `server/index.ts`
-- Triggers: `npm run dev` (uses `tsx watch`)
-- Responsibilities: Mount all routes, serve static files from `public/`, start HTTP server on PORT 3000, verify Supabase connection on startup
+- Triggers: `npm run dev` (via `tsx watch`)
+- Responsibilities: Starts Express on PORT, registers all routes + middleware + static file serving, initializes Supabase connection check, exports `app` for testing
 
-**Vercel Serverless Function:**
+**Vercel Production:**
 - Location: `api/index.ts`
-- Triggers: HTTP requests to `/api/*` on Vercel
-- Responsibilities: Mount all routes, export Express app as default (no static serving, no server start)
+- Triggers: Vercel serverless invocation via `api/(.*)` rewrite
+- Responsibilities: Same route registration as local server but without `app.listen()`. Exports Express app as default for Vercel's serverless runtime
+- Build: `vercel.json` rewrites `/api/(.*)` → `api/index.ts` and SPA routes → `/index.html`
+
+**SPA Bootstrap:**
+- Location: `public/js/ozion.js`
+- Triggers: `public/index.html` page load
+- Responsibilities: Handles routing (hash-based pages via `currentPage`), auth state, API calls, rendering all management views
 
 ## Architectural Constraints
 
-- **Threading:** Single-threaded Node.js event loop. Worker threads not used.
-- **Global state:** Module-level singletons: Supabase client (`getSupabase()`), SQLite instance (`initSqlite()`), Socket.IO server (`io` variable in `server/services/websocket.ts`).
-- **Circular imports:** No known circular dependency chains — route files import services and db modules directionally.
-- **Dual data layer:** Schema in `server/db/schema.ts` is Drizzle SQLite (`sqlite-core`). The Supabase Postgres schema is maintained separately in `migrations/001_initial.sql`. Both must be kept in sync manually.
-- **No dependency injection:** All modules use static imports and direct function calls. No IoC container or DI framework.
-- **No ORM for production:** Supabase client uses raw table/query strings. Drizzle ORM is used only for local SQLite dev.
+- **Threading:** Single-threaded Node.js event loop. WebSocket connections via Socket.IO. No worker threads or clustering used.
+- **Global state:** 
+  - `server/db/supabase.ts` — `let supabase` singleton client
+  - `server/db/index.ts` — `let sqlite` and `let _db` singletons for SQLite
+  - `server/services/websocket.ts` — `let io` singleton Socket.IO server
+  - `public/js/ozion.js` — All state in module-level mutable globals (arrays, objects)
+- **Circular imports:** Not detected in current structure (services import DB, routes import services, no reverse dependency)
+- **Tenant isolation:** Enforced via `tenant_id` filter on all queries. No row-level security or database-level tenant enforcement — purely application-level.
+- **Database duality:** Schema written for Drizzle/SQLite dialect, but production uses raw Supabase JS client. Local SQLite schema may drift from production PostgreSQL schema.
 
 ## Anti-Patterns
 
-### Direct DB from Routes
+### Try-Catch Swallowing
 
-**What happens:** Route handlers call `getSupabase()` and run queries inline rather than through a data-access layer. For example, `server/routes/crm.ts:13` queries Supabase directly inside the route handler.
-**Why it's wrong:** Mixes HTTP concerns with data access, making it hard to unit test business logic without HTTP. No separation of concerns.
-**Do this instead:** Extract query logic into service/repository modules. See only `server/services/ai-agent.ts` for the pattern where database operations are isolated from HTTP.
+**What happens:** Many catch blocks silently ignore errors, especially in non-critical paths (audit logging, analytics, CTWA attribution). Comments like `// ignore if audit_logs table doesn't exist` and blank `catch (e) {}` blocks are common.
+**Why it's wrong:** Silently swallowed errors make debugging production issues difficult and hide schema drift between environments.
+**Do this instead:** Log the error with `console.warn()` at minimum, and check table existence upfront or handle gracefully with logging. See `server/routes/auth.ts` lines 85-95, 180-195, 317-328.
 
-### @ts-nocheck Pervasive Usage
+### Dual Database Access Patterns
 
-**What happens:** 18 out of 24 route files and 5 out of 7 service files begin with `// @ts-nocheck`. This disables TypeScript type checking entirely.
-**Why it's wrong:** Nullifies the value of TypeScript — type errors, undefined access, and API mismatches go undetected at compile time.
-**Do this instead:** Remove `@ts-nocheck` and add proper type annotations. Routes like `server/routes/admin.ts` demonstrate proper typing can be maintained.
+**What happens:** The Drizzle schema (`server/db/schema.ts`) is defined for SQLite and kept in sync manually, but production code uses `supabase.from(table).select(...)` directly without Drizzle. There is no shared ORM layer — raw string table names are used in production queries.
+**Why it's wrong:** Schema changes require updating both the Drizzle SQLite schema and the Supabase PostgreSQL tables (via SQL migrations). They can drift apart silently.
+**Do this instead:** Use a single ORM/SDK for both environments, or auto-generate migrations from the Drizzle schema. See `server/db/schema.ts` vs `server/routes/*.ts` (raw `sb.from('table_name')` calls).
 
-### JSON.parse/stringify for Structured Fields
+### Legacy Route Patterns
 
-**What happens:** Many tables store arrays and objects as JSON strings (tags, custom_fields, settings, faq, knowledge_base). Routes parse these repeatedly with try/catch guards.
-**Files:** `server/routes/agents.ts:34`, `server/routes/crm.ts:18`, `server/routes/integrations.ts:14`
-**Why it's wrong:** Adds boilerplate, hides schema errors as silent fallbacks, prevents database-level validation.
-**Do this instead:** Use PostgreSQL JSONB columns or Drizzle JSON column types for native JSON support.
+**What happens:** Several route files use `// @ts-nocheck` at the top (e.g., `server/routes/crm.ts`, `webhooks.ts`, `chat.ts`), bypassing TypeScript type checking. Some routes (crm.ts, chat.ts) use `x-tenant-id` header instead of the JWT-based `req.user.tenant_id` for tenant resolution.
+**Why it's wrong:** `@ts-nocheck` hides real type errors and makes refactoring riskier. Header-based tenant resolution bypasses the auth middleware pattern.
+**Do this instead:** Remove `@ts-nocheck` and fix type issues. Use `req.user.tenant_id` consistently.
 
-### Dual Schema Maintenance
+### Inline Provider API Calls in Routes
 
-**What happens:** Database schema is defined in two places: `server/db/schema.ts` (Drizzle SQLite) and `migrations/001_initial.sql` (PostgreSQL for Supabase). The SQLite schema in `schema.ts` also imports `drizzle-orm/sqlite-core` while `drizzle.config.ts` targets PostgreSQL.
-**Why it's wrong:** Schemas can diverge. Adding a column to one but not the other causes runtime errors depending on environment.
-**Do this instead:** Use a single source of truth — either Drizzle migrations for both environments or keep separate files but enforce sync via automated checks.
+**What happens:** The webhook route (`server/routes/webhooks.ts`) contains inline functions for calling Flowise API and sending WhatsApp messages, rather than delegating to service modules.
+**Why it's wrong:** The route file is 240+ lines, mixing HTTP handling with integration logic. The same WhatsApp sending logic exists in both `webhooks.ts` and `messages.ts`.
+**Do this instead:** Move Flowise and WhatsApp sending functions to appropriate service files.
 
 ## Error Handling
 
-**Strategy:** try/catch in every route handler, returning `res.status(500).json({ error: e.message })`. This is consistent across all 24 route files.
+**Strategy:** Try-catch at route handler level with `500` JSON error response. Non-critical failures are silently swallowed.
 
 **Patterns:**
-- Every route handler wrapped in try/catch with `e: any` type
-- Error response format: `{ error: string }` (Portuguese error messages)
-- Silent try/catch for non-critical operations (audit logs, fallback queries)
-- Webhooks always return 200 (even on error) to prevent Meta retries
-- No centralized error handler middleware; each route self-handles
+- Route handlers: `try { ... } catch (e: any) { res.status(500).json({ error: e.message }) }`
+- Service functions: Return error strings in result objects rather than throwing
+- Webhook processing: Non-fatal errors logged with `console.warn()` but do not prevent `200 OK` response
+- Auth failures: Specific HTTP status codes (401 for invalid token, 403 for insufficient permissions)
+- `@ts-nocheck` files: Many errors suppressed entirely
 
 ## Cross-Cutting Concerns
 
-**Logging:** `console.log`/`console.error` throughout. No structured logging library. Log messages use emoji prefixes (📨, 🤖, 🔌, ✅, ❌).
-**Validation:** Minimal request validation — routes check for required fields in `req.body` with early returns. No Zod/schema validation on requests (Zod is a dependency but unused).
-**Authentication:** JWT-based with `authMiddleware` on all protected routes. Public routes: `/api/auth/*`, `/api/webhooks/*`, `/api/ping`.
-**Rate Limiting:** Not implemented.
-**Caching:** Not implemented.
-**CORS:** Wide open (`cors()` with no origin restriction).
+**Logging:** `console.log` / `console.error` throughout — no structured logging library. Server startup, webhook events, message send/recv, and errors are logged.
+
+**Validation:** No centralized validation layer. Route handlers validate required fields manually with early returns. Zod is in `package.json` dependencies but is not used in routes or services.
+
+**Authentication:** JWT-based with Bearer token header. `authMiddleware` runs before protected routes. Token contains `id, email, name, role, tenant_id, customer_id, permissions, is_master`. Expires in 7 days.
+
+**Authorization:** Two-layer RBAC system:
+1. Role-based: `requireRole('admin', 'owner')` checks role string
+2. Permission-based: `requirePermission('contacts:view')` checks against `ROLE_PERMISSIONS` map
+3. Plan limits: `checkPlanLimit()` middleware checks resource usage vs plan caps
+
+**CORS:** Wide open — `cors()` with no origin restriction.
+
+**Static Files:** Served from `public/` directory on `/` path in production (Vercel) and local dev.
 
 ---
 
-*Architecture analysis: 2026-06-19*
+*Architecture analysis: 2026-06-22*

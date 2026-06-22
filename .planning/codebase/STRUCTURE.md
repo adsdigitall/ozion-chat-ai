@@ -1,318 +1,358 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-06-19
+**Analysis Date:** 2026-06-22
 
 ## Directory Layout
 
 ```
 ozion-chat-ai/
-├── api/
-│   └── index.ts                  # Vercel serverless entry point
-├── config/
-│   ├── .env.development           # Dev environment overrides
-│   ├── .env.production            # Prod environment overrides
-│   └── .env.staging               # Staging environment overrides
-├── css/
-│   └── styles.css                 # Legacy styles (not production SPA)
-├── data/
-│   ├── ozion.db                   # Local SQLite database
-│   ├── ozion.db-shm              # SQLite shared memory
-│   └── ozion.db-wal              # SQLite WAL log
-├── docs/
-│   └── superpowers/mockups/       # UI mockup HTML files
-├── js/
-│   └── app.js                    # Legacy JS (not production SPA)
-├── migrations/
-│   ├── 001_initial.sql           # Core schema (PostgreSQL/Supabase)
-│   ├── 002_saas_multitenant.sql   # SaaS multi-tenant extensions
-│   └── 003_flow_controls.sql      # Flow builder extensions
-├── providers/
-│   ├── asaas/                    # Asaas payment provider
-│   ├── claude/                   # Claude AI provider
-│   ├── deepseek/                 # DeepSeek AI provider
-│   ├── elevenlabs/               # ElevenLabs voice provider
-│   ├── gemini/                   # Gemini AI provider
-│   ├── groq/                     # Groq AI provider
-│   ├── hotmart/                  # Hotmart payment provider
-│   ├── kiwify/                   # Kiwify payment provider
-│   ├── mercadopago/              # Mercado Pago payment provider
-│   ├── meta/                     # Meta Cloud API provider
-│   ├── openai/                   # OpenAI provider
-│   ├── perfectpay/               # PerfectPay payment provider
-│   ├── stripe/                   # Stripe payment provider
-│   ├── utmify/                   # UTMify tracking provider
-│   └── webhook/                  # Generic webhook provider
-├── public/
-│   ├── chat.html                 # Standalone chat page
-│   ├── css/
-│   │   ├── ozion.css             # SPA styles (production)
-│   │   └── styles.css            # Additional styles
-│   ├── index.html                # SPA shell (production)
-│   └── js/
-│       └── ozion.js              # SPA JavaScript (~4,890 lines)
-├── scripts/
-│   └── run-migration.ts          # Migration runner script
-├── server/
-│   ├── index.ts                  # Local dev entry point
-│   ├── db/
-│   │   ├── index.ts              # SQLite + Drizzle initialization
-│   │   ├── schema.ts             # Drizzle SQLite schema (all tables)
-│   │   ├── schema-deploy.ts      # Deploy/system tables schema
-│   │   └── supabase.ts           # Supabase client + query helpers
-│   ├── lib/
-│   │   └── encryption.ts         # AES/SHA256 encryption utilities
-│   ├── middleware/
-│   │   ├── auth.ts               # JWT auth middleware + AuthUser type
-│   │   └── rbac.ts               # RBAC permissions + role definitions
-│   ├── routes/
-│   │   ├── admin.ts              # Admin: customers, plans, users, stats
-│   │   ├── agents.ts             # AI agents CRUD + test endpoint
-│   │   ├── analytics.ts          # Dashboard stats + timeline
-│   │   ├── auth.ts               # Login, logout, change password, impersonate
-│   │   ├── chat.ts               # Conversations, messages, risk words, transfer
-│   │   ├── contacts.ts           # Contacts CRUD (alternate route)
-│   │   ├── crm.ts                # CRM: contacts CRUD, import/export
-│   │   ├── ctwa.ts               # CTWA campaigns, attributions, Meta CAPI
-│   │   ├── deploy.ts             # Deployment management
-│   │   ├── evolution.ts          # Evolution API webhook + AI orchestration
-│   │   ├── flowise.ts            # Flowise AI integration
-│   │   ├── flows.ts              # Flow builder CRUD + blocks + edges
-│   │   ├── health.ts             # System health check endpoints
-│   │   ├── integrations.ts       # External integration CRUD + providers list
-│   │   ├── logs.ts               # System event logs
-│   │   ├── messages.ts           # Messages CRUD + conversation endpoints
-│   │   ├── plans.ts              # Subscription plan management
-│   │   ├── sales.ts              # Sales/pipeline management
-│   │   ├── spa.ts                # SPA catch-all route
-│   │   ├── tags.ts               # Tags CRUD
-│   │   ├── updates.ts            # System updates/changelog
-│   │   ├── voice.ts              # Voice profiles CRUD + providers list
-│   │   ├── webhooks.ts           # WhatsApp Meta webhook receiver
-│   │   └── whatsapp.ts           # WhatsApp credential OAuth flow
-│   ├── services/
-│   │   ├── ai-agent.ts           # AI agent with function calling
-│   │   ├── audio.ts              # Audio download, transcription, TTS
-│   │   ├── evolution-api.ts      # Evolution API client (Baileys WhatsApp)
-│   │   ├── meta-api.ts           # Meta Graph API client (WhatsApp Business)
-│   │   ├── validate-flow.ts      # Flow validation logic
-│   │   ├── webhook-handler.ts    # Inbound webhook processing
-│   │   └── websocket.ts          # Socket.IO real-time server
-│   └── types/                    # (Empty directory - types in-line)
-├── .env.example                  # Environment variable template
-├── .github/                      # GitHub Actions/workflows
-├── .vercel/                      # Vercel project config
-├── .worktrees/                   # Git worktrees (ignored)
-├── .planning/                    # GSD planning artifacts
-├── ctwa.html                     # Click-to-WhatsApp Ads landing page
-├── index.html                    # Legacy root HTML (not production)
-├── drizzle.config.ts             # Drizzle Kit configuration
-├── package.json                  # Dependencies + scripts
-├── railway.json                  # Railway deployment config
-├── seed.ts                       # Database seed script
-├── tsconfig.json                 # TypeScript configuration
-├── vercel.json                   # Vercel deployment config
-└── WHATSAPP_INTEGRATION_ARCHITECTURE.md  # WhatsApp integration docs
+├── api/                    # Vercel serverless entrypoint
+│   └── index.ts            # Express app for Vercel (no app.listen)
+│
+├── server/                 # Core backend application
+│   ├── index.ts            # Local dev Express server (app.listen)
+│   ├── db/                 # Database layer
+│   │   ├── index.ts        # SQLite lazy init & proxy
+│   │   ├── schema.ts       # Drizzle ORM schema (30 SQLite tables)
+│   │   ├── schema-deploy.ts# Drizzle schema for deploy/changelog/backup
+│   │   └── supabase.ts     # Supabase JS client + query helpers
+│   ├── middleware/          # Express middleware
+│   │   ├── auth.ts         # JWT verification + role middleware
+│   │   └── rbac.ts         # Permission definitions + check middleware
+│   ├── routes/             # HTTP route handlers (25 files)
+│   │   ├── auth.ts         # Login/logout/me/impersonate
+│   │   ├── admin.ts        # Admin panel operations
+│   │   ├── agents.ts       # AI agent CRUD
+│   │   ├── analytics.ts    # Analytics events
+│   │   ├── chat.ts         # Conversations + messages + toggle
+│   │   ├── contacts.ts     # Contact CRUD
+│   │   ├── crm.ts          # CRM-specific endpoints
+│   │   ├── ctwa.ts         # Click-to-WhatsApp Ads
+│   │   ├── deploy.ts       # Deployment management
+│   │   ├── evolution.ts    # Evolution API integration
+│   │   ├── flowise.ts      # Flowise API integration
+│   │   ├── flows.ts        # Flow builder CRUD
+│   │   ├── health.ts       # System health checks
+│   │   ├── inbox.ts        # Inbox conversations + messages
+│   │   ├── integrations.ts # External integration CRUD
+│   │   ├── logs.ts         # System logs
+│   │   ├── messages.ts     # Message send/list/status
+│   │   ├── plans.ts        # Subscription plans CRUD
+│   │   ├── sales.ts        # Sales tracking
+│   │   ├── spa.ts          # SPA fallback
+│   │   ├── tags.ts         # Tag management
+│   │   ├── updates.ts      # Changelog/updates
+│   │   ├── voice.ts        # Voice settings
+│   │   ├── webhooks.ts     # WhatsApp webhook receiver
+│   │   └── whatsapp.ts     # WhatsApp OAuth/setup
+│   ├── services/           # Business logic layer
+│   │   ├── ai-agent.ts     # AI agent with function calling
+│   │   ├── audio.ts        # Audio processing
+│   │   ├── contact-events.ts# Contact event tracking
+│   │   ├── contact-timeline.ts# Unified timeline builder
+│   │   ├── evolution-api.ts# Evolution API client
+│   │   ├── media-library.ts# Media file management
+│   │   ├── message-status-history.ts# Status transition logging
+│   │   ├── meta-api.ts     # Meta Cloud API client (422 lines)
+│   │   ├── normalizers/    # Webhook payload normalizers
+│   │   │   ├── index.ts
+│   │   │   ├── types.ts
+│   │   │   ├── meta-normalizer.ts
+│   │   │   └── evolution-normalizer.ts
+│   │   ├── providers/      # WhatsApp message provider abstraction
+│   │   │   ├── index.ts
+│   │   │   ├── types.ts
+│   │   │   ├── meta-provider.ts
+│   │   │   └── evolution-provider.ts
+│   │   ├── webhook-events.ts# Idempotency + event tracking
+│   │   ├── webhook-handler.ts# Inbound message processing
+│   │   └── websocket.ts    # Socket.IO server + emit helpers
+│   └── lib/
+│       └── encryption.ts   # AES encrypt/decrypt, SHA256 hash
+│
+├── providers/              # External service integrations (15 dirs)
+│   ├── stripe/             # Payment processing
+│   ├── asaas/              # Brazilian billing
+│   ├── mercadopago/        # Brazilian payments
+│   ├── hotmart/            # Digital products
+│   ├── kiwify/             # Digital products
+│   ├── perfectpay/         # Payment gateway
+│   ├── utmify/             # UTM tracking
+│   ├── openai/             # AI API client
+│   ├── claude/             # Anthropic API client
+│   ├── gemini/             # Google AI client
+│   ├── deepseek/           # Deepseek API client
+│   ├── groq/               # Groq API client
+│   ├── elevenlabs/         # Text-to-speech
+│   ├── meta/               # Meta/Facebook Graph API
+│   └── webhook/            # Custom webhook sender
+│   └── (each has: config.ts, client.ts, types.ts, testConnection.ts, logs.ts, webhooks.ts, README.md)
+│
+├── public/                 # Frontend SPA (deployed to Vercel)
+│   ├── index.html          # App shell (17 lines)
+│   ├── chat.html           # Standalone chat page
+│   ├── js/
+│   │   ├── ozion.js        # Main SPA (~4890 lines) — all views, auth, routing
+│   │   └── inbox.js        # Inbox module (~276 lines)
+│   └── css/
+│       ├── ozion.css       # Dark SaaS theme (~549 lines)
+│       └── styles.css
+│
+├── migrations/             # SQL migration files (6 files)
+│   ├── 001_initial.sql
+│   ├── 002_saas_multitenant.sql
+│   ├── 003_contact_timeline.sql
+│   ├── 005_add_provider_to_credentials.sql
+│   ├── 006_webhook_events.sql
+│   └── 007_message_status_events.sql
+│
+├── tests/                  # Test files (7 files)
+│   ├── contact-timeline.test.ts
+│   ├── extract-media-info.test.ts
+│   ├── inbox.test.ts
+│   ├── message-status-history.test.ts
+│   ├── normalizers.test.ts
+│   ├── provider-abstraction.test.ts
+│   └── webhook-events.test.ts
+│
+├── scripts/                # Operational scripts
+│   ├── deploy.sh           # Deploy to Railway/Vercel
+│   ├── rollback.sh         # Rollback deployment
+│   ├── backup.sh           # Database backup
+│   ├── changelog.sh        # Changelog generator
+│   └── run-migration.ts    # Manual migration runner
+│
+├── config/                 # Environment config files
+│   ├── .env.development
+│   ├── .env.staging
+│   └── .env.production
+│
+├── docs/                   # Project documentation
+│   └── superpowers/specs/  # Design specs
+│
+├── data/                   # Local SQLite database files
+│   ├── ozion.db
+│   ├── ozion.db-wal
+│   └── ozion.db-shm
+│
+├── .github/workflows/      # CI/CD pipelines
+│   ├── deploy.yml
+│   ├── backup.yml
+│   └── version.yml
+│
+├── .planning/              # GSD planning artifacts
+│   ├── PROJECT.md
+│   ├── ROADMAP.md
+│   ├── STATE.md
+│   ├── config.json
+│   └── phases/
+│       └── 01-utalk-foundation/
+│
+├── root files:
+│   ├── package.json        # Dependencies + scripts
+│   ├── tsconfig.json       # TypeScript config (ESNext, bundler)
+│   ├── vercel.json         # Vercel deployment config
+│   ├── drizzle.config.ts   # Drizzle Kit config (points to schema.ts)
+│   ├── railway.json        # Railway deployment config
+│   ├── seed.ts             # DB seed script
+│   ├── .env.example        # Environment variable template
+│   └── index.html          # Legacy root index (not production app)
+│
+├── LEGACY ROOT (not primary app):
+│   ├── index.html          # Legacy homepage
+│   ├── js/app.js           # Legacy JS
+│   └── css/styles.css      # Legacy CSS
+│
+└── LEGACY DOCS:
+    ├── ctwa.html           # Click-to-WhatsApp Ads doc
+    ├── WHATSAPP_INTEGRATION_ARCHITECTURE.md
+    ├── WEBHOOK_EVENTS_IDEMPOTENCY_PHASE_3.md
+    ├── WEBHOOK_EVENTS_IDEMPOTENCY_PHASE_3_VERIFICATION.md
+    └── NORMALIZERS_STATUS_HISTORY_PHASE_4_VERIFICATION.md
 ```
 
 ## Directory Purposes
 
+**`api/`:**
+- Purpose: Vercel serverless entrypoint. Express app without `app.listen()`.
+- Contains: Single `index.ts` file that imports all routes identically to `server/index.ts`.
+- Key files: `api/index.ts`
+- Important: This is the PRODUCTION entrypoint. `server/index.ts` is the LOCAL DEV entrypoint.
+
+**`server/`:**
+- Purpose: All backend TypeScript code — routes, services, middleware, database.
+- Contains: 6 subdirectories, ~30 source files.
+- Key files: `server/index.ts` (dev entrypoint), `server/db/schema.ts` (data model).
+
 **`server/routes/`:**
-- Purpose: HTTP request handlers — one file per domain feature
-- Contains: 24 Express Router modules, each exporting a `Router` as default
-- Key files: `auth.ts` (authentication), `webhooks.ts` (WhatsApp inbound), `flows.ts` (flow builder), `admin.ts` (platform admin), `ctwa.ts` (ad tracking), `chat.ts` (conversations), `crm.ts` (contacts)
-- Pattern: Each route file follows the same structure — `Router()`, handler functions, `export default router`
+- Purpose: HTTP route handlers — one file per domain (auth, chat, crm, webhooks, etc.).
+- Contains: 25 route files. Each exports a `Router` with Express route definitions.
+- Pattern: `Router()` → define routes → `export default router;`
 
 **`server/services/`:**
-- Purpose: External API integration clients and complex business logic
-- Contains: 7 service modules for AI, audio, WhatsApp APIs, websocket, webhook processing, validation
-- Key files: `ai-agent.ts` (AI function-calling engine), `meta-api.ts` (WhatsApp Business API wrapper), `websocket.ts` (Socket.IO server)
-- Note: Not a service layer for business logic — routes do database work directly
+- Purpose: Business logic and external integrations.
+- Contains: 13 service files + 2 subdirectories (`normalizers/`, `providers/`).
+- Key files: `webhook-handler.ts`, `ai-agent.ts`, `meta-api.ts`, `websocket.ts`.
 
 **`server/db/`:**
-- Purpose: Database clients, schema definitions, connection management
-- Contains: Supabase client wrapper (`supabase.ts`), SQLite lazy init (`index.ts`), Drizzle schema (`schema.ts`, `schema-deploy.ts`)
-- Key files: `schema.ts` (21 table definitions), `supabase.ts` (query helpers: `query`, `insert`, `update`, `remove`, `rpc`)
-
-**`server/middleware/`:**
-- Purpose: Request processing pipeline
-- Contains: Auth middleware (JWT), RBAC middleware (permissions, roles, plan limits)
-- Key files: `auth.ts` (3 middleware functions + `generateToken`/`verifyToken`), `rbac.ts` (83 permission keys, 5 role definitions)
+- Purpose: Database connection management and schema definitions.
+- Contains: Schema definitions (`schema.ts`, `schema-deploy.ts`), Supabase client (`supabase.ts`), SQLite initialization (`index.ts`).
+- Key files: `schema.ts` (30 Drizzle tables), `supabase.ts` (production client + helpers).
 
 **`providers/`:**
-- Purpose: External SaaS integration definitions
-- Contains: 15 provider directories, each with a consistent 7-file structure
-- Structure per provider:
-  - `config.ts` — Provider settings, base URL, version
-  - `client.ts` — HTTP client implementation
-  - `testConnection.ts` — Connection test utility
-  - `types.ts` — TypeScript type definitions
-  - `logs.ts` — Logging utilities
-  - `webhooks.ts` — Webhook event handlers
-  - `README.md` — Provider documentation
-- Categories: Payment (7), AI (5), WhatsApp (2), Voice (1), Tracking (1)
+- Purpose: External third-party API integrations with standardized structure.
+- Contains: 15 provider directories, each with 6 standard files + README.
+- Pattern: Each provider has `config.ts` (env config), `client.ts` (API client), `types.ts` (types), `testConnection.ts`, `logs.ts`, `webhooks.ts`.
 
 **`public/`:**
-- Purpose: Production frontend (SPA)
-- Contains: `index.html` shell, `js/ozion.js` application code, `css/ozion.css` styles
-- Key files: `index.html` (16 lines — minimal shell loading Font Awesome + Socket.IO CDN), `js/ozion.js` (~4,890 lines — all SPA logic in one file)
-- Architecture: Vanilla JS SPA with manual DOM manipulation, no framework
+- Purpose: Frontend SPA served as static files.
+- Contains: HTML shell, ~5,166 lines of vanilla JS across 2 files, CSS theme.
+- Key files: `index.html` (app shell), `js/ozion.js` (main SPA), `js/inbox.js` (inbox UI module), `css/ozion.css` (design system).
 
 **`migrations/`:**
-- Purpose: PostgreSQL schema for Supabase production deployment
-- Contains: 3 SQL migration files
-- Key files: `001_initial.sql` (583 lines — creates 21 tables + indexes + seed data), `002_saas_multitenant.sql`, `003_flow_controls.sql`
+- Purpose: SQL migration files for Supabase PostgreSQL schema changes.
+- Contains: 6 numbered migration files. Run manually or via deploy process.
 
-**`api/`:**
-- Purpose: Vercel serverless entry point
-- Contains: `index.ts` — duplicates `server/index.ts` without static serving or server start
-- Pattern: Exports Express `app` as default for Vercel's serverless runtime
+**`tests/`:**
+- Purpose: Unit and integration tests.
+- Contains: 7 test files. Run with `node --test --import tsx tests/<file>.test.ts`.
+
+**`scripts/`:**
+- Purpose: Operational and deployment shell scripts.
+- Contains: 5 scripts. Used for deploy, rollback, backup, changelog generation.
+
+**`config/`:**
+- Purpose: Environment-specific configuration.
+- Contains: `.env.development`, `.env.staging`, `.env.production` (not committed to git — tracked via `.gitignore`).
+
+**`.github/workflows/`:**
+- Purpose: GitHub Actions CI/CD pipelines.
+- Contains: 3 workflows — deploy (on push to main), backup (scheduled), version (tag management).
 
 ## Key File Locations
 
 **Entry Points:**
-- `server/index.ts`: Local development server (npm run dev)
-- `api/index.ts`: Vercel production serverless function
-- `public/index.html`: SPA shell for client-side rendering
+- `server/index.ts`: Local development server (Express + Socket.IO)
+- `api/index.ts`: Vercel production serverless entrypoint
+- `public/index.html`: SPA HTML shell
+- `public/js/ozion.js`: SPA JavaScript bootstrap (function `render()` and `api()`)
 
 **Configuration:**
-- `package.json`: Dependencies, scripts, project metadata
-- `tsconfig.json`: TypeScript compiler options (ES2022, ESNext modules, bundler resolution)
-- `vercel.json`: Vercel routing (API rewrites, SPA fallback)
-- `drizzle.config.ts`: Drizzle Kit config (dialect, schema path)
-- `.env.example`: Required environment variables template
-- `config/.env.development` / `.env.production` / `.env.staging`: Environment-specific config
+- `package.json`: Dependencies and npm scripts
+- `tsconfig.json`: TypeScript compiler options
+- `vercel.json`: Vercel deployment routing (rewrites SPA paths)
+- `drizzle.config.ts`: Drizzle Kit config for schema management
+- `.env.example`: Template for required environment variables
 
 **Database:**
-- `server/db/schema.ts`: Drizzle SQLite schema (21 tables)
-- `server/db/schema-deploy.ts`: Deploy-specific tables (changelogs, backups, modules, deployments)
-- `server/db/supabase.ts`: Supabase client with CRUD helpers
-- `server/db/index.ts`: SQLite lazy initialization with Drizzle proxy
-- `migrations/001_initial.sql`: PostgreSQL production schema
-- `drizzle.config.ts`: Drizzle Kit configuration
+- `server/db/schema.ts`: All Drizzle table definitions
+- `server/db/supabase.ts`: Supabase client with CRUD helpers (query, insert, update, remove, rpc)
+- `server/db/index.ts`: SQLite lazy initialization (dev only)
 
-**Core Logic:**
-- `server/middleware/auth.ts`: JWT auth + user lookup
-- `server/middleware/rbac.ts`: Permission definitions + role checks
-- `server/services/ai-agent.ts`: AI function-calling engine
-- `server/services/meta-api.ts`: WhatsApp Business API client
-- `server/services/evolution-api.ts`: Baileys-based WhatsApp client
-- `server/services/webhook-handler.ts`: Inbound message processing
-- `server/services/websocket.ts`: Real-time event system
-- `server/lib/encryption.ts`: Credential encryption utilities
-
-**Auth:**
-- `server/routes/auth.ts`: Login, logout, change password, impersonate
-- `server/middleware/auth.ts`: JWT token generation and verification
-- `server/middleware/rbac.ts`: Role-based permission checking
+**Core Business Logic:**
+- `server/services/webhook-handler.ts`: Inbound WhatsApp message processing pipeline
+- `server/services/webhook-events.ts`: Webhook idempotency tracking
+- `server/services/ai-agent.ts`: AI agent with OpenAI-compatible API + function calling
+- `server/services/meta-api.ts`: Meta Cloud API client (token exchange, message send, phone number management)
+- `server/services/websocket.ts`: Socket.IO server + broadcast helpers
 
 **Testing:**
-- No test directory or test files detected. `vitest.config.ts`, `jest.config.*`, and `*.test.ts`/`*.spec.ts` files are absent.
+- `tests/`: 7 test files using Node.js native test runner with `tsx`
 
 ## Naming Conventions
 
 **Files:**
-- `kebab-case.ts` for all source files: `webhook-handler.ts`, `meta-api.ts`, `validation-flow.ts`, `ai-agent.ts`
-- Routes use singular nouns: `auth.ts`, `chat.ts`, `crm.ts`, `flows.ts`, `agents.ts`, `sales.ts`
-- Database files: `schema.ts`, `supabase.ts`, `index.ts`
-- Migration files: `NNN_descriptive_name.sql` (e.g., `001_initial.sql`)
+- `kebab-case.ts` for all TypeScript files (e.g., `contact-timeline.ts`, `message-status-history.ts`, `webhook-handler.ts`)
+- Standard names within providers: `config.ts`, `client.ts`, `types.ts`, `testConnection.ts`, `logs.ts`, `webhooks.ts`, `README.md`
 
-**Functions:**
-- `camelCase` for all function names: `getSupabase()`, `generateToken()`, `processIncomingMessage()`, `sendTextMessage()`
-- Verb-noun pattern: `processWithAI()`, `buildKnowledgeContext()`, `exchangeCodeForToken()`, `validateFlow()`
-- Export functions named descriptively: `requireMaster`, `requirePermission`, `checkPlanLimit`
+**Directories:**
+- `kebab-case` throughout (e.g., `server/routes/`, `server/services/`, `providers/stripe/`, `.github/workflows/`)
+- Route files are singular nouns matching the domain (e.g., `auth.ts`, `chat.ts`, `sales.ts`, `tags.ts`)
 
-**Variables:**
-- `camelCase` for all variables: `existingContact`, `phoneNumberId`, `allContacts`, `selectedConv`
-- Constants in `UPPER_CASE` for environment variables: `SUPABASE_URL`, `JWT_SECRET`, `GROQ_API_KEY`
-- Boolean prefixes: `is_active`, `is_ctwa`, `is_ai_active`, `is_master` (database columns use snake_case; JS variables use camelCase)
+**Routes:**
+- Pattern: `router.get('/resource', handler)` and `router.post('/resource', handler)`
+- Nested resources: `GET /:id`, `POST /:id/action`
 
-**Types:**
-- Inline interfaces with PascalCase: `AuthUser`, `AgentContext`, `AgentResponse`, `ValidationResult`, `SendMessagePayload`
-- Type definitions in `server/services/*.ts` and `server/routes/*.ts` — not in a separate types directory
-- Provider types in `providers/*/types.ts`
+**Services:**
+- Functions named with verb prefixes: `processIncomingMessage`, `processStatusUpdate`, `processWithAI`, `sendByProvider`, `getProviderForTenant`
+- Exported types use PascalCase: `AgentContext`, `AgentResponse`, `TimelineItem`, `NormalizedMessage`
 
-**Database Columns:**
-- `snake_case` for column names in both Drizzle schema and migrations: `tenant_id`, `phone_number_id`, `is_ai_active`, `max_contacts`, `last_message_at`
-- `id` is `text` (UUID) across all tables
-- Timestamp columns: `created_at`, `updated_at` on most tables
+**Database Schema:**
+- Table names: `snake_case` plural (e.g., `whatsapp_credentials`, `contact_events`, `flow_blocks`)
+- Column names: `snake_case` (e.g., `tenant_id`, `phone_number_id`, `last_message_at`)
+- Drizzle field names: `camelCase` mapped to `snake_case` (e.g., `tenantId: text('tenant_id')`)
+
+**Environment Variables:**
+- `SCREAMING_SNAKE_CASE` (e.g., `SUPABASE_URL`, `JWT_SECRET`, `META_APP_SECRET`)
 
 ## Where to Add New Code
 
-**New API Endpoint (new domain):**
-- Create new route file at `server/routes/{name}.ts`
-- Follow existing pattern: `@ts-nocheck`, `Router()`, try/catch handlers, `getSupabase()`
-- Register in both `server/index.ts` and `api/index.ts` with `app.use('/api/{name}', authMiddleware, {name}Routes)`
-
-**New API Endpoint (existing domain):**
-- Add handler to existing route file in `server/routes/{domain}.ts`
-- Follow CRUD pattern: `router.get('/')`, `router.post('/')`, `router.put('/:id')`, `router.delete('/:id')`
+**New Feature:**
+- Primary code: Create new route in `server/routes/<name>.ts` and register it in both `server/index.ts` and `api/index.ts`
+- Business logic: Add service function in `server/services/` if logic is non-trivial
+- Frontend: Add view rendering function in `public/js/ozion.js` and hook into the `render()` switch-case
 
 **New External Integration:**
-- Create new provider directory at `providers/{name}/`
-- Include all 7 files: `config.ts`, `client.ts`, `testConnection.ts`, `types.ts`, `logs.ts`, `webhooks.ts`, `README.md`
-- If the integration has backend API calls, add a service in `server/services/`
+- Create directory in `providers/<name>/` with the 6 standard files (`config.ts`, `client.ts`, `types.ts`, `testConnection.ts`, `logs.ts`, `webhooks.ts`, `README.md`)
+- If it needs a webhook receiver, add route in `server/routes/webhooks.ts` or create a new webhook route
+
+**New WhatsApp Provider:**
+- Create provider class implementing `MessageProvider` interface in `server/services/providers/<name>-provider.ts`
+- Add normalizer functions in `server/services/normalizers/`
+- Register in `server/services/providers/index.ts` factory function
 
 **New Database Table:**
 - Add Drizzle table definition in `server/db/schema.ts`
-- Add SQL migration in `migrations/` for Supabase
-- Both must be in sync
+- Create corresponding migration in `migrations/<number>_<name>.sql` for Supabase
+- Note: Schema changes must be applied to both SQLite (via code) and PostgreSQL (via migration)
 
-**New Frontend Feature:**
-- Add code to `public/js/ozion.js`
-- Follow existing patterns: `api()` function for HTTP calls, DOM manipulation for rendering
-- Use `h()` for HTML escaping, `showToast()` for notifications
+**New Test:**
+- Add to `tests/<name>.test.ts`
+- Run with: `node --test --import tsx tests/<name>.test.ts`
 
-**New Service:**
-- Create file at `server/services/{name}.ts`
-- Export named functions, import `getSupabase()` from `server/db/supabase.js` for data access
-- Start with `// @ts-nocheck` if types are complex
-
-**New Middleware:**
-- Add to `server/middleware/` as a standalone file
-- Export middleware function following Express `(req, res, next)` signature
-
-**Tests:**
-- Create test file as `tests/{name}.test.ts`
-- Run with: `node --test --import tsx tests/<file>.test.ts`
-- No test framework config file found — uses Node.js built-in test runner (`node --test`)
+**New UI View:**
+- Write render function in `public/js/ozion.js` or create new JS module in `public/js/`
+- Add CSS in `public/css/ozion.css`
+- Register navigation in the sidebar render section of `ozion.js`
 
 ## Special Directories
 
 **`node_modules/`:**
-- Purpose: Dependencies installed by npm
+- Purpose: npm dependencies
 - Generated: Yes
 - Committed: No
 
-**`data/`:**
-- Purpose: Local SQLite database file for development
-- Generated: Yes (runtime)
-- Committed: No (gitignored? — check .gitignore)
-
-**`dist/`:**
-- Purpose: TypeScript compilation output
-- Generated: Yes (`npm run build`)
-- Committed: No
+**`.planning/`:**
+- Purpose: GSD workflow artifacts — project plan, roadmap, phase plans
+- Generated: Yes (by GSD system)
+- Committed: Yes
 
 **`.vercel/`:**
-- Purpose: Vercel project configuration
-- Generated: Yes (by Vercel CLI)
-- Committed: Yes (project config)
+- Purpose: Vercel project configuration cache
+- Generated: Yes
+- Committed: No
 
 **`.worktrees/`:**
-- Purpose: Git worktrees for isolated feature development
+- Purpose: Isolated git worktrees for feature development
 - Generated: Yes
 - Committed: No (gitignored)
 
-**`migrations/`:**
-- Purpose: PostgreSQL schema SQL files for Supabase production
-- Generated: No (hand-written)
-- Committed: Yes
+**`data/`:**
+- Purpose: Local SQLite database for development
+- Contains: `ozion.db`, WAL, SHM files
+- Generated: Yes (on dev server start)
+- Committed: No
 
-**`providers/`:**
-- Purpose: External integration definitions (payment, AI, tracking providers)
-- Generated: No
-- Committed: Yes
+**`dist/`:**
+- Purpose: Compiled TypeScript output (`tsc` build)
+- Generated: Yes
+- Committed: No
+
+**`drizzle/`:**
+- Purpose: Generated migration files from Drizzle Kit (not currently present — configured in `drizzle.config.ts`)
+- Generated: Yes
+- Committed: TBD
 
 ---
 
-*Structure analysis: 2026-06-19*
+*Structure analysis: 2026-06-22*

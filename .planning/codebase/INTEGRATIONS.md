@@ -1,240 +1,260 @@
 # External Integrations
 
-**Analysis Date:** 2026-06-19
+**Analysis Date:** 2026-06-22
 
 ## APIs & External Services
 
-### WhatsApp (Meta Cloud API)
-- **Purpose:** Official WhatsApp Business API for sending/receiving messages, template management, webhook subscriptions
-- **API Version:** `v22.0` (Graph API), `v19.0` (Conversions API)
-- **Base URL:** `https://graph.facebook.com/v22.0`
-- **Auth:** OAuth 2.0 (short-lived token exchange → long-lived system user token)
-- **Endpoints used:**
-  - `/{phone_number_id}/messages` — Send messages (`server/services/meta-api.ts:227`)
-  - `/oauth/access_token` — Token exchange (`server/services/meta-api.ts:37`)
-  - `/{waba_id}/subscribed_apps` — Webhook subscription (`server/services/meta-api.ts:194`)
-  - `/{waba_id}/phone_numbers` — List phone numbers (`server/services/meta-api.ts:100`)
-  - `/{waba_id}/message_templates` — Template management (`server/services/meta-api.ts:301`)
-  - `/{phone_number_id}/request_code` / `verify_code` / `register` — Phone verification
-    - `/{ad_id}` — Ad hierarchy lookup
-- **Webhook:** `GET /api/webhooks/whatsapp` (verification), `POST /api/webhooks/whatsapp` (events)
-- **Routes:** `server/routes/webhooks.ts`, `server/services/meta-api.ts`
-- **Env vars:** `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, `FACBOOK_CONFIG_ID`, `FACEBOOK_SOLUTION_ID`, `WEBHOOK_VERIFY_TOKEN`, `OAUTH_REDIRECT_URI`, `OAUTH_STATE_SECRET`
+### WhatsApp Messaging (Two Providers)
 
-### WhatsApp (Evolution API)
-- **Purpose:** Alternative WhatsApp integration via WhatsApp Baileys (unofficial API) for multi-instance support, QR code connections, voice notes
-- **Base URL:** Configured via `EVOLUTION_API_URL` env var
-- **Auth:** API key (`EVOLUTION_API_KEY`) passed as `apikey` header
-- **Endpoints used:**
-  - `/message/sendText/{instance}` — Text messages (`server/services/evolution-api.ts:51`)
-  - `/message/sendWhatsAppAudio/{instance}` — Voice/audio messages
-  - `/message/sendImage/{instance}` — Images
-  - `/message/sendDocument/{instance}` — Documents
-  - `/message/sendButtons/{instance}` — Interactive buttons
-  - `/message/sendList/{instance}` — List messages
-  - `/message/getMediaUrl/{instance}` — Media retrieval
-  - `/instance/create` — Instance management
-  - `/instance/connectionState/{instance}` — Connection status
-  - `/instance/connect/{instance}` — QR code
-  - `/instance/delete/{instance}` — Teardown
-- **Webhook:** `POST /api/webhooks/evolution` (handled by `server/routes/evolution.ts`)
-- **Routes:** `server/services/evolution-api.ts`, `server/routes/evolution.ts`
-- **Env vars:** `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`
+**Meta Cloud API (WhatsApp Business API):**
+- Primary official WhatsApp integration
+- SDK/Client: Custom `fetch`-based client at `server/services/meta-api.ts`
+- Graph API version: v22.0
+- Message endpoints: `/{phone_number_id}/messages`
+- OAuth flow: `server/routes/whatsapp.ts` handles token exchange with Meta
+- Capabilities: Send text, template, image, audio, document, button, and list messages
+- Webhook management: Subscribe/unsubscribe app to WABA via `server/services/meta-api.ts` lines 189-214
+- Phone number management: Verification, registration, code requests
+- Auth: `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, short/long-lived access tokens
+- Webhook signature: HMAC-SHA256 verification at `server/routes/webhooks.ts` lines 37-47
+- Provider abstraction: `server/services/providers/meta-provider.ts` implements `MessageProvider` interface
 
-### Meta Conversions API (CAPI)
-- **Purpose:** Send conversion events for Click-to-WhatsApp Ads (CTWA) attribution tracking
-- **API Version:** `v19.0`
-- **Base URL:** `https://graph.facebook.com/v19.0`
-- **Auth:** Access token (`META_CAPI_ACCESS_TOKEN`)
-- **Endpoint:** `/{dataset_id}/events` — Send conversion events (`server/services/meta-api.ts:330`)
-- **Routes:** `server/services/meta-api.ts`
-- **Env vars:** `META_CAPI_DATASET_ID`, `META_CAPI_ACCESS_TOKEN`
+**Evolution API (WhatsApp Baileys):**
+- Unofficial WhatsApp integration via Baileys library
+- SDK/Client: Custom `fetch`-based client at `server/services/evolution-api.ts`
+- Auth: `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`
+- Capabilities: Send text, audio, image, document, button, list messages
+- Instance management: Create, connect, disconnect, QR code, connection state
+- Webhook receiver: `server/routes/evolution.ts` POST `/api/webhooks/evolution`
+- Webhook parsing: `parseWebhookEvent()` at `server/services/evolution-api.ts` line 276
+- Provider abstraction: `server/services/providers/evolution-provider.ts` implements `MessageProvider` interface
 
-### AI Provider: OpenAI
-- **Purpose:** Chat completions (GPT-4o-mini) and audio transcription (Whisper-1)
-- **API Base:** `https://api.openai.com/v1`
-- **Endpoints:** `/chat/completions`, `/audio/transcriptions`
-- **Auth:** API key (`OPENAI_API_KEY`)
-- **Used in:** `server/services/ai-agent.ts`, `server/services/audio.ts`
-- **Provider SDK:** `providers/openai/client.ts` (connection wrapper)
+**Provider Abstraction Layer:**
+- Interface: `server/services/providers/types.ts` - `MessageProvider` with `sendText`, `sendTemplate`, `sendMedia`, `sendButton`, `sendList` methods
+- Router: `server/services/providers/index.ts` auto-detects provider from `whatsapp_credentials.provider` column
+- Normalizers: `server/services/normalizers/` - normalize both Meta and Evolution webhook payloads to common types
 
-### AI Provider: Groq
-- **Purpose:** AI chat completions (Llama 3.3 70B) and audio transcription (Whisper-large-v3)
-- **API Base:** `https://api.groq.com/openai/v1`
-- **Endpoints:** `/chat/completions`, `/audio/transcriptions`
-- **Auth:** API key (`GROQ_API_KEY`)
-- **Priority:** Primary AI provider (checked first in `getProvider()`) and transcription provider (checked first in `transcribeAudio()`)
-- **Used in:** `server/services/ai-agent.ts`, `server/services/audio.ts`
-- **Provider SDK:** `providers/groq/client.ts` (connection wrapper)
+**Message Normalizers:**
+- `server/services/normalizers/types.ts` - `NormalizedMessage`, `NormalizedStatusUpdate` types
+- `server/services/normalizers/meta-normalizer.ts` - Normalizes Meta webhook payloads
+- `server/services/normalizers/evolution-normalizer.ts` - Normalizes Evolution webhook payloads
 
-### AI Provider: DeepSeek
-- **Purpose:** AI chat completions (DeepSeek Chat) as alternative provider
-- **API Base:** `https://api.deepseek.com/v1`
-- **Endpoint:** `/chat/completions`
-- **Auth:** API key (`DEEPSEEK_API_KEY`)
-- **Priority:** Fallback after Groq/OpenAI in `getProvider()`
-- **Used in:** `server/services/ai-agent.ts`
-- **Provider SDK:** `providers/deepseek/client.ts` (connection wrapper)
+### AI Providers (LLMs)
 
-### AI Provider: Claude (Anthropic)
-- **Purpose:** Reserved AI provider integration
-- **Provider SDK:** `providers/claude/client.ts` (connection wrapper only, no runtime usage detected)
+**Groq:**
+- Primary AI provider (tried first)
+- SDK: `fetch`-based OpenAI-compatible API calls to `https://api.groq.com/openai/v1`
+- Model: `llama-3.3-70b-versatile`
+- Imported in: `server/services/ai-agent.ts` (LLM chat), `server/services/audio.ts` (transcription via `whisper-large-v3`)
+- Provider package: `providers/groq/` (client, config, types, logs, webhooks, testConnection)
 
-### AI Provider: Gemini (Google)
-- **Purpose:** Reserved AI provider integration
-- **Provider SDK:** `providers/gemini/client.ts` (connection wrapper only, no runtime usage detected)
+**OpenAI:**
+- Fallback AI provider
+- SDK: `fetch`-based to `https://api.openai.com/v1`
+- Model: `gpt-4o-mini` (default in AI agent)
+- Used for: LLM chat, audio transcription (`whisper-1`), image generation (listed in integrations route)
+- Provider package: `providers/openai/` (client, config, types, logs, webhooks, testConnection)
 
-### ElevenLabs
-- **Purpose:** Text-to-Speech (eleven_multilingual_v2) and voice cloning
-- **API Base:** `https://api.elevenlabs.io/v1`
-- **Endpoints:** `/text-to-speech/{voice_id}`, `/voices`, `/voices/add`
-- **Default voice:** `21m00Tcm4TlvDq8ikWAM` (Rachel)
-- **Auth:** API key via `xi-api-key` header (`ELEVENLABS_API_KEY`)
-- **Used in:** `server/services/audio.ts`
-- **Provider SDK:** `providers/elevenlabs/client.ts` (connection wrapper)
+**DeepSeek:**
+- Third AI provider option (tagged as cheap alternative)
+- SDK: `fetch`-based to `https://api.deepseek.com/v1`
+- Model: `deepseek-chat`
+- Provider package: `providers/deepseek/` (client, config, types, logs, webhooks, testConnection)
 
-### Flowise
-- **Purpose:** Low-code AI flow engine integration for automated message processing — routes webhook messages to Flowise chatflows for AI responses
-- **Auth:** Bearer token via `FLOWISE_API_KEY` (optional)
-- **Endpoints (proxied):**
-  - `POST /api/flowise/predict/:chatflowId` — Run prediction
-  - `GET /api/flowise/chatflows` — List flows
-  - `POST /api/flowise/chatflows` — Create flow
-  - `PUT /api/flowise/chatflows/:id` — Update flow
-  - `DELETE /api/flowise/chatflows/:id` — Delete flow
-  - `GET /api/flowise/status` — Health check
-- **Used in:** `server/routes/webhooks.ts:102` (incoming WhatsApp → Flowise), `server/routes/flowise.ts` (full CRUD proxy)
-- **Env vars:** `FLOWISE_URL`, `FLOWISE_API_KEY`, `FLOWISE_CHATFLOW_ID`
+**Anthropic Claude (Planned/Scaffolded):**
+- Provider package: `providers/claude/` (client, config, types, logs, webhooks, testConnection)
+- API version: v1
 
-## Payment Gateways
+**Google Gemini (Planned/Scaffolded):**
+- Provider package: `providers/gemini/` (client, config, types, logs, webhooks, testConnection)
 
-**All payment provider integrations follow a standard pattern** (connection wrapper with connect/disconnect/isConnected):
+**Agent System:**
+- `server/services/ai-agent.ts`: Dynamic provider selection based on available API keys
+- Tools available to agents: `update_contact`, `create_activity`, `transfer_to_human`, `search_knowledge`
 
-| Provider | SDK Path | Status |
-|----------|----------|--------|
-| Stripe | `providers/stripe/client.ts` | Connection wrapper ready |
-| Mercado Pago | `providers/mercadopago/client.ts` | Connection wrapper ready |
-| Asaas | `providers/asaas/client.ts` | Connection wrapper ready |
-| Hotmart | `providers/hotmart/client.ts` | Connection wrapper ready |
-| Kiwify | `providers/kiwify/client.ts` | Connection wrapper ready |
-| PerfectPay | `providers/perfectpay/client.ts` | Connection wrapper ready |
-| UTMify | `providers/utmify/client.ts` | Connection wrapper ready |
+### AI Flow Engine
 
-**Sales tracking:** `server/routes/sales.ts`, `server/db/schema.ts` (`sales` table has `provider`, `provider_sale_id` columns)
+**Flowise:**
+- Low-code AI flow platform (self-hosted)
+- SDK: `fetch`-based proxy at `server/routes/flowise.ts`
+- Auth: `FLOWISE_API_KEY` as Bearer token, or `FLOWISE_URL` as base URL
+- Endpoints: POST `/api/v1/prediction/:chatflowId`, GET/POST `/api/v1/chatflows`
+- Integrated with: Webhook processing in `server/routes/webhooks.ts` (lines 16-18)
 
-## Data Storage
+### Voice / Audio
+
+**ElevenLabs:**
+- Text-to-Speech and Voice Cloning
+- SDK: `fetch`-based to `https://api.elevenlabs.io/v1`
+- Capabilities: TTS (`text-to-speech/:voiceId`), voice cloning (`voices/add`), voice listing (`voices`)
+- Default voice: `21m00Tcm4TlvDq8ikWAM` (Rachel)
+- Default model: `eleven_multilingual_v2`
+- Used in: `server/services/audio.ts` lines 109-213
+- Provider package: `providers/elevenlabs/` (client, config, types, logs, webhooks, testConnection)
+
+### Data Storage
 
 **Databases:**
-- **Primary (Production):** Supabase PostgreSQL
-  - Client: `@supabase/supabase-js` — `server/db/supabase.ts`
-  - Connection: `SUPABASE_URL` + `SUPABASE_ANON_KEY` env vars
-  - Drizzle ORM for PostgreSQL (`drizzle.config.ts`)
-  - Schema defined in `server/db/schema.ts` (SQLite-compatible but applied to Postgres via `migrations/`)
-  - Migrations: `migrations/001_initial.sql`, `002_saas_multitenant.sql`, `003_flow_controls.sql`
+- **Supabase PostgreSQL** (Production):
+  - Connection: `SUPABASE_URL`, `SUPABASE_ANON_KEY`
+  - Client: `@supabase/supabase-js` through `server/db/supabase.ts`
+  - Helper functions: `query()`, `insert()`, `update()`, `remove()`, `rpc()` in `server/db/supabase.ts`
+  - Drizzle Kit configured for PostgreSQL dialect (`drizzle.config.ts`)
+  - Migrations: SQL files in `migrations/` directory
+  - Tables: tenants, users, customers, workspaces, contacts, conversations, messages, flows, agents, voices, whatsapp_credentials, integrations, webhook_events, message_status_events, plans, sessions, audit_logs, saas_revenue, modules_enabled, contact_notes, contact_tasks, contact_events, tags, custom_fields, media_files, knowledge_base, and more
 
-- **Local Dev (optional):** SQLite via `better-sqlite3`
-  - File: `data/ozion.db`
-  - ORM: Drizzle + `drizzle-orm/better-sqlite3`
-  - Initialization: `server/db/index.ts` — lazy-loaded, graceful fallback when unavailable (e.g., Vercel serverless)
-  - WAL mode + foreign keys enabled
+- **SQLite** (Local Dev):
+  - Implementation: `better-sqlite3` at `server/db/index.ts`
+  - Location: `data/ozion.db`
+  - ORM: Drizzle ORM with `drizzle-orm/better-sqlite3`
+  - WAL mode enabled, foreign keys enforced
+  - Fallback: If SQLite unavailable (Vercel serverless), system uses Supabase exclusively
 
 **File Storage:**
-- No dedicated file storage service detected (Vercel ephemeral filesystem only)
-- Audio files downloaded to OS temp directory for processing (`server/services/audio.ts`)
+- Local filesystem only (temporary file download for audio processing, `os.tmpdir()`)
+- Media metadata tracked in `media_files` Supabase table (`server/services/media-library.ts`)
 
 **Caching:**
-- None detected (no Redis, Memcached, or in-memory cache)
+- None detected (no Redis, no in-memory cache layer)
 
-## Authentication & Identity
+### Authentication & Identity
 
-**Auth Provider:**
-- **Custom JWT-based authentication**
-  - Implementation: `server/middleware/auth.ts`
-  - Token generation: `jwt.sign()` with `JWT_SECRET`, 7-day expiry
-  - Token verification: `jwt.verify()` at middleware, user existence + active status checked against Supabase
-  - Customer status check (suspended/cancelled) performed on each request
-- **Password hashing:** `bcryptjs` with salt rounds 10
-- **RBAC:** Role-based access in `server/middleware/rbac.ts` (`requireRole()`, `requireMaster()`)
-- **Master admin impersonation:** Endpoint `POST /api/auth/impersonate/:customerId`
+**Custom JWT-based auth:**
+- Implementation: `server/middleware/auth.ts`
+- Token generation: `jwt.sign()` with 7-day expiry, `JWT_SECRET`
+- Token verification: `jwt.verify()` on every request
+- User verification: Additional Supabase lookup to verify user exists and is active (`users` table)
+- Customer suspension check: Customer `status` field (suspended/cancelled)
+- Role-based access control: `requireRole()` and `requireMaster()` middleware
+- Permission system: `server/middleware/rbac.ts` with granular permission definitions (CONTACTS_*, CHAT_*, FLOWS_*, AGENTS_*, SALES_*, CRM_*, etc.)
+- Auth header: Bearer token in `Authorization` header
 
-**Webhook Verification:**
-- WhatsApp webhook: `hub.verify_token` challenge-response (GET)
-- Evolution API: Simple GET 200 (no challenge)
+### Payment Gateways
+
+**Stripe (Scaffolded):**
+- Provider package: `providers/stripe/` (client, config, types, logs, webhooks, testConnection)
+- Not yet connected to actual Stripe API
+
+**Mercado Pago (Scaffolded):**
+- Provider package: `providers/mercadopago/` (client, config, types, logs, webhooks, testConnection)
+
+**Asaas (Scaffolded):**
+- Provider package: `providers/asaas/` (client, config, types, logs, webhooks, testConnection)
+
+**Hotmart (Scaffolded):**
+- Provider package: `providers/hotmart/` (client, config, types, logs, webhooks, testConnection)
+
+**Kiwify (Scaffolded):**
+- Provider package: `providers/kiwify/` (client, config, types, logs, webhooks, testConnection)
+
+**Perfect Pay (Scaffolded):**
+- Provider package: `providers/perfectpay/` (client, config, types, logs, webhooks, testConnection)
+
+**UTMify (Scaffolded):**
+- Provider package: `providers/utmify/` (client, config, types, logs, webhooks, testConnection)
+
+### Meta Conversions API
+- Endpoints for tracking ad conversions from WhatsApp interactions
+- Auth: `META_CAPI_DATASET_ID`, `META_CAPI_ACCESS_TOKEN`
+- API version: v19.0
+- Defined in `server/services/meta-api.ts` (BASE_URL: `https://graph.facebook.com/v19.0`)
+
+### Webhook Forwarding
+- Generic webhook provider: `providers/webhook/` (client, config, types, logs, webhooks, testConnection)
+
+### Meta / Facebook OAuth
+- OAuth flow for WhatsApp Business API connection
+- `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, `FACEBOOK_CONFIG_ID`, `FACEBOOK_SOLUTION_ID`
+- Redirect URI: `BASE_URL/api/whatsapp/oauth/callback`
+- State secret: `OAUTH_STATE_SECRET`
+- Token exchange: Authorization code → short-lived token → long-lived system user token
+- Business discovery: Get businesses → WABAs → phone numbers (cascading API calls)
+- Flow handled in: `server/routes/whatsapp.ts` + `server/services/meta-api.ts`
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None detected (no Sentry, LogRocket, or similar)
-- Errors logged via `console.error` throughout the application
+- None detected (no Sentry, DataDog, etc.)
 
 **Logs:**
-- Application logs: `console.log`/`console.error` (stdout)
-- Audit logs: `audit_logs` table in Supabase (`server/db/schema.ts:446`)
-- System logs: `logs` table in Supabase (`server/db/schema.ts:373`)
-- Log routes: `server/routes/logs.ts`
-
-**Health Monitoring:**
-- `system_health` table in Supabase (`server/db/schema.ts:390`)
-- Health endpoint: `GET /api/health` (authenticated)
-- Ping endpoint: `GET /api/ping` (public)
-- Seed data includes health components for: meta-cloud-api, webhooks-whatsapp, openai, elevenlabs, utmify, kiwify, hotmart, asaas, mercadopago, stripe, database, storage, queues
+- `console.log`/`console.error` throughout the codebase
+- API route for logs: `server/routes/logs.ts`
+- System health monitoring in `seed.ts` (healthComponents)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- **Vercel (Primary):** Serverless deployment via `vercel.json`
-  - API entrypoint: `api/index.ts` (rewrite `/api/(.*)`)
-  - SPA frontend served from `public/`
-  - Build command: `echo 'Build complete'` (no build step — TypeScript executed directly via tsx)
-- **Railway (Alternative):** Full Node process via `railway.json`
-  - Start command: `npm run start` → `node dist/server/index.js`
-  - Health check at `/api/health`
+- **Vercel** (Primary): Serverless deployment via `api/index.ts` entrypoint
+  - `vercel.json` rewrites: `/api/*` → `api/index.ts`, all else → `public/index.html`
+- **Railway** (Alternative): Full Node server via `npm run start`
+  - `railway.json` with Nixpacks builder, healthcheck at `/api/health`
 
 **CI Pipeline:**
-- `.github/` directory present — GitHub Actions
-- Scripts in `scripts/`:
-  - `scripts/deploy.sh` — Deploy to Vercel with staging/production environments
-  - `scripts/backup.sh` — Full/database backup
-  - `scripts/rollback.sh` — Rollback deployment
-  - `scripts/changelog.sh` — Changelog generation
+- GitHub Actions: `.github/workflows/deploy.yml`
+  - Test job: `npm ci` + `npm run build` on push/PR to main, staging, development
+  - Deploy Staging: Auto-deploy to Vercel staging on push to `staging` branch
+  - Deploy Production: Auto-deploy to Vercel production on push to `main`, creates GitHub Release + tag
+- Manual deploy scripts: `scripts/deploy.sh` (tag, push, branch-based)
+- Database backup: `.github/workflows/backup.yml`
+- Version management: `.github/workflows/version.yml`
 
 ## Environment Configuration
 
-**Critical env vars:**
-| Variable | Purpose |
-|----------|---------|
-| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Database connection |
-| `JWT_SECRET` | Auth token signing |
-| `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` | Meta OAuth |
-| `WEBHOOK_VERIFY_TOKEN`, `WEBHOOK_APP_SECRET` | Webhook security |
-| `ENCRYPTION_KEY` | Token/crypto operations |
-| `BASE_URL`, `OAUTH_REDIRECT_URI` | Callback URLs |
-| `GROQ_API_KEY` / `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` | AI inference |
-| `ELEVENLABS_API_KEY` | Text-to-speech |
-| `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` | Evolution WhatsApp |
-| `META_CAPI_DATASET_ID`, `META_CAPI_ACCESS_TOKEN` | Conversion tracking |
-| `FLOWISE_URL`, `FLOWISE_API_KEY`, `FLOWISE_CHATFLOW_ID` | AI flow engine |
+**Required env vars:**
+- `SUPABASE_URL` / `SUPABASE_ANON_KEY` - Supabase project credentials
+- `JWT_SECRET` - JWT signing key
+- `ENCRYPTION_KEY` - Token encryption key (AES)
+- `FACEBOOK_APP_ID` / `FACEBOOK_APP_SECRET` - Meta OAuth
+- `WEBHOOK_VERIFY_TOKEN` - WhatsApp webhook challenge
+- `WEBHOOK_APP_SECRET` - Webhook payload HMAC validation
+
+**Optional (feature-based) env vars:**
+- `GROQ_API_KEY` - AI agent + transcription
+- `OPENAI_API_KEY` - AI fallback + transcription fallback
+- `DEEPSEEK_API_KEY` - AI agent alternative
+- `ELEVENLABS_API_KEY` - Text-to-speech + voice cloning
+- `EVOLUTION_API_URL` / `EVOLUTION_API_KEY` - Evolution WhatsApp API
+- `FLOWISE_URL` / `FLOWISE_API_KEY` - Flowise AI flows
+- `META_CAPI_DATASET_ID` / `META_CAPI_ACCESS_TOKEN` - Conversions API
+- `BASE_URL` - OAuth redirect base URL
+- `OAUTH_REDIRECT_URI` - Full OAuth callback URL
+- `OAUTH_STATE_SECRET` - OAuth CSRF protection
+- `FACEBOOK_CONFIG_ID` / `FACEBOOK_SOLUTION_ID` - Meta app config
+- `DATABASE_URL` - PostgreSQL connection for Drizzle Kit
+- `PORT` - HTTP server port (default 3000)
 
 **Secrets location:**
-- Local: `.env` (gitignored)
-- Production: Vercel Environment Variables (project settings)
-- Config files: `config/.env.development`, `config/.env.production`, `config/.env.staging`
+- Vercel Environment Variables dashboard (production secrets)
+- `.env` file (local development, gitignored)
+- GitHub Actions Secrets (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`)
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- WhatsApp Cloud API: `POST /api/webhooks/whatsapp` (`server/routes/webhooks.ts`)
-  - Verification: `GET /api/webhooks/whatsapp?hub.challenge`
-  - Events: Inbound messages, status updates (delivered/read)
-- Evolution API: `POST /api/webhooks/evolution` (`server/routes/evolution.ts`)
-  - Events: Text, audio, image, document, button, list messages
-- Custom webhooks: Stored in `webhooks` table, managed via `server/routes/webhooks.ts` (CRUD)
+- `GET/POST /api/webhooks/whatsapp` - Meta WhatsApp Business API webhook
+  - GET: Verification challenge (`hub.challenge`, `hub.verify_token`)
+  - POST: Incoming messages, status updates, template message events
+  - Idempotency: `webhook_events` table with `(tenant_id, provider, event_id)` unique index
+  - Signature validation: HMAC-SHA256 with `META_APP_SECRET`
+- `POST /api/webhooks/evolution` - Evolution API webhook
+  - Incoming messages from Evolution/Baileys instances
+  - Audio, text, image, document message types
 
 **Outgoing:**
-- Custom outgoing webhooks: Tenant-configurable via integrations system
-- Webhook events filterable by type, HMAC secret support
-- Outgoing webhook log is stored (last trigger, last error tracking)
+- None detected (no outgoing webhook calls registered)
+
+## Provider Packages (Integration Scaffolding)
+
+The `providers/` directory contains scaffolded integration packages, each with a standard structure:
+- `config.ts` - Provider metadata (name, base URL, timeout, retry config)
+- `client.ts` - `ProviderClient` class with `connect()`, `disconnect()`, `isConnected()`, `getConfig()`
+- `types.ts` - TypeScript types for `ConnectionStatus`, `TestResult`, `LogEntry`, `ProviderConfig`
+- `testConnection.ts` - Connection testing utility
+- `logs.ts` - Log entry types
+- `webhooks.ts` - Webhook event types
+
+Complete scaffolds: `meta/`, `openai/`, `groq/`, `deepseek/`, `claude/`, `gemini/`, `elevenlabs/`, `stripe/`, `mercadopago/`, `asaas/`, `hotmart/`, `kiwify/`, `perfectpay/`, `utmify/`, `webhook/`
 
 ---
 
-*Integration audit: 2026-06-19*
+*Integration audit: 2026-06-22*
