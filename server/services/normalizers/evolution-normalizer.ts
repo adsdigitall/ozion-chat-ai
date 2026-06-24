@@ -3,7 +3,7 @@ import type { NormalizedMessage, NormalizedMessageType, NormalizedStatusUpdate }
 
 export function normalizeEvolutionMessage(
   tenantId: string,
-  body: Record<string, any>
+  body: any
 ): NormalizedMessage | null {
   const event = parseWebhookEvent(body);
   if (!event) return null;
@@ -26,7 +26,7 @@ export function normalizeEvolutionMessage(
 
 export function normalizeEvolutionStatusUpdate(
   tenantId: string,
-  body: Record<string, any>
+  body: any
 ): NormalizedStatusUpdate | null {
   const event = parseWebhookEvent(body);
   if (!event) return null;
