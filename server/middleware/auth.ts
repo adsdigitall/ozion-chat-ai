@@ -2,11 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { getSupabase } from '../db/supabase.js';
 
-const JWT_SECRET = process.env.JWT_SECRET;
 const TOKEN_EXPIRY = '7d';
 
-if (!JWT_SECRET) {
-  throw new Error('Missing required environment variable: JWT_SECRET');
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('Missing required environment variable: JWT_SECRET');
+  return secret;
 }
 
 export interface AuthUser {
@@ -29,11 +30,11 @@ declare global {
 }
 
 export function generateToken(user: AuthUser): string {
-  return jwt.sign(user, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+  return jwt.sign(user, getJwtSecret(), { expiresIn: TOKEN_EXPIRY });
 }
 
 export function verifyToken(token: string): AuthUser {
-  return jwt.verify(token, JWT_SECRET) as AuthUser;
+  return jwt.verify(token, getJwtSecret()) as AuthUser;
 }
 
 export async function authMiddleware(req: Request, res: Response, next: NextFunction) {

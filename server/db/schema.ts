@@ -14,7 +14,6 @@ export const tenants = sqliteTable('tenants', {
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  customerId: text('customer_id').references(() => customers.id),
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
   passwordHash: text('password_hash'),
@@ -36,12 +35,6 @@ export const customers = sqliteTable('customers', {
   company: text('company'),
   planId: text('plan_id'),
   status: text('status').default('active'),
-  lastAccessAt: text('last_access_at'),
-  tokenUsage: real('token_usage').default(0),
-  voiceUsage: real('voice_usage').default(0),
-  storageUsage: real('storage_usage').default(0),
-  notes: text('notes'),
-  tags: text('tags').default('[]'),
   maxContacts: integer('max_contacts').default(0),
   maxFlows: integer('max_flows').default(0),
   maxWorkspaces: integer('max_workspaces').default(1),
@@ -69,39 +62,12 @@ export const workspaces = sqliteTable('workspaces', {
   updatedAt: text('updated_at').default('datetime("now")').notNull(),
 });
 
-export const utalkIntegrations = sqliteTable('utalk_integrations', {
-  id: text('id').primaryKey(),
-  workspaceId: text('workspace_id').notNull(),
-  organizationId: text('organization_id'),
-  apiTokenEncrypted: text('api_token_encrypted').notNull(),
-  baseUrl: text('base_url').default('https://app-utalk.umbler.com/api'),
-  status: text('status').default('disconnected'),
-  lastSyncAt: text('last_sync_at'),
-  createdAt: text('created_at').default('datetime("now")'),
-  updatedAt: text('updated_at').default('datetime("now")'),
-});
-
-export const utalkMappings = sqliteTable('utalk_mappings', {
-  id: text('id').primaryKey(),
-  workspaceId: text('workspace_id').notNull(),
-  entityType: text('entity_type').notNull(),
-  ozionEntityId: text('ozion_entity_id').notNull(),
-  utalkEntityId: text('utalk_entity_id').notNull(),
-  rawData: text('raw_data').default('{}'),
-  createdAt: text('created_at').default('datetime("now")'),
-  updatedAt: text('updated_at').default('datetime("now")'),
-});
-
 export const contacts = sqliteTable('contacts', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  customerId: text('customer_id').references(() => customers.id),
   waId: text('wa_id'),
   name: text('name'),
   phone: text('phone'),
-  provider: text('provider').default('meta'),
-  externalId: text('external_id'),
-  rawProviderData: text('raw_provider_data').default('{}'),
   email: text('email'),
   avatarUrl: text('avatar_url'),
   tags: text('tags').default('[]'),
@@ -129,12 +95,8 @@ export const contacts = sqliteTable('contacts', {
 export const conversations = sqliteTable('conversations', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  customerId: text('customer_id').references(() => customers.id),
   workspaceId: text('workspace_id'),
   contactId: text('contact_id').references(() => contacts.id).notNull(),
-  provider: text('provider').default('meta'),
-  externalId: text('external_id'),
-  rawProviderData: text('raw_provider_data').default('{}'),
   phoneNumberId: text('phone_number_id'),
   contactWaId: text('contact_wa_id'),
   status: text('status').default('open').notNull(),
@@ -157,9 +119,7 @@ export const conversations = sqliteTable('conversations', {
 export const messages = sqliteTable('messages', {
   id: text('id').primaryKey(),
   conversationId: text('conversation_id').references(() => conversations.id).notNull(),
-  provider: text('provider').default('meta'),
   externalId: text('external_id'),
-  rawProviderData: text('raw_provider_data').default('{}'),
   direction: text('direction').notNull(),
   type: text('type').notNull(),
   content: text('content').notNull(),
@@ -171,27 +131,52 @@ export const messages = sqliteTable('messages', {
   sentAt: text('sent_at').default('datetime("now")').notNull(),
   deliveredAt: text('delivered_at'),
   readAt: text('read_at'),
-  failedAt: text('failed_at'),
 });
 
-export const messageStatusEvents = sqliteTable('message_status_events', {
+export const contactNotes = sqliteTable('contact_notes', {
   id: text('id').primaryKey(),
-  messageId: text('message_id').notNull(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  provider: text('provider'),
-  previousStatus: text('previous_status'),
-  newStatus: text('new_status').notNull(),
-  errorMessage: text('error_message'),
-  errorCode: integer('error_code'),
-  raw: text('raw').default('{}'),
-  occurredAt: text('occurred_at').default('datetime("now")').notNull(),
+  contactId: text('contact_id').references(() => contacts.id).notNull(),
+  conversationId: text('conversation_id').references(() => conversations.id),
+  authorUserId: text('author_user_id').references(() => users.id),
+  body: text('body').notNull(),
+  createdAt: text('created_at').default('datetime("now")').notNull(),
+  updatedAt: text('updated_at').default('datetime("now")').notNull(),
+});
+
+export const contactTasks = sqliteTable('contact_tasks', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  contactId: text('contact_id').references(() => contacts.id).notNull(),
+  conversationId: text('conversation_id').references(() => conversations.id),
+  title: text('title').notNull(),
+  description: text('description'),
+  status: text('status').default('open').notNull(),
+  dueAt: text('due_at'),
+  assignedTo: text('assigned_to'),
+  createdBy: text('created_by').references(() => users.id),
+  completedAt: text('completed_at'),
+  metadata: text('metadata').default('{}'),
+  createdAt: text('created_at').default('datetime("now")').notNull(),
+  updatedAt: text('updated_at').default('datetime("now")').notNull(),
+});
+
+export const contactEvents = sqliteTable('contact_events', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenant_id').references(() => tenants.id).notNull(),
+  contactId: text('contact_id').references(() => contacts.id).notNull(),
+  conversationId: text('conversation_id').references(() => conversations.id),
+  eventType: text('event_type').notNull(),
+  title: text('title').notNull(),
+  body: text('body'),
+  source: text('source').default('system').notNull(),
+  metadata: text('metadata').default('{}'),
   createdAt: text('created_at').default('datetime("now")').notNull(),
 });
 
 export const tags = sqliteTable('tags', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  customerId: text('customer_id').references(() => customers.id),
   name: text('name').notNull(),
   color: text('color').default('#6366f1'),
   isSystem: integer('is_system', { mode: 'boolean' }).default(false),
@@ -201,7 +186,6 @@ export const tags = sqliteTable('tags', {
 export const customFields = sqliteTable('custom_fields', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  customerId: text('customer_id').references(() => customers.id),
   name: text('name').notNull(),
   type: text('type').notNull(),
   isRequired: integer('is_required', { mode: 'boolean' }).default(false),
@@ -211,7 +195,6 @@ export const customFields = sqliteTable('custom_fields', {
 export const flows = sqliteTable('flows', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  customerId: text('customer_id').references(() => customers.id),
   workspaceId: text('workspace_id'),
   name: text('name').notNull(),
   description: text('description'),
@@ -248,7 +231,6 @@ export const flowEdges = sqliteTable('flow_edges', {
 export const agents = sqliteTable('agents', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  customerId: text('customer_id').references(() => customers.id),
   name: text('name').notNull(),
   description: text('description'),
   identity: text('identity').default('Você é um assistente virtual'),
@@ -274,7 +256,6 @@ export const agents = sqliteTable('agents', {
 export const voices = sqliteTable('voices', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  customerId: text('customer_id').references(() => customers.id),
   provider: text('provider').notNull(),
   name: text('name').notNull(),
   voiceId: text('voice_id').notNull(),
@@ -286,7 +267,6 @@ export const voices = sqliteTable('voices', {
 export const whatsappCredentials = sqliteTable('whatsapp_credentials', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull().unique(),
-  customerId: text('customer_id').references(() => customers.id),
   businessId: text('business_id'),
   businessName: text('business_name'),
   wabaId: text('waba_id'),
@@ -305,16 +285,11 @@ export const whatsappCredentials = sqliteTable('whatsapp_credentials', {
   connectedAt: text('connected_at'),
   createdAt: text('created_at').default('datetime("now")').notNull(),
   updatedAt: text('updated_at').default('datetime("now")').notNull(),
-  provider: text('provider').default('meta').notNull(),
-  instanceName: text('instance_name'),
-  evolutionApiUrl: text('evolution_api_url'),
-  evolutionApiKey: text('evolution_api_key'),
 });
 
 export const integrations = sqliteTable('integrations', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  customerId: text('customer_id').references(() => customers.id),
   provider: text('provider').notNull(),
   name: text('name').notNull(),
   status: text('status').default('disconnected'),
@@ -343,7 +318,6 @@ export const providerVersions = sqliteTable('provider_versions', {
 export const webhooks = sqliteTable('webhooks', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  customerId: text('customer_id').references(() => customers.id),
   name: text('name').notNull(),
   url: text('url').notNull(),
   events: text('events').default('[]'),
@@ -355,29 +329,9 @@ export const webhooks = sqliteTable('webhooks', {
   updatedAt: text('updated_at').default('datetime("now")').notNull(),
 });
 
-export const webhookEvents = sqliteTable('webhook_events', {
-  id: text('id').primaryKey(),
-  tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  provider: text('provider').default('meta'),
-  eventId: text('event_id').notNull(),
-  eventType: text('event_type').default('message'),
-  payload: text('payload').default('{}'),
-  rawBodyHash: text('raw_body_hash'),
-  signatureValid: integer('signature_valid', { mode: 'boolean' }),
-  status: text('status').default('received'),
-  attempts: integer('attempts').default(1),
-  errorMessage: text('error_message'),
-  receivedAt: text('received_at').default('datetime("now")').notNull(),
-  processedAt: text('processed_at'),
-  failedAt: text('failed_at'),
-  createdAt: text('created_at').default('datetime("now")').notNull(),
-  updatedAt: text('updated_at').default('datetime("now")').notNull(),
-});
-
 export const sales = sqliteTable('sales', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  customerId: text('customer_id').references(() => customers.id),
   contactId: text('contact_id').references(() => contacts.id),
   conversationId: text('conversation_id'),
   product: text('product'),
@@ -430,7 +384,6 @@ export const riskWords = sqliteTable('risk_words', {
 export const analyticsEvents = sqliteTable('analytics_events', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id).notNull(),
-  customerId: text('customer_id').references(() => customers.id),
   flowId: text('flow_id'),
   blockId: text('block_id'),
   event: text('event').notNull(),
@@ -499,67 +452,4 @@ export const subscriptions = sqliteTable('subscriptions', {
   canceledAt: text('canceled_at'),
   createdAt: text('created_at').default('datetime("now")').notNull(),
   updatedAt: text('updated_at').default('datetime("now")').notNull(),
-});
-
-export const sessions = sqliteTable('sessions', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').references(() => users.id).notNull(),
-  token: text('token').notNull().unique(),
-  expiresAt: text('expires_at').notNull(),
-  ipAddress: text('ip_address'),
-  userAgent: text('user_agent'),
-  isActive: integer('is_active', { mode: 'boolean' }).default(true),
-  createdAt: text('created_at').default('datetime("now")').notNull(),
-});
-
-export const auditLogs = sqliteTable('audit_logs', {
-  id: text('id').primaryKey(),
-  tenantId: text('tenant_id').notNull(),
-  customerId: text('customer_id').references(() => customers.id),
-  userId: text('user_id').references(() => users.id),
-  action: text('action').notNull(),
-  entity: text('entity').notNull(),
-  entityId: text('entity_id'),
-  oldData: text('old_data'),
-  newData: text('new_data'),
-  ipAddress: text('ip_address'),
-  userAgent: text('user_agent'),
-  createdAt: text('created_at').default('datetime("now")').notNull(),
-});
-
-export const saasRevenue = sqliteTable('saas_revenue', {
-  id: text('id').primaryKey(),
-  tenantId: text('tenant_id').notNull(),
-  customerId: text('customer_id').references(() => customers.id).notNull(),
-  subscriptionId: text('subscription_id').references(() => subscriptions.id),
-  planId: text('plan_id').references(() => plans.id).notNull(),
-  amount: real('amount').notNull(),
-  currency: text('currency').default('BRL'),
-  status: text('status').default('pending'),
-  paymentMethod: text('payment_method'),
-  gateway: text('gateway'),
-  gatewayPaymentId: text('gateway_payment_id'),
-  invoiceNumber: text('invoice_number'),
-  dueDate: text('due_date'),
-  paidAt: text('paid_at'),
-  createdAt: text('created_at').default('datetime("now")').notNull(),
-});
-
-export const modulesEnabled = sqliteTable('modules_enabled', {
-  id: text('id').primaryKey(),
-  customerId: text('customer_id').references(() => customers.id).notNull(),
-  moduleName: text('module_name').notNull(),
-  isEnabled: integer('is_enabled', { mode: 'boolean' }).default(true),
-  customSettings: text('custom_settings').default('{}'),
-  createdAt: text('created_at').default('datetime("now")').notNull(),
-});
-
-export const customerUsage = sqliteTable('customer_usage', {
-  id: text('id').primaryKey(),
-  customerId: text('customer_id').references(() => customers.id).notNull(),
-  metric: text('metric').notNull(),
-  value: real('value').default(0),
-  periodStart: text('period_start'),
-  periodEnd: text('period_end'),
-  createdAt: text('created_at').default('datetime("now")').notNull(),
 });

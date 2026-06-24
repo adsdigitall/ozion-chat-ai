@@ -28,6 +28,7 @@ import deployRoutes from '../server/routes/deploy.js';
 import flowiseRoutes from '../server/routes/flowise.js';
 import tagsRoutes from '../server/routes/tags.js';
 import inboxRoutes from '../server/routes/inbox.js';
+import conexoesRoutes from '../server/routes/conexoes.js';
 import { authMiddleware } from '../server/middleware/auth.js';
 
 const app = express();
@@ -63,6 +64,7 @@ app.use('/api/deploy', authMiddleware, deployRoutes);
 app.use('/api/flowise', authMiddleware, flowiseRoutes);
 app.use('/api/tags', authMiddleware, tagsRoutes);
 app.use('/api/inbox', authMiddleware, inboxRoutes);
+app.use('/api/conexoes', authMiddleware, conexoesRoutes);
 
 app.get('/api/ping', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

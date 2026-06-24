@@ -109,14 +109,14 @@ function confirmModal({ title, message, onConfirm, danger = false }) {
     body: `<p style="color:#8b9dc3;font-size:13px;margin:0">${message}</p>`,
     footer: `
       <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px;font-weight:500">Cancelar</button>
-      <button onclick="(${onConfirm.toString()})();closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:none;background:${danger ? '#ef4444' : '#6c5ce7'};color:white;cursor:pointer;font-size:12px;font-weight:600">${danger ? 'Excluir' : 'Confirmar'}</button>`
+      <button onclick="(${onConfirm.toString()})();closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:none;background:${danger ? '#ef4444' : '#00b894'};color:white;cursor:pointer;font-size:12px;font-weight:600">${danger ? 'Excluir' : 'Confirmar'}</button>`
   });
 }
 
 function loadingModal(msg = 'Carregando...') {
   return showModal({
     title: msg,
-    body: `<div style="text-align:center;padding:20px"><i class="fa-solid fa-spinner fa-spin" style="font-size:32px;color:#6c5ce7"></i><p style="margin-top:12px;color:#8b9dc3;font-size:13px">Aguarde...</p></div>`,
+    body: `<div style="text-align:center;padding:20px"><i class="fa-solid fa-spinner fa-spin" style="font-size:32px;color:#00b894"></i><p style="margin-top:12px;color:#8b9dc3;font-size:13px">Aguarde...</p></div>`,
     width: '320px'
   });
 }
@@ -129,7 +129,7 @@ function crudForm({ fields, values = {}, id }) {
       return `<div class="form-group"><label>${f.label}</label><select id="${id}-${f.key}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px">${f.options.map(o => `<option value="${o.value}" ${val === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}</select></div>`;
     }
     if (f.type === 'color') {
-      return `<div class="form-group"><label>${f.label}</label><div style="display:flex;gap:6px;flex-wrap:wrap">${f.colors.map(c => `<div onclick="document.getElementById('${id}-${f.key}').value='${c}';document.querySelectorAll('.color-pick-${id}').forEach(e=>e.style.outline='none');this.style.outline='2px solid #6c5ce7'" class="color-pick-${id}" style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${val===c?'#6c5ce7':'transparent'}"></div>`).join('')}<input type="color" id="${id}-${f.key}" value="${val || '#6c5ce7'}" style="width:28px;height:28px;border:none;background:none;cursor:pointer"></div></div>`;
+      return `<div class="form-group"><label>${f.label}</label><div style="display:flex;gap:6px;flex-wrap:wrap">${f.colors.map(c => `<div onclick="document.getElementById('${id}-${f.key}').value='${c}';document.querySelectorAll('.color-pick-${id}').forEach(e=>e.style.outline='none');this.style.outline='2px solid #00b894'" class="color-pick-${id}" style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${val===c?'#00b894':'transparent'}"></div>`).join('')}<input type="color" id="${id}-${f.key}" value="${val || '#00b894'}" style="width:28px;height:28px;border:none;background:none;cursor:pointer"></div></div>`;
     }
     if (f.type === 'textarea') {
       return `<div class="form-group"><label>${f.label}</label><textarea id="${id}-${f.key}" rows="3" placeholder="${f.placeholder || ''}" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px;resize:vertical;font-family:inherit">${val}</textarea></div>`;
@@ -172,6 +172,7 @@ function getNavItems() {
       { id: 'admin-revenue', icon: 'fa-chart-line', label: 'Receita SaaS' },
       { id: 'admin-logs', icon: 'fa-history', label: 'Logs de Auditoria' },
       { id: 'chat', icon: 'fa-comments', label: 'Chat ao vivo' },
+      { id: 'conexoes', icon: 'fa-plug', label: 'Conexões' },
       { id: 'contacts', icon: 'fa-address-book', label: 'Contatos' },
       { id: 'flows', icon: 'fa-diagram-project', label: 'Fluxos' },
       { id: 'agents', icon: 'fa-robot', label: 'Agente IA' },
@@ -187,8 +188,9 @@ function getNavItems() {
     { id: 'contacts', icon: 'fa-address-book', label: 'Contatos' },
     { id: 'tags', icon: 'fa-tags', label: 'Tags' },
     { id: 'flows', icon: 'fa-diagram-project', label: 'Fluxos' },
-    { id: 'whatsapp', icon: 'fa-whatsapp', label: 'WhatsApp' },
-    { id: 'voice', icon: 'fa-microphone', label: 'Voice Studio' },
+      { id: 'conexoes', icon: 'fa-plug', label: 'Conexões' },
+      { id: 'whatsapp', icon: 'fa-whatsapp', label: 'WhatsApp' },
+      { id: 'voice', icon: 'fa-microphone', label: 'Voice Studio' },
     { id: 'agents', icon: 'fa-robot', label: 'Agente IA' },
     { id: 'campaigns', icon: 'fa-bullhorn', label: 'Campanhas' },
     { id: 'analytics', icon: 'fa-chart-bar', label: 'Análises', children: [
@@ -324,12 +326,12 @@ function appHTML() {
     <!-- Mobile Top Bar -->
     <div class="mobile-topbar">
       <div class="mobile-topbar-left">
-        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6c5ce7,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:14px;color:white;font-weight:700">O</div>
+        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#00b894,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:14px;color:white;font-weight:700">O</div>
         <span class="mobile-topbar-title">Ozion</span>
       </div>
       <div style="display:flex;align-items:center;gap:12px">
         <i class="fa-solid fa-bell" style="font-size:16px;color:#8b9dc3;cursor:pointer"></i>
-        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6c5ce7,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:10px;color:white;cursor:pointer" onclick="logout()">A</div>
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#00b894,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:10px;color:white;cursor:pointer" onclick="logout()">A</div>
       </div>
     </div>
   </div>`;
@@ -404,6 +406,7 @@ async function loadPage(page) {
     tags: loadTags, 
     flows: loadFlows, 
     whatsapp: loadWhatsApp, 
+    conexoes: loadConexoes,
     voice: loadVoice, 
     agents: loadAgents, 
     campaigns: loadCampaigns, 
@@ -562,7 +565,7 @@ async function loadChat(el) {
             <div style="position:relative;cursor:pointer">
               <i class="fa-solid fa-chevron-down" style="font-size:12px;color:#8b9dc3"></i>
             </div>
-            <div onclick="showNewChatModal()" style="width:32px;height:32px;border-radius:50%;background:#6c5ce7;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#5a4bd1'" onmouseout="this.style.background='#6c5ce7'">
+            <div onclick="showNewChatModal()" style="width:32px;height:32px;border-radius:50%;background:#00b894;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#00a381'" onmouseout="this.style.background='#00b894'">
               <i class="fa-solid fa-plus" style="font-size:14px;color:white"></i>
             </div>
           </div>
@@ -573,19 +576,19 @@ async function loadChat(el) {
           <i class="fa-solid fa-filter" onclick="toggleChatFilterPanel()" style="font-size:13px;color:#8b9dc3;cursor:pointer"></i>
           <div style="flex:1;position:relative">
             <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:#64748b"></i>
-            <input type="text" id="chat-search" placeholder="Buscar por nome ou telefone" value="${chatSearch}" oninput="chatSearch=this.value;renderChatList()" style="width:100%;padding:8px 12px 8px 28px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;transition:border .2s" onfocus="this.style.borderColor='#6c5ce7'" onblur="this.style.borderColor='#1e2d3d'">
+            <input type="text" id="chat-search" placeholder="Buscar por nome ou telefone" value="${chatSearch}" oninput="chatSearch=this.value;renderChatList()" style="width:100%;padding:8px 12px 8px 28px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;transition:border .2s" onfocus="this.style.borderColor='#00b894'" onblur="this.style.borderColor='#1e2d3d'">
           </div>
         </div>
 
         <!-- Tabs -->
         <div style="padding:12px 16px 0;display:flex;gap:0;border-bottom:1px solid #1e2d3d">
-          <button onclick="setChatFilter('all')" class="chat-filter-btn" data-filter="all" style="flex:1;padding:10px 0;border:none;border-bottom:2px solid ${chatFilter==='all'?'#6c5ce7':'transparent'};cursor:pointer;font-size:12px;font-weight:${chatFilter==='all'?'700':'500'};background:transparent;color:${chatFilter==='all'?'#e6edf3':'#8b9dc3'};transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px">
+          <button onclick="setChatFilter('all')" class="chat-filter-btn" data-filter="all" style="flex:1;padding:10px 0;border:none;border-bottom:2px solid ${chatFilter==='all'?'#00b894':'transparent'};cursor:pointer;font-size:12px;font-weight:${chatFilter==='all'?'700':'500'};background:transparent;color:${chatFilter==='all'?'#e6edf3':'#8b9dc3'};transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px">
             Entrada ${entradaCount > 0 ? `<span style="background:#22c55e;color:white;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px">${entradaCount}</span>` : ''}
           </button>
-          <button onclick="setChatFilter('ai')" class="chat-filter-btn" data-filter="ai" style="flex:1;padding:10px 0;border:none;border-bottom:2px solid ${chatFilter==='ai'?'#6c5ce7':'transparent'};cursor:pointer;font-size:12px;font-weight:${chatFilter==='ai'?'700':'500'};background:transparent;color:${chatFilter==='ai'?'#e6edf3':'#8b9dc3'};transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px">
+          <button onclick="setChatFilter('ai')" class="chat-filter-btn" data-filter="ai" style="flex:1;padding:10px 0;border:none;border-bottom:2px solid ${chatFilter==='ai'?'#00b894':'transparent'};cursor:pointer;font-size:12px;font-weight:${chatFilter==='ai'?'700':'500'};background:transparent;color:${chatFilter==='ai'?'#e6edf3':'#8b9dc3'};transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px">
             Esperando ${waitingCount > 0 ? `<span style="background:#f59e0b;color:white;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px">${waitingCount}</span>` : ''}
           </button>
-          <button onclick="setChatFilter('closed')" class="chat-filter-btn" data-filter="closed" style="flex:1;padding:10px 0;border:none;border-bottom:2px solid ${chatFilter==='closed'?'#6c5ce7':'transparent'};cursor:pointer;font-size:12px;font-weight:${chatFilter==='closed'?'700':'500'};background:transparent;color:${chatFilter==='closed'?'#e6edf3':'#8b9dc3'};transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px">
+          <button onclick="setChatFilter('closed')" class="chat-filter-btn" data-filter="closed" style="flex:1;padding:10px 0;border:none;border-bottom:2px solid ${chatFilter==='closed'?'#00b894':'transparent'};cursor:pointer;font-size:12px;font-weight:${chatFilter==='closed'?'700':'500'};background:transparent;color:${chatFilter==='closed'?'#e6edf3':'#8b9dc3'};transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px">
             Finalizados
           </button>
         </div>
@@ -674,7 +677,7 @@ function renderChatEmpty() {
   return `<div style="flex:1;display:flex;align-items:center;justify-content:center">
     <div style="text-align:center;max-width:300px">
       <div style="width:80px;height:80px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
-        <i class="fa-solid fa-comments" style="font-size:32px;color:#6c5ce7;opacity:.5"></i>
+        <i class="fa-solid fa-comments" style="font-size:32px;color:#00b894;opacity:.5"></i>
       </div>
       <h3 style="font-size:16px;font-weight:600;margin:0 0 6px;color:#e6edf3">Selecione uma conversa</h3>
       <p style="font-size:12px;color:#8b9dc3;margin:0">Escolha uma conversa ao lado para começar a responder</p>
@@ -690,7 +693,7 @@ function setChatFilter(filter) {
   
   document.querySelectorAll('.chat-filter-btn').forEach(btn => {
     const f = btn.dataset.filter;
-    btn.style.borderBottom = f === filter ? '2px solid #6c5ce7' : '2px solid transparent';
+    btn.style.borderBottom = f === filter ? '2px solid #00b894' : '2px solid transparent';
     btn.style.fontWeight = f === filter ? '700' : '500';
     btn.style.color = f === filter ? '#e6edf3' : '#8b9dc3';
   });
@@ -717,7 +720,7 @@ async function selectConv(id) {
   if (chatSidebar) chatSidebar.classList.add('hidden');
   chatMain.classList.add('active');
 
-  chatMain.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;color:#6c5ce7"></i></div>`;
+  chatMain.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;color:#00b894"></i></div>`;
 
   const data = await api(`/api/chat/conversations/${id}`);
   chatMessages = data?.messages || [];
@@ -744,7 +747,7 @@ async function selectConv(id) {
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
-        <button onclick="showConvTagsModal('${id}')" style="padding:5px 8px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;display:flex;align-items:center;gap:4px;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Tags"><i class="fa-solid fa-tags"></i></button>
+        <button onclick="showConvTagsModal('${id}')" style="padding:5px 8px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;display:flex;align-items:center;gap:4px;transition:all .2s" onmouseover="this.style.borderColor='#00b894'" onmouseout="this.style.borderColor='#1e2d3d'" title="Tags"><i class="fa-solid fa-tags"></i></button>
         <button onclick="showQuickFlowsModal('${id}')" style="padding:5px 8px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#f59e0b;cursor:pointer;font-size:10px;display:flex;align-items:center;gap:4px;transition:all .2s" onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='#1e2d3d'" title="Fluxos rápidos"><i class="fa-solid fa-bolt"></i></button>
         <button onclick="showTransferModal('${id}')" style="padding:5px 8px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;display:flex;align-items:center;gap:4px;transition:all .2s" onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='#1e2d3d'" title="Transferir"><i class="fa-solid fa-arrow-right-arrow-left"></i></button>
         <button onclick="toggleAI('${id}')" style="padding:5px 10px;border-radius:6px;border:1px solid ${selectedConv.isAiActive?'#f59e0b':'#22c55e'};background:${selectedConv.isAiActive?'rgba(245,158,11,.1)':'rgba(34,197,94,.1)'};color:${selectedConv.isAiActive?'#f59e0b':'#22c55e'};cursor:pointer;font-size:10px;font-weight:500;display:flex;align-items:center;gap:4px;transition:all .2s">
@@ -764,21 +767,21 @@ async function selectConv(id) {
       <div style="display:flex;gap:4px;margin-bottom:6px">
         ${['B','I','S','M'].map(f => `<button style="width:26px;height:26px;border-radius:4px;border:none;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;font-weight:${f==='B'||f==='M'?'700':'400'};${f==='I'?'font-style:italic':''}${f==='S'?'text-decoration:line-through':''}${f==='M'?'font-family:monospace':''}:transition:all .15s" onmouseover="this.style.background='#1e2d3d';this.style.color='#e6edf3'" onmouseout="this.style.background='#161b22';this.style.color='#8b9dc3'">${f}</button>`).join('')}
         <div style="flex:1"></div>
-        <button onclick="saveCurrentFilter()" style="padding:4px 8px;border-radius:4px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:9px;font-weight:500;display:flex;align-items:center;gap:3px;transition:all .15s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#2a3050'" title="Salvar filtro"><i class="fa-solid fa-bookmark" style="font-size:8px"></i> Salvar</button>
+        <button onclick="saveCurrentFilter()" style="padding:4px 8px;border-radius:4px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:9px;font-weight:500;display:flex;align-items:center;gap:3px;transition:all .15s" onmouseover="this.style.borderColor='#00b894'" onmouseout="this.style.borderColor='#2a3050'" title="Salvar filtro"><i class="fa-solid fa-bookmark" style="font-size:8px"></i> Salvar</button>
         ${savedFilters.length > 0 ? `<select onchange="applySavedFilter(this.value);this.value=''" style="padding:4px 6px;border-radius:4px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:9px;max-width:120px"><option value="">Filtros salvos</option>${savedFilters.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}</select>` : ''}
       </div>
       <div style="display:flex;gap:6px;align-items:flex-end">
-        <button onclick="showAttachMenu()" style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Anexar"><i class="fa-solid fa-paperclip" style="font-size:12px"></i></button>
-        <button onclick="toggleEmojiPicker()" style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Emoji"><i class="fa-solid fa-face-smile" style="font-size:12px"></i></button>
+        <button onclick="showAttachMenu()" style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#00b894'" onmouseout="this.style.borderColor='#1e2d3d'" title="Anexar"><i class="fa-solid fa-paperclip" style="font-size:12px"></i></button>
+        <button onclick="toggleEmojiPicker()" style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#00b894'" onmouseout="this.style.borderColor='#1e2d3d'" title="Emoji"><i class="fa-solid fa-face-smile" style="font-size:12px"></i></button>
         <div style="flex:1;position:relative">
-          <textarea id="chat-input-text" rows="1" placeholder="Digite sua mensagem..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('${id}')}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';onChatInputTyping()" style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;resize:none;min-height:34px;max-height:120px;font-family:inherit;transition:border .2s" onfocus="this.style.borderColor='#6c5ce7'" onblur="this.style.borderColor='#1e2d3d'"></textarea>
+          <textarea id="chat-input-text" rows="1" placeholder="Digite sua mensagem..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('${id}')}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';onChatInputTyping()" style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;resize:none;min-height:34px;max-height:120px;font-family:inherit;transition:border .2s" onfocus="this.style.borderColor='#00b894'" onblur="this.style.borderColor='#1e2d3d'"></textarea>
         </div>
-        <button onclick="toggleAudioRecording()" style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'" title="Áudio"><i class="fa-solid fa-microphone" style="font-size:12px"></i></button>
-        <button onclick="sendMsg('${id}')" style="width:34px;height:34px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.background='#5a4bd1'" onmouseout="this.style.background='#6c5ce7'"><i class="fa-solid fa-paper-plane" style="font-size:12px"></i></button>
+        <button onclick="toggleAudioRecording()" style="width:34px;height:34px;border-radius:6px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='#00b894'" onmouseout="this.style.borderColor='#1e2d3d'" title="Áudio"><i class="fa-solid fa-microphone" style="font-size:12px"></i></button>
+        <button onclick="sendMsg('${id}')" style="width:34px;height:34px;border-radius:6px;border:none;background:#00b894;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.background='#00a381'" onmouseout="this.style.background='#00b894'"><i class="fa-solid fa-paper-plane" style="font-size:12px"></i></button>
       </div>
       <div style="display:flex;gap:4px;margin-top:6px">
         <button onclick="aiRespond('${id}')" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:#22c55e;cursor:pointer;font-size:9px;font-weight:500;display:flex;align-items:center;gap:3px;transition:all .15s"><i class="fa-solid fa-robot" style="font-size:8px"></i> IA</button>
-        <button onclick="showQuickRepliesModal()" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(108,92,231,.3);background:rgba(108,92,231,.08);color:#6c5ce7;cursor:pointer;font-size:9px;font-weight:500;display:flex;align-items:center;gap:3px;transition:all .15s"><i class="fa-solid fa-bolt" style="font-size:8px"></i> Respostas</button>
+        <button onclick="showQuickRepliesModal()" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(108,92,231,.3);background:rgba(108,92,231,.08);color:#00b894;cursor:pointer;font-size:9px;font-weight:500;display:flex;align-items:center;gap:3px;transition:all .15s"><i class="fa-solid fa-bolt" style="font-size:8px"></i> Respostas</button>
         <button onclick="sendTemplate('${id}')" style="padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:9px;font-weight:500;display:flex;align-items:center;gap:3px;transition:all .15s"><i class="fa-solid fa-file-alt" style="font-size:8px"></i> Template</button>
       </div>
     </div>`;
@@ -793,7 +796,7 @@ async function selectConv(id) {
 function renderEmptyMessages() {
   return `<div style="flex:1;display:flex;align-items:center;justify-content:center">
     <div style="text-align:center">
-      <div style="width:48px;height:48px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 10px"><i class="fa-solid fa-message" style="font-size:18px;color:#6c5ce7;opacity:.4"></i></div>
+      <div style="width:48px;height:48px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 10px"><i class="fa-solid fa-message" style="font-size:18px;color:#00b894;opacity:.4"></i></div>
       <p style="font-size:12px;color:#8b9dc3;margin:0">Nenhuma mensagem ainda</p>
       <p style="font-size:11px;color:#64748b;margin-top:2px">Envie uma mensagem para iniciar</p>
     </div>
@@ -803,7 +806,7 @@ function renderEmptyMessages() {
 function renderMessage(m) {
   const isInbound = m.direction === 'inbound';
   const senderName = isInbound ? (selectedConv?.contact?.name || 'Contato') : (m.sender === 'ai' ? 'Ozion IA' : (currentUser?.name || 'Operador'));
-  const avatarColor = isInbound ? getAvatarColor(senderName) : (m.sender === 'ai' ? '#6c5ce7' : '#22c55e');
+  const avatarColor = isInbound ? getAvatarColor(senderName) : (m.sender === 'ai' ? '#00b894' : '#22c55e');
   const avatarText = isInbound ? (senderName[0] || '?') : (m.sender === 'ai' ? '<i class="fa-solid fa-robot" style="font-size:10px"></i>' : (currentUser?.name?.[0] || 'O'));
   const msgTime = m.sentAt || m.sent_at || m.created_at || new Date().toISOString();
   const typeIcon = m.type === 'audio' ? '<i class="fa-solid fa-microphone" style="font-size:9px;margin-right:4px"></i>' : m.type === 'image' ? '<i class="fa-solid fa-image" style="font-size:9px;margin-right:4px"></i>' : '';
@@ -813,9 +816,9 @@ function renderMessage(m) {
     <div style="max-width:70%;${isInbound?'':'text-align:right'}">
       <div style="font-size:9px;color:#8b9dc3;margin-bottom:2px;display:flex;align-items:center;gap:4px;${isInbound?'':'justify-content:flex-end'}">
         <span style="font-weight:500">${senderName}</span>
-        ${m.isFlow ? '<span style="background:#6c5ce7;color:white;padding:1px 4px;border-radius:3px;font-size:7px;font-weight:600">FLUXO</span>' : ''}
+        ${m.isFlow ? '<span style="background:#00b894;color:white;padding:1px 4px;border-radius:3px;font-size:7px;font-weight:600">FLUXO</span>' : ''}
       </div>
-      <div style="padding:8px 12px;border-radius:12px;font-size:12px;line-height:1.4;word-wrap:break-word;${isInbound?'background:#161b22;border-bottom-left-radius:4px;color:#e6edf3':'background:#6c5ce7;color:white;border-bottom-right-radius:4px'}">${typeIcon}${m.content}</div>
+      <div style="padding:8px 12px;border-radius:12px;font-size:12px;line-height:1.4;word-wrap:break-word;${isInbound?'background:#161b22;border-bottom-left-radius:4px;color:#e6edf3':'background:#00b894;color:white;border-bottom-right-radius:4px'}">${typeIcon}${m.content}</div>
       <div style="font-size:8px;color:#64748b;margin-top:2px;${isInbound?'':'text-align:right'}">${formatTime(msgTime)}</div>
     </div>
   </div>`;
@@ -1033,13 +1036,13 @@ async function showQuickFlowsModal(convId) {
         <input type="text" id="flow-search-modal" placeholder="Buscar fluxo..." oninput="filterFlowsModal(this.value)" style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;margin-bottom:12px">
         <div id="flows-modal-list" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
           ${flows.length === 0 ? '<p style="text-align:center;color:#8b9dc3;font-size:12px;padding:20px">Nenhum fluxo encontrado</p>' : flows.map(f => `
-            <div onclick="triggerQuickFlow('${convId}','${f.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#2a3050'">
-              <div style="width:36px;height:36px;border-radius:8px;background:${f.color || '#6c5ce7'}22;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-${f.icon || 'code-branch'}" style="color:${f.color || '#6c5ce7'};font-size:14px"></i></div>
+            <div onclick="triggerQuickFlow('${convId}','${f.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='#00b894'" onmouseout="this.style.borderColor='#2a3050'">
+              <div style="width:36px;height:36px;border-radius:8px;background:${f.color || '#00b894'}22;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-${f.icon || 'code-branch'}" style="color:${f.color || '#00b894'};font-size:14px"></i></div>
               <div style="flex:1;min-width:0">
                 <div style="font-size:12px;font-weight:600;color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
                 <div style="font-size:10px;color:#8b9dc3">${f.blocks?.length || 0} blocos</div>
               </div>
-              <i class="fa-solid fa-paper-plane" style="font-size:10px;color:#6c5ce7"></i>
+              <i class="fa-solid fa-paper-plane" style="font-size:10px;color:#00b894"></i>
             </div>
           `).join('')}
         </div>
@@ -1083,20 +1086,20 @@ function showQuickRepliesModal() {
   modal.innerHTML = `
     <div class="modal" style="max-width:440px">
       <div class="modal-header">
-        <h3><i class="fa-solid fa-bolt" style="color:#6c5ce7;margin-right:8px"></i>Respostas Rápidas</h3>
+        <h3><i class="fa-solid fa-bolt" style="color:#00b894;margin-right:8px"></i>Respostas Rápidas</h3>
         <button class="modal-close" onclick="document.getElementById('quick-replies-modal').remove()">&times;</button>
       </div>
       <div class="modal-body">
         <input type="text" id="qr-search" placeholder="Buscar resposta..." oninput="filterQR(this.value)" style="width:100%;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;margin-bottom:12px">
         <div id="qr-list" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
           ${QUICK_REPLIES.map(qr => `
-            <div onclick="insertQuickReply('${qr.text.replace(/'/g, "\\'")}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#2a3050'">
-              <div style="width:36px;height:36px;border-radius:8px;background:#6c5ce722;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-reply" style="color:#6c5ce7;font-size:12px"></i></div>
+            <div onclick="insertQuickReply('${qr.text.replace(/'/g, "\\'")}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='#00b894'" onmouseout="this.style.borderColor='#2a3050'">
+              <div style="width:36px;height:36px;border-radius:8px;background:#00b89422;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-reply" style="color:#00b894;font-size:12px"></i></div>
               <div style="flex:1;min-width:0">
                 <div style="font-size:12px;font-weight:600;color:#e6edf3">${qr.name}</div>
                 <div style="font-size:10px;color:#8b9dc3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${qr.text}</div>
               </div>
-              <i class="fa-solid fa-arrow-right" style="font-size:10px;color:#6c5ce7"></i>
+              <i class="fa-solid fa-arrow-right" style="font-size:10px;color:#00b894"></i>
             </div>
           `).join('')}
         </div>
@@ -1134,7 +1137,7 @@ async function showConvTagsModal(convId) {
   modal.innerHTML = `
     <div class="modal" style="max-width:440px">
       <div class="modal-header">
-        <h3><i class="fa-solid fa-tags" style="color:#6c5ce7;margin-right:8px"></i>Tags da Conversa</h3>
+        <h3><i class="fa-solid fa-tags" style="color:#00b894;margin-right:8px"></i>Tags da Conversa</h3>
         <button class="modal-close" onclick="document.getElementById('conv-tags-modal').remove()">&times;</button>
       </div>
       <div class="modal-body">
@@ -1311,7 +1314,7 @@ function toggleChatFilterPanel() {
         ${savedFilters.length > 0 ? `<div style="margin-bottom:16px">
           <label style="font-size:12px;color:#8b9dc3;display:block;margin-bottom:8px">Filtros Salvos</label>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            ${savedFilters.map(f => `<div style="display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:20px;font-size:11px;background:#161b22;border:1px solid #6c5ce7;color:#6c5ce7">
+            ${savedFilters.map(f => `<div style="display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:20px;font-size:11px;background:#161b22;border:1px solid #00b894;color:#00b894">
               <span onclick="applySavedFilter('${f.id}');toggleChatFilterPanel()" style="cursor:pointer">${f.name}</span>
               <i class="fa-solid fa-xmark" onclick="deleteSavedFilter('${f.id}');toggleChatFilterPanel()" style="font-size:8px;cursor:pointer;opacity:.6"></i>
             </div>`).join('')}
@@ -1320,7 +1323,7 @@ function toggleChatFilterPanel() {
         <div style="margin-bottom:16px">
           <label style="font-size:12px;color:#8b9dc3;display:block;margin-bottom:8px">Status</label>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <span onclick="applyFilter('all')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:${chatFilter==='all'?'#6c5ce7':'#161b22'};color:${chatFilter==='all'?'white':'#8b9dc3'};border:1px solid ${chatFilter==='all'?'#6c5ce7':'#1e2d3d'}">Todos</span>
+            <span onclick="applyFilter('all')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:${chatFilter==='all'?'#00b894':'#161b22'};color:${chatFilter==='all'?'white':'#8b9dc3'};border:1px solid ${chatFilter==='all'?'#00b894':'#1e2d3d'}">Todos</span>
             <span onclick="applyFilter('entry')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:${chatFilter==='entry'?'#22c55e':'#161b22'};color:${chatFilter==='entry'?'white':'#8b9dc3'};border:1px solid ${chatFilter==='entry'?'#22c55e':'#1e2d3d'}">Entrada</span>
             <span onclick="applyFilter('ai')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:${chatFilter==='ai'?'#f59e0b':'#161b22'};color:${chatFilter==='ai'?'white':'#8b9dc3'};border:1px solid ${chatFilter==='ai'?'#f59e0b':'#1e2d3d'}">Esperando</span>
             <span onclick="applyFilter('closed')" style="padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;background:${chatFilter==='closed'?'#ef4444':'#161b22'};color:${chatFilter==='closed'?'white':'#8b9dc3'};border:1px solid ${chatFilter==='closed'?'#ef4444':'#1e2d3d'}">Finalizados</span>
@@ -1339,7 +1342,7 @@ function toggleChatFilterPanel() {
             <input type="date" id="filter-date-to" style="flex:1;padding:8px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;color:#e6edf3;font-size:12px">
           </div>
         </div>
-        <button onclick="applyAllFilters()" style="width:100%;margin-top:20px;padding:12px;border:none;border-radius:8px;background:#6c5ce7;color:white;font-size:13px;font-weight:600;cursor:pointer">Aplicar Filtros</button>
+        <button onclick="applyAllFilters()" style="width:100%;margin-top:20px;padding:12px;border:none;border-radius:8px;background:#00b894;color:white;font-size:13px;font-weight:600;cursor:pointer">Aplicar Filtros</button>
       </div>`;
     document.body.appendChild(panel);
   } else {
@@ -1374,7 +1377,7 @@ let crmSearch = '';
 let crmTagFilter = '';
 let customFields = [];
 const PIPELINE_STAGES = [
-  { id: 'lead', name: 'Lead', color: '#6c5ce7' },
+  { id: 'lead', name: 'Lead', color: '#00b894' },
   { id: 'contacted', name: 'Contato', color: '#3b82f6' },
   { id: 'proposal', name: 'Proposta', color: '#f59e0b' },
   { id: 'negotiation', name: 'Negociação', color: '#ec4899' },
@@ -1392,13 +1395,13 @@ async function loadContacts(el) {
       <div><h2 style="margin:0;font-size:20px">CRM</h2><p style="color:#8b9dc3;margin-top:2px;font-size:12px">${allContacts.length} contato(s)</p></div>
       <div style="display:flex;gap:6px;align-items:center">
         <div style="display:flex;background:#161b22;border:1px solid #1e2d3d;border-radius:8px;overflow:hidden">
-          <button onclick="setCrmView('list')" style="padding:6px 12px;border:none;background:${crmView==='list'?'#6c5ce7':'transparent'};color:${crmView==='list'?'white':'#8b9dc3'};cursor:pointer;font-size:11px"><i class="fa-solid fa-list"></i></button>
-          <button onclick="setCrmView('kanban')" style="padding:6px 12px;border:none;background:${crmView==='kanban'?'#6c5ce7':'transparent'};color:${crmView==='kanban'?'white':'#8b9dc3'};cursor:pointer;font-size:11px"><i class="fa-solid fa-columns"></i></button>
-          <button onclick="setCrmView('pipeline')" style="padding:6px 12px;border:none;background:${crmView==='pipeline'?'#6c5ce7':'transparent'};color:${crmView==='pipeline'?'white':'#8b9dc3'};cursor:pointer;font-size:11px"><i class="fa-solid fa-filter"></i></button>
+          <button onclick="setCrmView('list')" style="padding:6px 12px;border:none;background:${crmView==='list'?'#00b894':'transparent'};color:${crmView==='list'?'white':'#8b9dc3'};cursor:pointer;font-size:11px"><i class="fa-solid fa-list"></i></button>
+          <button onclick="setCrmView('kanban')" style="padding:6px 12px;border:none;background:${crmView==='kanban'?'#00b894':'transparent'};color:${crmView==='kanban'?'white':'#8b9dc3'};cursor:pointer;font-size:11px"><i class="fa-solid fa-columns"></i></button>
+          <button onclick="setCrmView('pipeline')" style="padding:6px 12px;border:none;background:${crmView==='pipeline'?'#00b894':'transparent'};color:${crmView==='pipeline'?'white':'#8b9dc3'};cursor:pointer;font-size:11px"><i class="fa-solid fa-filter"></i></button>
         </div>
         <button onclick="showImportCSV()" style="padding:6px 12px;border-radius:8px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:4px"><i class="fa-solid fa-file-import"></i> Importar</button>
         <button onclick="exportCSV()" style="padding:6px 12px;border-radius:8px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:4px"><i class="fa-solid fa-file-export"></i> Exportar</button>
-        <button onclick="showCreateContact()" style="padding:6px 14px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px"><i class="fa-solid fa-plus"></i> Novo</button>
+        <button onclick="showCreateContact()" style="padding:6px 14px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px"><i class="fa-solid fa-plus"></i> Novo</button>
       </div>
     </div>
 
@@ -1468,7 +1471,7 @@ function renderListView() {
               <td style="padding:10px 14px;font-size:12px;color:#e6edf3;font-weight:500">${c.name||'N/A'}</td>
               <td style="padding:10px 14px;font-size:12px;color:#8b9dc3">${c.phone||'-'}</td>
               <td style="padding:10px 14px;font-size:12px;color:#8b9dc3">${c.email||'-'}</td>
-              <td style="padding:10px 14px"><span style="padding:3px 10px;border-radius:10px;font-size:10px;background:#6c5ce722;color:#6c5ce7;border:1px solid #6c5ce744">${c.tag||'lead'}</span></td>
+              <td style="padding:10px 14px"><span style="padding:3px 10px;border-radius:10px;font-size:10px;background:#00b89422;color:#00b894;border:1px solid #00b89444">${c.tag||'lead'}</span></td>
               <td style="padding:10px 14px"><span style="padding:3px 10px;border-radius:10px;font-size:10px;background:${stage.color}22;color:${stage.color};border:1px solid ${stage.color}44">${stage.name}</span></td>
               <td style="padding:10px 14px">
                 <div style="display:flex;gap:4px">
@@ -1512,7 +1515,7 @@ function renderKanbanView() {
                 </div>
                 <div style="font-size:10px;color:#8b9dc3;margin-bottom:4px">${c.phone||''}</div>
                 <div style="display:flex;gap:4px;flex-wrap:wrap">
-                  ${(c.tag||'').split(',').filter(Boolean).map(t => `<span style="padding:2px 6px;border-radius:6px;font-size:8px;background:#6c5ce722;color:#6c5ce7">${t.trim()}</span>`).join('')}
+                  ${(c.tag||'').split(',').filter(Boolean).map(t => `<span style="padding:2px 6px;border-radius:6px;font-size:8px;background:#00b89422;color:#00b894">${t.trim()}</span>`).join('')}
                 </div>
               </div>`;
             }).join('')}
@@ -1567,7 +1570,7 @@ function renderPipelineView() {
                   ${PIPELINE_STAGES.map(s => `<option value="${s.id}" ${s.id===(c.stage||'lead')?'selected':''}>${s.name}</option>`).join('')}
                 </select>
               </td>
-              <td style="padding:10px 12px"><span style="padding:2px 8px;border-radius:8px;font-size:10px;background:#6c5ce722;color:#6c5ce7">${c.tag||'lead'}</span></td>
+              <td style="padding:10px 12px"><span style="padding:2px 8px;border-radius:8px;font-size:10px;background:#00b89422;color:#00b894">${c.tag||'lead'}</span></td>
               <td style="padding:10px 12px;text-align:center">
                 <button onclick="showContactDetail('${c.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-eye"></i></button>
               </td>
@@ -1600,10 +1603,10 @@ function showCreateContact() {
   if (!area) return;
   area.innerHTML = `
     <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:20px;animation:slideUp .3s ease">
-      <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-user-plus" style="color:#6c5ce7;margin-right:8px"></i>Novo Contato</h3>
+      <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-user-plus" style="color:#00b894;margin-right:8px"></i>Novo Contato</h3>
       ${crudForm({ fields: CONTACT_FIELDS, id: 'contact-create' })}
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button onclick="saveContact()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
+        <button onclick="saveContact()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
         <button onclick="document.getElementById('contact-form-area').innerHTML=''" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
       </div>
     </div>`;
@@ -1633,7 +1636,7 @@ function showEditContact(id) {
       <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-pen" style="color:#3b82f6;margin-right:8px"></i>Editar Contato</h3>
       ${crudForm({ fields: CONTACT_FIELDS, values: c, id: `contact-edit-${id}` })}
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button onclick="saveContact('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
+        <button onclick="saveContact('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
         <button onclick="document.getElementById('contact-form-area').innerHTML=''" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
       </div>
     </div>`;
@@ -1659,7 +1662,7 @@ async function showContactDetail(id) {
   modal.innerHTML = `
     <div class="modal" style="max-width:520px">
       <div class="modal-header">
-        <h3><i class="fa-solid fa-user" style="color:#6c5ce7;margin-right:8px"></i>${c.name || 'Contato'}</h3>
+        <h3><i class="fa-solid fa-user" style="color:#00b894;margin-right:8px"></i>${c.name || 'Contato'}</h3>
         <button class="modal-close" onclick="document.getElementById('contact-detail-modal').remove()">&times;</button>
       </div>
       <div class="modal-body">
@@ -1678,7 +1681,7 @@ async function showContactDetail(id) {
           </div>
           <div style="background:#161b22;border:1px solid #1e2d3d;border-radius:8px;padding:12px">
             <div style="font-size:10px;color:#8b9dc3;margin-bottom:4px">Tag</div>
-            <span style="padding:3px 10px;border-radius:10px;font-size:10px;background:#6c5ce722;color:#6c5ce7">${c.tag||'lead'}</span>
+            <span style="padding:3px 10px;border-radius:10px;font-size:10px;background:#00b89422;color:#00b894">${c.tag||'lead'}</span>
           </div>
           <div style="background:#161b22;border:1px solid #1e2d3d;border-radius:8px;padding:12px">
             <div style="font-size:10px;color:#8b9dc3;margin-bottom:4px">Estágio</div>
@@ -1706,7 +1709,7 @@ function showCustomFields() {
   modal.innerHTML = `
     <div class="modal" style="max-width:500px">
       <div class="modal-header">
-        <h3><i class="fa-solid fa-sliders" style="color:#6c5ce7;margin-right:8px"></i>Campos Personalizados</h3>
+        <h3><i class="fa-solid fa-sliders" style="color:#00b894;margin-right:8px"></i>Campos Personalizados</h3>
         <button class="modal-close" onclick="document.getElementById('custom-fields-modal').remove()">&times;</button>
       </div>
       <div class="modal-body">
@@ -1729,7 +1732,7 @@ function showCustomFields() {
             <option value="select">Seleção</option>
             <option value="textarea">Área de texto</option>
           </select>
-          <button onclick="addCustomField()" style="padding:8px 12px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-plus"></i></button>
+          <button onclick="addCustomField()" style="padding:8px 12px;border-radius:6px;border:none;background:#00b894;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
       <div class="modal-footer">
@@ -1774,8 +1777,8 @@ function showImportCSV() {
         <button class="modal-close" onclick="document.getElementById('import-csv-modal').remove()">&times;</button>
       </div>
       <div class="modal-body">
-        <div style="border:2px dashed #2a3050;border-radius:12px;padding:40px;text-align:center;cursor:pointer" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#2a3050'" onclick="document.getElementById('csv-file-input').click()">
-          <i class="fa-solid fa-cloud-arrow-up" style="font-size:32px;color:#6c5ce7;margin-bottom:12px;display:block"></i>
+        <div style="border:2px dashed #2a3050;border-radius:12px;padding:40px;text-align:center;cursor:pointer" onmouseover="this.style.borderColor='#00b894'" onmouseout="this.style.borderColor='#2a3050'" onclick="document.getElementById('csv-file-input').click()">
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size:32px;color:#00b894;margin-bottom:12px;display:block"></i>
           <p style="font-size:13px;color:#e6edf3;margin:0 0 4px">Arraste um arquivo CSV ou clique para selecionar</p>
           <p style="font-size:11px;color:#8b9dc3;margin:0">Formato: nome, telefone, email, tag</p>
           <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="handleCSVImport(this)">
@@ -1812,7 +1815,7 @@ function filterByTag(tag) { crmTagFilter = tag; renderCrmView(); }
 function toggleAllContacts(cb) { document.querySelectorAll('tbody input[type=checkbox]').forEach(c => c.checked = cb.checked); }
 
 // ─── Tags (Funcional) ───────────────────────────────────────────
-const TAG_COLORS = ['#6c5ce7','#22c55e','#f59e0b','#ef4444','#3b82f6','#ec4899','#8b5cf6','#06b6d4','#f97316','#84cc16','#14b8a6','#e11d48'];
+const TAG_COLORS = ['#00b894','#22c55e','#f59e0b','#ef4444','#3b82f6','#ec4899','#8b5cf6','#06b6d4','#f97316','#84cc16','#14b8a6','#e11d48'];
 const TAG_FIELDS = [
   { key: 'name', label: 'Nome da Tag', placeholder: 'Ex: Lead Quente', required: true },
   { key: 'color', label: 'Cor', type: 'color', colors: TAG_COLORS },
@@ -1826,7 +1829,7 @@ async function loadTags(el) {
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <div><h2 style="margin:0;font-size:20px">Tags</h2><p style="color:#8b9dc3;margin-top:4px;font-size:12px">${allTags.length} tag(s) criada(s)</p></div>
-      <button onclick="showCreateTag()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-plus"></i> Nova Tag</button>
+      <button onclick="showCreateTag()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-plus"></i> Nova Tag</button>
     </div>
 
     <div id="tag-form-area"></div>
@@ -1843,10 +1846,10 @@ async function loadTags(el) {
 }
 
 function renderTagCard(t) {
-  return `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:16px;transition:all .2s;border-left:4px solid ${t.color || '#6c5ce7'}" onmouseover="this.style.borderColor='#3a4070'" onmouseout="this.style.borderColor='#2a3050'">
+  return `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:16px;transition:all .2s;border-left:4px solid ${t.color || '#00b894'}" onmouseover="this.style.borderColor='#3a4070'" onmouseout="this.style.borderColor='#2a3050'">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:12px;height:12px;border-radius:50%;background:${t.color || '#6c5ce7'}"></div>
+        <div style="width:12px;height:12px;border-radius:50%;background:${t.color || '#00b894'}"></div>
         <span style="font-weight:600;font-size:13px;color:#e6edf3">${t.name}</span>
       </div>
       <div style="position:relative">
@@ -1884,10 +1887,10 @@ function showCreateTag() {
   if (!area) return;
   area.innerHTML = `
     <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:20px;animation:slideUp .3s ease">
-      <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-plus" style="color:#6c5ce7;margin-right:8px"></i>Nova Tag</h3>
+      <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-plus" style="color:#00b894;margin-right:8px"></i>Nova Tag</h3>
       ${crudForm({ fields: TAG_FIELDS, id: 'tag-create' })}
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button onclick="saveTag()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
+        <button onclick="saveTag()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
         <button onclick="document.getElementById('tag-form-area').innerHTML=''" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
       </div>
     </div>`;
@@ -1918,7 +1921,7 @@ function showEditTag(id) {
       <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-pen" style="color:#3b82f6;margin-right:8px"></i>Editar Tag</h3>
       ${crudForm({ fields: TAG_FIELDS, values: tag, id: `tag-edit-${id}` })}
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button onclick="saveTag('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
+        <button onclick="saveTag('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
         <button onclick="document.getElementById('tag-form-area').innerHTML=''" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
       </div>
     </div>`;
@@ -2457,7 +2460,7 @@ function showFlowEditor(flowId) {
           <button onclick="clearFlowAnalytics('${flowId}')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid #f59e0b;background:rgba(245,158,11,.1);color:#f59e0b;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s" title="Limpar analytics">
             <i class="fa-solid fa-rotate"></i> Limpar
           </button>
-          <button onclick="showConnectedDevices('${flowId}')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid #6c5ce7;background:rgba(108,92,231,.1);color:#6c5ce7;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s" title="Dispositivos conectados">
+          <button onclick="showConnectedDevices('${flowId}')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid #00b894;background:rgba(108,92,231,.1);color:#00b894;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s" title="Dispositivos conectados">
             <i class="fa-solid fa-mobile-screen"></i> Dispositivos
           </button>
         </div>
@@ -2542,7 +2545,7 @@ async function showConnectedDevices(flowId) {
   modal.innerHTML = `
     <div class="modal-box" style="max-width:600px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h3 style="margin:0;font-size:16px"><i class="fa-solid fa-mobile-screen" style="color:#6c5ce7"></i> Dispositivos Conectados</h3>
+        <h3 style="margin:0;font-size:16px"><i class="fa-solid fa-mobile-screen" style="color:#00b894"></i> Dispositivos Conectados</h3>
         <button onclick="closeModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px"><i class="fa-solid fa-times"></i></button>
       </div>
       <div id="devices-loading" style="text-align:center;padding:40px;color:var(--text-muted)">
@@ -2572,8 +2575,6 @@ async function showConnectedDevices(flowId) {
     }
 
     const linkedIds = new Set(linked.map(l => l.whatsapp_number_id));
-      return;
-    }
 
     listEl.innerHTML = devices.map(d => {
       const isLinked = linkedIds.has(d.id);
@@ -2586,11 +2587,11 @@ async function showConnectedDevices(flowId) {
             <div style="font-weight:500;font-size:13px">${h(d.display_name || 'Sem nome')}</div>
             <div style="font-size:11px;color:var(--text-muted);display:flex;gap:8px;align-items:center">
               <span>${h(d.phone_number || '---')}</span>
-              <span style="padding:1px 6px;border-radius:4px;background:${d.connection_type === 'official' ? '#6c5ce722' : '#3b82f622'};color:${d.connection_type === 'official' ? '#6c5ce7' : '#3b82f6'};font-size:9px">${d.connection_type === 'official' ? 'Oficial' : 'API'}</span>
+              <span style="padding:1px 6px;border-radius:4px;background:${d.connection_type === 'official' ? '#00b89422' : '#3b82f622'};color:${d.connection_type === 'official' ? '#00b894' : '#3b82f6'};font-size:9px">${d.connection_type === 'official' ? 'Oficial' : 'API'}</span>
               <span style="padding:1px 6px;border-radius:4px;background:${d.status === 'connected' ? '#22c55e22' : '#ef444422'};color:${d.status === 'connected' ? '#22c55e' : '#ef4444'};font-size:9px">${d.status === 'connected' ? 'Conectado' : h(d.status)}</span>
             </div>
           </div>
-          <button id="device-btn-${d.id}" onclick="${isLinked ? `unlinkDevice('${flowId}','${d.id}')` : `linkDevice('${flowId}','${d.id}')`}" style="padding:6px 12px;border-radius:6px;border:1px solid ${isLinked ? '#ef4444' : '#6c5ce7'};background:${isLinked ? '#ef444422' : '#6c5ce722'};color:${isLinked ? '#ef4444' : '#6c5ce7'};cursor:pointer;font-size:11px;white-space:nowrap">
+          <button id="device-btn-${d.id}" onclick="${isLinked ? `unlinkDevice('${flowId}','${d.id}')` : `linkDevice('${flowId}','${d.id}')`}" style="padding:6px 12px;border-radius:6px;border:1px solid ${isLinked ? '#ef4444' : '#00b894'};background:${isLinked ? '#ef444422' : '#00b89422'};color:${isLinked ? '#ef4444' : '#00b894'};cursor:pointer;font-size:11px;white-space:nowrap">
             ${isLinked ? 'Remover' : 'Conectar'}
           </button>
         </div>`;
@@ -2696,15 +2697,15 @@ async function loadVoice(el) {
         <p style="color:#8b9dc3;margin-top:2px;font-size:12px">${allVoices.length} voz(es) • Gere áudios com IA</p>
       </div>
       <div style="display:flex;gap:8px">
-        <button onclick="showCloneVoice()" style="padding:8px 16px;border-radius:8px;border:1px solid #6c5ce7;background:#6c5ce715;color:#6c5ce7;cursor:pointer;font-size:12px;font-weight:500"><i class="fa-solid fa-wand-magic-sparkles"></i> Clonar Voz</button>
+        <button onclick="showCloneVoice()" style="padding:8px 16px;border-radius:8px;border:1px solid #00b894;background:#00b89415;color:#00b894;cursor:pointer;font-size:12px;font-weight:500"><i class="fa-solid fa-wand-magic-sparkles"></i> Clonar Voz</button>
       </div>
     </div>
 
     <!-- Tabs -->
     <div style="display:flex;gap:4px;margin-bottom:20px;background:#161b22;border-radius:10px;padding:4px">
-      <button onclick="setVoiceTab('tts')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${voiceTab==='tts'?'#6c5ce7':'transparent'};color:${voiceTab==='tts'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-volume-high"></i> Text-to-Speech</button>
-      <button onclick="setVoiceTab('cloned')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${voiceTab==='cloned'?'#6c5ce7':'transparent'};color:${voiceTab==='cloned'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-wand-magic-sparkles"></i> Vozes Clonadas</button>
-      <button onclick="setVoiceTab('library')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${voiceTab==='library'?'#6c5ce7':'transparent'};color:${voiceTab==='library'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-book"></i> Biblioteca</button>
+      <button onclick="setVoiceTab('tts')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${voiceTab==='tts'?'#00b894':'transparent'};color:${voiceTab==='tts'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-volume-high"></i> Text-to-Speech</button>
+      <button onclick="setVoiceTab('cloned')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${voiceTab==='cloned'?'#00b894':'transparent'};color:${voiceTab==='cloned'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-wand-magic-sparkles"></i> Vozes Clonadas</button>
+      <button onclick="setVoiceTab('library')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${voiceTab==='library'?'#00b894':'transparent'};color:${voiceTab==='library'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-book"></i> Biblioteca</button>
     </div>
 
     <div id="voice-content">${renderVoiceContent()}</div>
@@ -2724,7 +2725,7 @@ function renderTTSGenerator() {
   return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
     <!-- TTS Panel -->
     <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
-      <h3 style="font-size:14px;color:#e6edf3;margin:0 0 16px"><i class="fa-solid fa-volume-high" style="color:#6c5ce7;margin-right:8px"></i>Gerar Áudio</h3>
+      <h3 style="font-size:14px;color:#e6edf3;margin:0 0 16px"><i class="fa-solid fa-volume-high" style="color:#00b894;margin-right:8px"></i>Gerar Áudio</h3>
       <textarea id="voice-text" rows="5" placeholder="Digite o texto para converter em áudio..." style="width:100%;padding:12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px;color:#e6edf3;font-size:12px;outline:none;resize:vertical;font-family:inherit"></textarea>
       
       <div style="margin-top:16px">
@@ -2738,19 +2739,19 @@ function renderTTSGenerator() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
         <div>
           <label style="font-size:10px;color:#8b9dc3;display:flex;justify-content:space-between;margin-bottom:4px"><span>Estabilidade</span><span id="stability-val">0.5</span></label>
-          <input type="range" id="stability" min="0" max="1" step="0.1" value="0.5" style="width:100%;accent-color:#6c5ce7" oninput="document.getElementById('stability-val').textContent=this.value">
+          <input type="range" id="stability" min="0" max="1" step="0.1" value="0.5" style="width:100%;accent-color:#00b894" oninput="document.getElementById('stability-val').textContent=this.value">
         </div>
         <div>
           <label style="font-size:10px;color:#8b9dc3;display:flex;justify-content:space-between;margin-bottom:4px"><span>Similaridade</span><span id="similarity-val">0.7</span></label>
-          <input type="range" id="similarity" min="0" max="1" step="0.1" value="0.7" style="width:100%;accent-color:#6c5ce7" oninput="document.getElementById('similarity-val').textContent=this.value">
+          <input type="range" id="similarity" min="0" max="1" step="0.1" value="0.7" style="width:100%;accent-color:#00b894" oninput="document.getElementById('similarity-val').textContent=this.value">
         </div>
         <div>
           <label style="font-size:10px;color:#8b9dc3;display:flex;justify-content:space-between;margin-bottom:4px"><span>Velocidade</span><span id="speed-val">1.0</span></label>
-          <input type="range" id="speed" min="0.5" max="2" step="0.1" value="1" style="width:100%;accent-color:#6c5ce7" oninput="document.getElementById('speed-val').textContent=this.value">
+          <input type="range" id="speed" min="0.5" max="2" step="0.1" value="1" style="width:100%;accent-color:#00b894" oninput="document.getElementById('speed-val').textContent=this.value">
         </div>
         <div>
           <label style="font-size:10px;color:#8b9dc3;display:flex;justify-content:space-between;margin-bottom:4px"><span>Estilo</span><span id="style-val">0</span></label>
-          <input type="range" id="voice-style" min="0" max="1" step="0.1" value="0" style="width:100%;accent-color:#6c5ce7" oninput="document.getElementById('style-val').textContent=this.value">
+          <input type="range" id="voice-style" min="0" max="1" step="0.1" value="0" style="width:100%;accent-color:#00b894" oninput="document.getElementById('style-val').textContent=this.value">
         </div>
       </div>
 
@@ -2758,8 +2759,8 @@ function renderTTSGenerator() {
       <div id="audio-player" style="margin-top:16px;display:none">
         <div style="background:#161b22;border:1px solid #1e2d3d;border-radius:8px;padding:12px">
           <div style="display:flex;align-items:center;gap:10px">
-            <button onclick="togglePlayAudio()" id="play-btn" style="width:36px;height:36px;border-radius:50%;background:#6c5ce7;border:none;color:white;cursor:pointer;font-size:14px;flex-shrink:0"><i class="fa-solid fa-play"></i></button>
-            <div style="flex:1;height:4px;background:#1e2d3d;border-radius:2px;cursor:pointer" onclick="seekAudio(event)"><div id="audio-progress" style="height:100%;width:0%;background:#6c5ce7;border-radius:2px;transition:width .1s"></div></div>
+            <button onclick="togglePlayAudio()" id="play-btn" style="width:36px;height:36px;border-radius:50%;background:#00b894;border:none;color:white;cursor:pointer;font-size:14px;flex-shrink:0"><i class="fa-solid fa-play"></i></button>
+            <div style="flex:1;height:4px;background:#1e2d3d;border-radius:2px;cursor:pointer" onclick="seekAudio(event)"><div id="audio-progress" style="height:100%;width:0%;background:#00b894;border-radius:2px;transition:width .1s"></div></div>
             <span id="audio-time" style="font-size:11px;color:#8b9dc3;flex-shrink:0">0:00</span>
             <button onclick="downloadAudio()" style="background:none;border:none;color:#8b9dc3;cursor:pointer;font-size:12px"><i class="fa-solid fa-download"></i></button>
           </div>
@@ -2767,7 +2768,7 @@ function renderTTSGenerator() {
       </div>
 
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button onclick="generateTTS()" style="flex:1;padding:10px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px"><i class="fa-solid fa-play"></i> Gerar Áudio</button>
+        <button onclick="generateTTS()" style="flex:1;padding:10px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px"><i class="fa-solid fa-play"></i> Gerar Áudio</button>
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:10px;color:#64748b">
         <span>Modelo: eleven_v3</span>
@@ -2786,8 +2787,8 @@ function renderTTSGenerator() {
             { name: 'Agradecimento', text: 'Obrigado pelo contato! Fique à disposição.' },
             { name: 'Horário', text: 'Nosso horário de atendimento é de segunda a sexta, das 9h às 18h.' },
             { name: 'Despedida', text: 'Tenha um ótimo dia! Estou aqui se precisar.' }
-          ].map(p => `<div onclick="document.getElementById('voice-text').value='${p.text}'" style="padding:8px 10px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'">
-            <i class="fa-solid fa-play" style="color:#6c5ce7;font-size:10px"></i>
+          ].map(p => `<div onclick="document.getElementById('voice-text').value='${p.text}'" style="padding:8px 10px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .2s" onmouseover="this.style.borderColor='#00b894'" onmouseout="this.style.borderColor='#1e2d3d'">
+            <i class="fa-solid fa-play" style="color:#00b894;font-size:10px"></i>
             <span style="font-size:11px;color:#e6edf3">${p.name}</span>
             <span style="font-size:10px;color:#64748b;margin-left:auto">${p.text.substring(0,30)}...</span>
           </div>`).join('')}
@@ -2812,12 +2813,12 @@ function renderClonedVoices() {
         <div style="width:64px;height:64px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><i class="fa-solid fa-wand-magic-sparkles" style="font-size:24px;opacity:.4"></i></div>
         <h3 style="font-size:15px;font-weight:600;margin:0 0 6px;color:#e6edf3">Nenhuma voz clonada</h3>
         <p style="font-size:12px;margin:0 0 16px">Faça upload de um áudio para clonar sua voz</p>
-        <button onclick="showCloneVoice()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-wand-magic-sparkles"></i> Clonar Primeira Voz</button>
+        <button onclick="showCloneVoice()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-wand-magic-sparkles"></i> Clonar Primeira Voz</button>
       </div>
     ` : allVoices.map(v => `
       <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:16px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6c5ce722,#6c5ce744);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-microphone" style="color:#6c5ce7;font-size:16px"></i></div>
+          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#00b89422,#00b89444);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-microphone" style="color:#00b894;font-size:16px"></i></div>
           <div style="flex:1">
             <div style="font-size:13px;font-weight:600;color:#e6edf3">${v.name}</div>
             <div style="font-size:10px;color:#8b9dc3">${v.provider||'ElevenLabs'} • Clonada em ${v.created_at ? new Date(v.created_at).toLocaleDateString('pt-BR') : '-'}</div>
@@ -2826,7 +2827,7 @@ function renderClonedVoices() {
         </div>
         <div style="display:flex;gap:6px">
           <button onclick="testVoice('${v.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-play"></i> Testar</button>
-          <button onclick="editVoice('${v.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #6c5ce7;background:#6c5ce715;color:#6c5ce7;cursor:pointer;font-size:10px"><i class="fa-solid fa-pen"></i> Editar</button>
+          <button onclick="editVoice('${v.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #00b894;background:#00b89415;color:#00b894;cursor:pointer;font-size:10px"><i class="fa-solid fa-pen"></i> Editar</button>
         </div>
       </div>
     `).join('')}
@@ -2839,13 +2840,13 @@ function renderVoiceLibrary() {
     <p style="font-size:11px;color:#8b9dc3;margin:0 0 16px">Vozes pré-configuradas prontas para uso</p>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
       ${VOICE_PRESETS.map(v => `
-        <div onclick="selectPresetVoice('${v.id}')" style="display:flex;align-items:center;gap:10px;padding:12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#1e2d3d'">
+        <div onclick="selectPresetVoice('${v.id}')" style="display:flex;align-items:center;gap:10px;padding:12px;background:#161b22;border:1px solid #1e2d3d;border-radius:8px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='#00b894'" onmouseout="this.style.borderColor='#1e2d3d'">
           <div style="width:36px;height:36px;border-radius:50%;background:${v.gender==='F'?'#ec489922':'#3b82f622'};display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-${v.gender==='F'?'female':'male'}" style="color:${v.gender==='F'?'#ec4899':'#3b82f6'};font-size:14px"></i></div>
           <div style="flex:1">
             <div style="font-size:12px;font-weight:500;color:#e6edf3">${v.name}</div>
             <div style="font-size:10px;color:#8b9dc3">${v.lang} • ${v.provider}</div>
           </div>
-          <button onclick="event.stopPropagation();previewPresetVoice('${v.id}')" style="background:none;border:none;color:#6c5ce7;cursor:pointer;font-size:12px"><i class="fa-solid fa-play"></i></button>
+          <button onclick="event.stopPropagation();previewPresetVoice('${v.id}')" style="background:none;border:none;color:#00b894;cursor:pointer;font-size:12px"><i class="fa-solid fa-play"></i></button>
         </div>
       `).join('')}
     </div>
@@ -2859,7 +2860,7 @@ function showCloneVoice() {
   modal.innerHTML = `
     <div class="modal" style="max-width:480px">
       <div class="modal-header">
-        <h3><i class="fa-solid fa-wand-magic-sparkles" style="color:#6c5ce7;margin-right:8px"></i>Clonar Voz</h3>
+        <h3><i class="fa-solid fa-wand-magic-sparkles" style="color:#00b894;margin-right:8px"></i>Clonar Voz</h3>
         <button class="modal-close" onclick="document.getElementById('clone-voice-modal').remove()">&times;</button>
       </div>
       <div class="modal-body">
@@ -2871,8 +2872,8 @@ function showCloneVoice() {
           <label>Descrição</label>
           <input type="text" id="clone-voice-desc" placeholder="Voz profissional feminina...">
         </div>
-        <div style="border:2px dashed #2a3050;border-radius:12px;padding:30px;text-align:center;cursor:pointer;margin-bottom:12px" onmouseover="this.style.borderColor='#6c5ce7'" onmouseout="this.style.borderColor='#2a3050'" onclick="document.getElementById('clone-audio-input').click()">
-          <i class="fa-solid fa-cloud-arrow-up" style="font-size:28px;color:#6c5ce7;margin-bottom:8px;display:block"></i>
+        <div style="border:2px dashed #2a3050;border-radius:12px;padding:30px;text-align:center;cursor:pointer;margin-bottom:12px" onmouseover="this.style.borderColor='#00b894'" onmouseout="this.style.borderColor='#2a3050'" onclick="document.getElementById('clone-audio-input').click()">
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size:28px;color:#00b894;margin-bottom:8px;display:block"></i>
           <p style="font-size:12px;color:#e6edf3;margin:0 0 4px">Arraste um áudio ou clique para selecionar</p>
           <p style="font-size:10px;color:#8b9dc3;margin:0">MP3, WAV, M4A • Máx 10MB • Mínimo 30 segundos</p>
           <input type="file" id="clone-audio-input" accept="audio/*" style="display:none">
@@ -2880,11 +2881,11 @@ function showCloneVoice() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="form-group">
             <label>Estabilidade</label>
-            <input type="range" min="0" max="1" step="0.1" value="0.5" style="width:100%;accent-color:#6c5ce7">
+            <input type="range" min="0" max="1" step="0.1" value="0.5" style="width:100%;accent-color:#00b894">
           </div>
           <div class="form-group">
             <label>Similaridade</label>
-            <input type="range" min="0" max="1" step="0.1" value="0.75" style="width:100%;accent-color:#6c5ce7">
+            <input type="range" min="0" max="1" step="0.1" value="0.75" style="width:100%;accent-color:#00b894">
           </div>
         </div>
       </div>
@@ -2919,7 +2920,7 @@ async function generateTTS() {
     if (history) {
       if (history.querySelector('[style*="text-align:center"]')) history.innerHTML = '';
       history.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:#161b22;border:1px solid #1e2d3d;border-radius:6px">
-        <button onclick="showToast('Reproduzindo...','info')" style="width:28px;height:28px;border-radius:50%;background:#6c5ce7;border:none;color:white;cursor:pointer;font-size:10px;flex-shrink:0"><i class="fa-solid fa-play"></i></button>
+        <button onclick="showToast('Reproduzindo...','info')" style="width:28px;height:28px;border-radius:50%;background:#00b894;border:none;color:white;cursor:pointer;font-size:10px;flex-shrink:0"><i class="fa-solid fa-play"></i></button>
         <div style="flex:1;min-width:0"><div style="font-size:11px;color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${text.substring(0,40)}</div><div style="font-size:9px;color:#64748b">Agora</div></div>
       </div>` + history.innerHTML;
     }
@@ -2962,7 +2963,7 @@ async function loadAgents(el) {
         <h2 style="margin:0;font-size:20px">Agente IA</h2>
         <p style="color:#8b9dc3;margin-top:2px;font-size:12px">${allAgents.length} agente(s) criado(s)</p>
       </div>
-      <button onclick="showCreateAgent()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-plus"></i> Novo Agente</button>
+      <button onclick="showCreateAgent()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-plus"></i> Novo Agente</button>
     </div>
 
     <!-- Agent Form Area -->
@@ -2974,7 +2975,7 @@ async function loadAgents(el) {
         <div style="width:64px;height:64px;border-radius:50%;background:#161b22;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><i class="fa-solid fa-robot" style="font-size:24px;opacity:.4"></i></div>
         <h3 style="font-size:15px;font-weight:600;margin:0 0 6px;color:#e6edf3">Nenhum agente criado</h3>
         <p style="font-size:12px;margin:0 0 16px">Crie agentes de IA para automatizar atendimentos</p>
-        <button onclick="showCreateAgent()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600">Criar Primeiro Agente</button>
+        <button onclick="showCreateAgent()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600">Criar Primeiro Agente</button>
       </div>` : `
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px">
         ${allAgents.map(a => renderAgentCard(a)).join('')}
@@ -3008,13 +3009,13 @@ function renderAgentCard(a) {
     <p style="font-size:11px;color:#8b9dc3;margin:0 0 12px;line-height:1.4">${(a.identity || a.description || '').substring(0, 120)}${(a.identity||'').length > 120 ? '...' : ''}</p>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       <span style="padding:3px 8px;border-radius:6px;font-size:9px;background:${providerColor}22;color:${providerColor}">${a.provider||'groq'}</span>
-      <span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#6c5ce722;color:#6c5ce7">temp: ${a.temperature||0.7}</span>
+      <span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#00b89422;color:#00b894">temp: ${a.temperature||0.7}</span>
       ${a.voice_id ? '<span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#f59e0b22;color:#f59e0b">Voz ativa</span>' : ''}
       <span style="padding:3px 8px;border-radius:6px;font-size:9px;background:${status?'#22c55e22':'#ef444422'};color:${status?'#22c55e':'#ef4444'}">${status?'Ativo':'Inativo'}</span>
     </div>
     <div style="display:flex;gap:6px">
       <button onclick="testAgent('${a.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px;font-weight:500"><i class="fa-solid fa-flask"></i> Testar</button>
-      <button onclick="showEditAgent('${a.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #6c5ce7;background:#6c5ce715;color:#6c5ce7;cursor:pointer;font-size:10px;font-weight:500"><i class="fa-solid fa-pen"></i> Editar</button>
+      <button onclick="showEditAgent('${a.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid #00b894;background:#00b89415;color:#00b894;cursor:pointer;font-size:10px;font-weight:500"><i class="fa-solid fa-pen"></i> Editar</button>
     </div>
   </div>`;
 }
@@ -3042,10 +3043,10 @@ function showCreateAgent() {
   if (!area) return;
   area.innerHTML = `
     <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:20px;animation:slideUp .3s ease">
-      <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-robot" style="color:#6c5ce7;margin-right:8px"></i>Novo Agente IA</h3>
+      <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-robot" style="color:#00b894;margin-right:8px"></i>Novo Agente IA</h3>
       ${crudForm({ fields: AGENT_FIELDS, id: 'agent-create' })}
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button onclick="saveAgent()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar Agente</button>
+        <button onclick="saveAgent()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar Agente</button>
         <button onclick="document.getElementById('agent-form-area').innerHTML=''" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
       </div>
     </div>`;
@@ -3076,7 +3077,7 @@ function showEditAgent(id) {
       <h3 style="margin:0 0 16px;font-size:14px;color:#e6edf3"><i class="fa-solid fa-pen" style="color:#3b82f6;margin-right:8px"></i>Editar Agente</h3>
       ${crudForm({ fields: AGENT_FIELDS, values: agent, id: `agent-edit-${id}` })}
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button onclick="saveAgent('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
+        <button onclick="saveAgent('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>
         <button onclick="document.getElementById('agent-form-area').innerHTML=''" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
       </div>
     </div>`;
@@ -3126,7 +3127,7 @@ function testAgent(id) {
         </div>
         <div style="display:flex;gap:8px">
           <input type="text" id="test-agent-input" placeholder="Digite sua mensagem..." onkeydown="if(event.key==='Enter')testAgentSend('${id}')" style="flex:1;padding:8px 12px;background:#161b22;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;outline:none">
-          <button onclick="testAgentSend('${id}')" style="padding:8px 16px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-paper-plane"></i></button>
+          <button onclick="testAgentSend('${id}')" style="padding:8px 16px;border-radius:6px;border:none;background:#00b894;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
       </div>
     </div>`;
@@ -3139,7 +3140,7 @@ async function testAgentSend(id) {
   if (!input?.value.trim() || !msgs) return;
   const text = input.value.trim();
   input.value = '';
-  msgs.innerHTML += `<div style="align-self:flex-end;padding:8px 12px;border-radius:10px;background:#6c5ce7;color:white;font-size:12px;max-width:80%">${text}</div>`;
+  msgs.innerHTML += `<div style="align-self:flex-end;padding:8px 12px;border-radius:10px;background:#00b894;color:white;font-size:12px;max-width:80%">${text}</div>`;
   msgs.innerHTML += `<div style="align-self:flex-start;padding:8px 12px;border-radius:10px;background:#1a1f35;color:#e6edf3;font-size:12px;max-width:80%"><i class="fa-solid fa-spinner fa-spin"></i> Pensando...</div>`;
   msgs.scrollTop = msgs.scrollHeight;
   const resp = await api(`/api/agents/${id}/test`, { method: 'POST', body: JSON.stringify({ message: text }) });
@@ -3225,7 +3226,7 @@ async function loadCTWA(el) {
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
       ${[
         { icon: 'fa-mouse-pointer', label: 'Cliques', value: (ctwaAnalytics.totalClicks||490).toLocaleString(), color: '#3b82f6', bg: '#3b82f622' },
-        { icon: 'fa-comments', label: 'Conversas', value: (ctwaAnalytics.conversations||245).toLocaleString(), color: '#6c5ce7', bg: '#6c5ce722' },
+        { icon: 'fa-comments', label: 'Conversas', value: (ctwaAnalytics.conversations||245).toLocaleString(), color: '#00b894', bg: '#00b89422' },
         { icon: 'fa-shopping-cart', label: 'Compras', value: (ctwaAnalytics.purchases||29).toLocaleString(), color: '#22c55e', bg: '#22c55e22' },
         { icon: 'fa-percent', label: 'Conversão', value: '5.92%', color: '#f59e0b', bg: '#f59e0b22' },
         { icon: 'fa-dollar-sign', label: 'Receita', value: 'R$ ' + (ctwaAnalytics.revenue||1105).toLocaleString(), color: '#ec4899', bg: '#ec489922' }
@@ -3240,11 +3241,11 @@ async function loadCTWA(el) {
 
     <!-- Conversion Funnel -->
     <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px;margin-bottom:20px">
-      <h3 style="font-size:14px;color:#e6edf3;margin:0 0 16px"><i class="fa-solid fa-filter" style="color:#6c5ce7;margin-right:8px"></i>Funil de Conversão</h3>
+      <h3 style="font-size:14px;color:#e6edf3;margin:0 0 16px"><i class="fa-solid fa-filter" style="color:#00b894;margin-right:8px"></i>Funil de Conversão</h3>
       <div style="display:flex;gap:4px;align-items:flex-end">
         ${[
           { label: 'Impressões', value: 12500, pct: 100, color: '#3b82f6' },
-          { label: 'Cliques', value: 490, pct: 39, color: '#6c5ce7' },
+          { label: 'Cliques', value: 490, pct: 39, color: '#00b894' },
           { label: 'Conversas', value: 245, pct: 50, color: '#22c55e' },
           { label: 'Qualificados', value: 89, pct: 36, color: '#f59e0b' },
           { label: 'Compras', value: 29, pct: 33, color: '#ec4899' }
@@ -3360,7 +3361,7 @@ async function loadSales(el) {
               <td style="padding:10px 14px;font-size:12px;color:#8b9dc3">${formatDate(s.createdAt)}</td>
               <td style="padding:10px 14px;font-size:12px;color:#e6edf3;font-weight:500">${s.contact||'N/A'}</td>
               <td style="padding:10px 14px;font-size:12px;color:#8b9dc3">${s.product||'N/A'}</td>
-              <td style="padding:10px 14px"><span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#6c5ce722;color:#6c5ce7">${s.integration||'Manual'}</span></td>
+              <td style="padding:10px 14px"><span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#00b89422;color:#00b894">${s.integration||'Manual'}</span></td>
               <td style="padding:10px 14px;text-align:right;font-size:13px;color:#22c55e;font-weight:600">R$ ${(s.amount||0).toFixed(2)}</td>
               <td style="padding:10px 14px;text-align:center"><span style="padding:3px 10px;border-radius:10px;font-size:9px;font-weight:600;background:${s.status==='approved'?'#22c55e22':s.status==='pending'?'#f59e0b22':'#ef444422'};color:${s.status==='approved'?'#22c55e':s.status==='pending'?'#f59e0b':'#ef4444'}">${s.status==='approved'?'Aprovado':s.status==='pending'?'Pendente':'Cancelado'}</span></td>
             </tr>`).join('')}
@@ -3387,9 +3388,9 @@ async function loadIntegrations(el) {
 
     <!-- Tabs -->
     <div style="display:flex;gap:4px;margin-bottom:20px;background:#161b22;border-radius:10px;padding:4px">
-      <button onclick="setIntTab('native')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${integrationsTab==='native'?'#6c5ce7':'transparent'};color:${integrationsTab==='native'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-puzzle-piece"></i> Nativas</button>
-      <button onclick="setIntTab('webhooks')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${integrationsTab==='webhooks'?'#6c5ce7':'transparent'};color:${integrationsTab==='webhooks'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-hook"></i> Webhooks</button>
-      <button onclick="setIntTab('api')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${integrationsTab==='api'?'#6c5ce7':'transparent'};color:${integrationsTab==='api'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-key"></i> API Keys</button>
+      <button onclick="setIntTab('native')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${integrationsTab==='native'?'#00b894':'transparent'};color:${integrationsTab==='native'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-puzzle-piece"></i> Nativas</button>
+      <button onclick="setIntTab('webhooks')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${integrationsTab==='webhooks'?'#00b894':'transparent'};color:${integrationsTab==='webhooks'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-hook"></i> Webhooks</button>
+      <button onclick="setIntTab('api')" style="flex:1;padding:10px;border:none;border-radius:8px;background:${integrationsTab==='api'?'#00b894':'transparent'};color:${integrationsTab==='api'?'white':'#8b9dc3'};cursor:pointer;font-size:12px;font-weight:500;transition:all .2s"><i class="fa-solid fa-key"></i> API Keys</button>
     </div>
 
     <div id="int-content">${renderIntContent()}</div>
@@ -3448,7 +3449,7 @@ function renderNativeTab() {
               ${connected ?
                 `<span style="padding:3px 8px;border-radius:6px;font-size:9px;background:#22c55e22;color:#22c55e;font-weight:600"><i class="fa-solid fa-check"></i> Conectado</span>
                 <button onclick="manageIntegration('${p.id}')" style="margin-left:auto;padding:4px 8px;border-radius:4px;border:1px solid #1e2d3d;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:10px"><i class="fa-solid fa-gear"></i></button>` :
-                `<button onclick="connectIntegration('${p.id}')" style="padding:6px 12px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px;font-weight:500"><i class="fa-solid fa-plug"></i> Conectar</button>`
+                `<button onclick="connectIntegration('${p.id}')" style="padding:6px 12px;border-radius:6px;border:none;background:#00b894;color:white;cursor:pointer;font-size:11px;font-weight:500"><i class="fa-solid fa-plug"></i> Conectar</button>`
               }
             </div>
           </div>`;
@@ -3461,8 +3462,8 @@ function renderNativeTab() {
 function renderWebhooksTab() {
   return `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h3 style="font-size:14px;color:#e6edf3;margin:0"><i class="fa-solid fa-hook" style="color:#6c5ce7;margin-right:8px"></i>Webhooks</h3>
-      <button onclick="showCreateWebhook()" style="padding:6px 12px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-plus"></i> Novo Webhook</button>
+      <h3 style="font-size:14px;color:#e6edf3;margin:0"><i class="fa-solid fa-hook" style="color:#00b894;margin-right:8px"></i>Webhooks</h3>
+      <button onclick="showCreateWebhook()" style="padding:6px 12px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-plus"></i> Novo Webhook</button>
     </div>
     <div id="webhook-form-area"></div>
     <div style="display:flex;flex-direction:column;gap:8px" id="webhooks-list">
@@ -3492,7 +3493,7 @@ function renderAPITab() {
   return `<div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h3 style="font-size:14px;color:#e6edf3;margin:0"><i class="fa-solid fa-key" style="color:#f59e0b;margin-right:8px"></i>API Keys</h3>
-      <button onclick="showCreateAPIKey()" style="padding:6px 12px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-plus"></i> Gerar Chave</button>
+      <button onclick="showCreateAPIKey()" style="padding:6px 12px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-plus"></i> Gerar Chave</button>
     </div>
     <div id="api-key-form-area"></div>
     <div style="display:flex;flex-direction:column;gap:8px" id="api-keys-list">
@@ -3512,7 +3513,7 @@ function renderAPITab() {
       <p style="font-size:11px;color:#8b9dc3;margin:0 0 8px">Use a API REST para integrar com seus sistemas.</p>
       <div style="display:flex;gap:8px">
         <code style="flex:1;padding:8px;background:#0d1117;border-radius:6px;font-size:11px;color:#e6edf3">GET ${window.location.origin}/api/v1/contacts</code>
-        <button onclick="navigator.clipboard.writeText('${window.location.origin}/api/v1/contacts');showToast('Copiado!','success')" style="padding:6px 12px;border-radius:6px;border:1px solid #6c5ce7;background:#6c5ce715;color:#6c5ce7;cursor:pointer;font-size:10px"><i class="fa-solid fa-copy"></i></button>
+        <button onclick="navigator.clipboard.writeText('${window.location.origin}/api/v1/contacts');showToast('Copiado!','success')" style="padding:6px 12px;border-radius:6px;border:1px solid #00b894;background:#00b89415;color:#00b894;cursor:pointer;font-size:10px"><i class="fa-solid fa-copy"></i></button>
       </div>
     </div>
   </div>`;
@@ -3532,7 +3533,7 @@ function showCreateWebhook() {
         </select>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px">
-        <button onclick="saveWebhook()" style="padding:6px 12px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-save"></i> Criar</button>
+        <button onclick="saveWebhook()" style="padding:6px 12px;border-radius:6px;border:none;background:#00b894;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-save"></i> Criar</button>
         <button onclick="document.getElementById('webhook-form-area').innerHTML=''" style="padding:6px 12px;border-radius:6px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px">Cancelar</button>
       </div>
     </div>`;
@@ -3548,12 +3549,12 @@ function showCreateAPIKey() {
       <h4 style="font-size:13px;color:#e6edf3;margin:0 0 12px">Gerar Nova Chave</h4>
       <input type="text" id="ak-name" placeholder="Nome da chave (ex: Produção)" style="width:100%;padding:8px 12px;background:#1a1f35;border:1px solid #2a3050;border-radius:6px;color:#e6edf3;font-size:12px;outline:none;margin-bottom:10px">
       <div style="display:flex;gap:8px;margin-bottom:10px">
-        <label style="font-size:11px;color:#8b9dc3;display:flex;align-items:center;gap:4px"><input type="checkbox" checked style="accent-color:#6c5ce7"> Read</label>
-        <label style="font-size:11px;color:#8b9dc3;display:flex;align-items:center;gap:4px"><input type="checkbox" checked style="accent-color:#6c5ce7"> Write</label>
-        <label style="font-size:11px;color:#8b9dc3;display:flex;align-items:center;gap:4px"><input type="checkbox" style="accent-color:#6c5ce7"> Admin</label>
+        <label style="font-size:11px;color:#8b9dc3;display:flex;align-items:center;gap:4px"><input type="checkbox" checked style="accent-color:#00b894"> Read</label>
+        <label style="font-size:11px;color:#8b9dc3;display:flex;align-items:center;gap:4px"><input type="checkbox" checked style="accent-color:#00b894"> Write</label>
+        <label style="font-size:11px;color:#8b9dc3;display:flex;align-items:center;gap:4px"><input type="checkbox" style="accent-color:#00b894"> Admin</label>
       </div>
       <div style="display:flex;gap:8px">
-        <button onclick="generateAPIKey()" style="padding:6px 12px;border-radius:6px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-key"></i> Gerar</button>
+        <button onclick="generateAPIKey()" style="padding:6px 12px;border-radius:6px;border:none;background:#00b894;color:white;cursor:pointer;font-size:11px"><i class="fa-solid fa-key"></i> Gerar</button>
         <button onclick="document.getElementById('api-key-form-area').innerHTML=''" style="padding:6px 12px;border-radius:6px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:11px">Cancelar</button>
       </div>
     </div>`;
@@ -3617,7 +3618,7 @@ function renderWADisconnected() {
     <!-- Two columns -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
       <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
-        <h3 style="font-size:15px;color:#e6edf3;margin:0 0 16px;font-weight:700"><i class="fa-solid fa-list-check" style="color:#6c5ce7;margin-right:8px"></i>Pré-requisitos</h3>
+        <h3 style="font-size:15px;color:#e6edf3;margin:0 0 16px;font-weight:700"><i class="fa-solid fa-list-check" style="color:#00b894;margin-right:8px"></i>Pré-requisitos</h3>
         <div style="display:flex;flex-direction:column;gap:10px">
           ${['Conta Meta Business Suite ativa','Número de telefone WhatsApp Business','Permissões de administrador','App ID do Meta Developer'].map(item => `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b9dc3">
             <div style="width:20px;height:20px;border-radius:50%;background:#22c55e22;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-solid fa-check" style="color:#22c55e;font-size:10px"></i></div>${item}
@@ -3625,10 +3626,10 @@ function renderWADisconnected() {
         </div>
       </div>
       <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
-        <h3 style="font-size:15px;color:#e6edf3;margin:0 0 16px;font-weight:700"><i class="fa-solid fa-plug" style="color:#6c5ce7;margin-right:8px"></i>Como funciona</h3>
+        <h3 style="font-size:15px;color:#e6edf3;margin:0 0 16px;font-weight:700"><i class="fa-solid fa-plug" style="color:#00b894;margin-right:8px"></i>Como funciona</h3>
         <div style="display:flex;flex-direction:column;gap:10px">
           ${['Clique em "Conectar com Meta"','Faça login na sua conta Meta','Selecione a Business Account','Escolha ou crie um App','Autorize o acesso ao WhatsApp'].map((s,i) => `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b9dc3">
-            <div style="width:22px;height:22px;border-radius:50%;background:#6c5ce722;color:#6c5ce7;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${i+1}</div>${s}
+            <div style="width:22px;height:22px;border-radius:50%;background:#00b89422;color:#00b894;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${i+1}</div>${s}
           </div>`).join('')}
         </div>
       </div>
@@ -3636,11 +3637,11 @@ function renderWADisconnected() {
 
     <!-- Webhook -->
     <div style="background:#1a1f35;border:1px solid #2a3050;border-radius:12px;padding:20px">
-      <h3 style="font-size:15px;color:#e6edf3;margin:0 0 6px;font-weight:700"><i class="fa-solid fa-globe" style="color:#6c5ce7;margin-right:8px"></i>Webhook URL</h3>
+      <h3 style="font-size:15px;color:#e6edf3;margin:0 0 6px;font-weight:700"><i class="fa-solid fa-globe" style="color:#00b894;margin-right:8px"></i>Webhook URL</h3>
       <p style="font-size:12px;color:#8b9dc3;margin:0 0 14px">Configure este URL no painel do Meta Developer</p>
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <div style="flex:1;padding:10px 14px;background:#0d1117;border:1px solid #2a3050;border-radius:8px;font-family:monospace;font-size:13px;color:#e6edf3;display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${window.location.origin}/webhook/whatsapp</div>
-        <button onclick="navigator.clipboard.writeText('${window.location.origin}/webhook/whatsapp');showToast('Copiado!','success')" style="padding:10px 16px;border-radius:8px;border:1px solid #6c5ce7;background:rgba(108,92,231,.08);color:#6c5ce7;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-copy"></i> Copiar</button>
+        <button onclick="navigator.clipboard.writeText('${window.location.origin}/webhook/whatsapp');showToast('Copiado!','success')" style="padding:10px 16px;border-radius:8px;border:1px solid #00b894;background:rgba(108,92,231,.08);color:#00b894;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-copy"></i> Copiar</button>
       </div>
       <label style="font-size:11px;color:#8b9dc3;display:block;margin-bottom:6px;font-weight:500">Verify Token</label>
       <div style="padding:10px 14px;background:#0d1117;border:1px solid #2a3050;border-radius:8px;font-family:monospace;font-size:13px;color:#e6edf3">ozion_verify_${Math.random().toString(36).slice(2,10)}</div>
@@ -3983,13 +3984,13 @@ async function renderSettingsWorkspace(el) {
       </div></div>
       <div class="card"><div class="card-header"><h3><i class="fa-solid fa-image" style="margin-right:6px;color:#22c55e"></i>Identidade Visual</h3></div><div class="card-body">
         <div class="form-group"><label>Logo</label><div style="display:flex;align-items:center;gap:12px"><div id="ws-logo-preview" style="width:64px;height:64px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-size:24px;font-weight:700">O</div><div><button class="btn btn-sm btn-outline" onclick="showToast('Upload de logo','info')"><i class="fa-solid fa-upload"></i> Enviar logo</button><div style="font-size:10px;color:var(--text-muted);margin-top:4px">PNG, SVG ou JPG. Máx 2MB</div></div></div></div>
-        <div class="form-group"><label>Cor principal</label><div style="display:flex;gap:8px;align-items:center"><input type="color" value="#6c5ce7" id="ws-color" style="width:40px;height:32px;border:none;cursor:pointer;border-radius:6px"><span style="font-size:11px;color:var(--text-muted)">#6c5ce7</span></div></div>
+        <div class="form-group"><label>Cor principal</label><div style="display:flex;gap:8px;align-items:center"><input type="color" value="#00b894" id="ws-color" style="width:40px;height:32px;border:none;cursor:pointer;border-radius:6px"><span style="font-size:11px;color:var(--text-muted)">#00b894</span></div></div>
         <div class="form-group"><label>Favicon</label><button class="btn btn-sm btn-outline" onclick="showToast('Upload de favicon','info')"><i class="fa-solid fa-upload"></i> Enviar favicon</button></div>
         <button class="btn btn-primary btn-sm" onclick="saveWorkspaceSettings()"><i class="fa-solid fa-save"></i> Salvar</button>
       </div></div>
     </div>
     <div style="margin-top:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-      ${[{icon:'fa-users',label:'Contatos',val:stats.contacts||0,color:'#6c5ce7'},{icon:'fa-comments',label:'Conversas',val:stats.conversations||0,color:'#22c55e'},{icon:'fa-robot',label:'Agentes',val:stats.agents||0,color:'#f59e0b'},{icon:'fa-chart-line',label:'Receita',val:'R$ '+(stats.revenue||0).toLocaleString('pt-BR'),color:'#3b82f6'}].map(s=>`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:12px"><div style="width:40px;height:40px;border-radius:10px;background:${s.color}15;display:flex;align-items:center;justify-content:center"><i class="fa-solid ${s.icon}" style="color:${s.color};font-size:16px"></i></div><div><div style="font-size:18px;font-weight:700;color:var(--text)">${s.val}</div><div style="font-size:11px;color:var(--text-muted)">${s.label}</div></div></div>`).join('')}
+      ${[{icon:'fa-users',label:'Contatos',val:stats.contacts||0,color:'#00b894'},{icon:'fa-comments',label:'Conversas',val:stats.conversations||0,color:'#22c55e'},{icon:'fa-robot',label:'Agentes',val:stats.agents||0,color:'#f59e0b'},{icon:'fa-chart-line',label:'Receita',val:'R$ '+(stats.revenue||0).toLocaleString('pt-BR'),color:'#3b82f6'}].map(s=>`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:12px"><div style="width:40px;height:40px;border-radius:10px;background:${s.color}15;display:flex;align-items:center;justify-content:center"><i class="fa-solid ${s.icon}" style="color:${s.color};font-size:16px"></i></div><div><div style="font-size:18px;font-weight:700;color:var(--text)">${s.val}</div><div style="font-size:11px;color:var(--text-muted)">${s.label}</div></div></div>`).join('')}
     </div>`;
 }
 function saveWorkspaceSettings(){showToast('Workspace salvo!','success');}
@@ -4025,7 +4026,7 @@ function changePasswordSettings(){const o=document.getElementById('prof-old-pass
 async function renderSettingsTeam(el) {
   const users = await api('/api/admin/users') || [];
   const roleLabels = {owner:'Dono',admin:'Admin',manager:'Gestor',financial:'Financeiro',agent:'Atendente'};
-  const roleColors = {owner:'#6c5ce7',admin:'#ef4444',manager:'#3b82f6',financial:'#f59e0b',agent:'#22c55e'};
+  const roleColors = {owner:'#00b894',admin:'#ef4444',manager:'#3b82f6',financial:'#f59e0b',agent:'#22c55e'};
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div><h3 style="margin:0;font-size:15px">Time</h3><p style="color:var(--text-muted);font-size:11px;margin:2px 0 0">${users.length} membros</p></div>
@@ -4033,8 +4034,8 @@ async function renderSettingsTeam(el) {
     </div>
     <div style="display:grid;gap:10px">
       ${users.map(u=>{
-        const c=roleColors[u.role]||'#6c5ce7';
-        const colors=['#6c5ce7','#22c55e','#f59e0b','#3b82f6','#ef4444','#8b5cf6'];
+        const c=roleColors[u.role]||'#00b894';
+        const colors=['#00b894','#22c55e','#f59e0b','#3b82f6','#ef4444','#8b5cf6'];
         const av=colors[(u.name||'').charCodeAt(0)%colors.length];
         return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px">
           <div style="width:40px;height:40px;border-radius:50%;background:${av}22;color:${av};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600">${(u.name||'U')[0].toUpperCase()}</div>
@@ -4050,14 +4051,14 @@ async function renderSettingsTeam(el) {
       ${users.length===0?'<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:12px">Nenhum membro encontrado</div>':''}
     </div>`;
 }
-function showSettingsInviteUser(){showModal({title:'Convidar Membro',body:`<div class="form-group"><label>Email do convite</label><input type="email" id="invite-email" placeholder="colaborador@email.com" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Perfil</label><select id="invite-role" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="agent">Atendente</option><option value="manager">Gestor</option><option value="financial">Financeiro</option></select></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="confirmInvite()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-paper-plane"></i> Enviar convite</button>`});}
+function showSettingsInviteUser(){showModal({title:'Convidar Membro',body:`<div class="form-group"><label>Email do convite</label><input type="email" id="invite-email" placeholder="colaborador@email.com" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Perfil</label><select id="invite-role" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="agent">Atendente</option><option value="manager">Gestor</option><option value="financial">Financeiro</option></select></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="confirmInvite()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-paper-plane"></i> Enviar convite</button>`});}
 function confirmInvite(){showToast('Convite enviado!','success');document.querySelector('.modal-overlay.show')?.remove();}
 function settingsEditTeamMember(id){showToast('Editando membro...','info');}
 function settingsRemoveTeamMember(id){confirmModal({title:'Remover do Time',message:'Remover este membro do time?',danger:true,onConfirm:()=>showToast('Membro removido!','success')});}
 
 // ─── Tab 4: Setores ─────────────────────────────────────────────
 async function renderSettingsSectors(el) {
-  let sectors = await api('/api/settings/sectors') || [{id:'1',name:'Comercial',color:'#6c5ce7',members:3,sla:'2h'},{id:'2',name:'Suporte',color:'#22c55e',members:5,sla:'1h'},{id:'3',name:'Financeiro',color:'#f59e0b',members:2,sla:'4h'}];
+  let sectors = await api('/api/settings/sectors') || [{id:'1',name:'Comercial',color:'#00b894',members:3,sla:'2h'},{id:'2',name:'Suporte',color:'#22c55e',members:5,sla:'1h'},{id:'3',name:'Financeiro',color:'#f59e0b',members:2,sla:'4h'}];
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div><h3 style="margin:0;font-size:15px">Setores</h3><p style="color:var(--text-muted);font-size:11px;margin:2px 0 0">Departamentos e equipes</p></div>
@@ -4075,7 +4076,7 @@ async function renderSettingsSectors(el) {
       </div>`).join('')}
     </div>`;
 }
-function showSettingsCreateSector(){showModal({title:'Novo Setor',body:`<div class="form-group"><label>Nome</label><input type="text" id="sector-name" placeholder="Ex: Comercial" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Cor</label><input type="color" id="sector-color" value="#6c5ce7" style="width:40px;height:32px;border:none;cursor:pointer"></div><div class="form-group"><label>SLA (horas)</label><input type="text" id="sector-sla" placeholder="2h" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="saveSettingsSector()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`});}
+function showSettingsCreateSector(){showModal({title:'Novo Setor',body:`<div class="form-group"><label>Nome</label><input type="text" id="sector-name" placeholder="Ex: Comercial" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Cor</label><input type="color" id="sector-color" value="#00b894" style="width:40px;height:32px;border:none;cursor:pointer"></div><div class="form-group"><label>SLA (horas)</label><input type="text" id="sector-sla" placeholder="2h" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="saveSettingsSector()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`});}
 function saveSettingsSector(){showToast('Setor criado!','success');document.querySelector('.modal-overlay.show')?.remove();renderSettingsSectors(document.getElementById('settings-content'));}
 function showSettingsEditSector(id){showToast('Editando setor...','info');}
 function showSettingsDeleteSector(id){confirmModal({title:'Excluir Setor',message:'Excluir este setor?',danger:true,onConfirm:()=>{showToast('Setor excluído!','success');renderSettingsSectors(document.getElementById('settings-content'));}});}
@@ -4193,7 +4194,7 @@ async function connectWhatsApp(){
 }
 
 function showWhatsAppQR(instance){
-  showModal({title:'WhatsApp QR Code',body:`<div style="text-align:center;padding:20px"><div id="qr-code-container" style="width:256px;height:256px;margin:0 auto;background:white;border-radius:8px;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;color:#6c5ce7"></i></div><p style="font-size:12px;color:var(--text-muted);margin-top:12px">Escaneie com o WhatsApp no celular</p></div>`,footer:''});
+  showModal({title:'WhatsApp QR Code',body:`<div style="text-align:center;padding:20px"><div id="qr-code-container" style="width:256px;height:256px;margin:0 auto;background:white;border-radius:8px;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;color:#00b894"></i></div><p style="font-size:12px;color:var(--text-muted);margin-top:12px">Escaneie com o WhatsApp no celular</p></div>`,footer:''});
   // Poll for QR code
   setTimeout(async()=>{
     try{
@@ -4232,7 +4233,7 @@ async function renderSettingsTemplates(el) {
       <button onclick="showToast('Editando template','info')" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;font-size:10px"><i class="fa-solid fa-pen"></i></button>
     </div>`).join('')}</div>`:`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:40px;text-align:center"><i class="fa-solid fa-file-lines" style="font-size:36px;color:var(--text-muted);margin-bottom:12px;display:block"></i><h3 style="margin:0 0 8px;font-size:14px">Nenhum template</h3><p style="color:var(--text-muted);font-size:12px;margin:0">Crie templates de mensagem para envio pelo WhatsApp.</p></div>`}`;
 }
-function showSettingsCreateTemplate(){showModal({title:'Novo Template',body:`<div class="form-group"><label>Nome</label><input type="text" id="tpl-name" placeholder="ex: confirmacao_pedido" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Categoria</label><select id="tpl-cat" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option>Marketing</option><option>Utility</option><option>Authentication</option></select></div><div class="form-group"><label>Idioma</label><select id="tpl-lang" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="pt_BR">Português (BR)</option><option value="en">English</option></select></div><div class="form-group"><label>Corpo da mensagem</label><textarea rows="4" id="tpl-body" placeholder="Olá {{1}}, seu pedido {{2}} foi confirmado!" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px;resize:vertical;font-family:inherit"></textarea></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="showToast('Template criado!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`});}
+function showSettingsCreateTemplate(){showModal({title:'Novo Template',body:`<div class="form-group"><label>Nome</label><input type="text" id="tpl-name" placeholder="ex: confirmacao_pedido" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Categoria</label><select id="tpl-cat" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option>Marketing</option><option>Utility</option><option>Authentication</option></select></div><div class="form-group"><label>Idioma</label><select id="tpl-lang" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="pt_BR">Português (BR)</option><option value="en">English</option></select></div><div class="form-group"><label>Corpo da mensagem</label><textarea rows="4" id="tpl-body" placeholder="Olá {{1}}, seu pedido {{2}} foi confirmado!" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px;resize:vertical;font-family:inherit"></textarea></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="showToast('Template criado!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`});}
 
 // ─── Tab 8: Respostas Rápidas ───────────────────────────────────
 async function renderSettingsQuickReplies(el) {
@@ -4249,7 +4250,7 @@ async function renderSettingsQuickReplies(el) {
       </table>
     </div>`;
 }
-function showSettingsCreateQuickReply(){showModal({title:'Nova Resposta Rápida',body:`<div class="form-group"><label>Atalho</label><input type="text" id="qr-shortcut" placeholder="/obrigado" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Resposta</label><textarea rows="3" id="qr-response" placeholder="Texto da resposta rápida..." style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px;resize:vertical;font-family:inherit"></textarea></div><div class="form-group"><label>Categoria</label><select id="qr-cat" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option>Geral</option><option>Financeiro</option><option>Suporte</option><option>Vendas</option></select></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="showToast('Resposta criada!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`});}
+function showSettingsCreateQuickReply(){showModal({title:'Nova Resposta Rápida',body:`<div class="form-group"><label>Atalho</label><input type="text" id="qr-shortcut" placeholder="/obrigado" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Resposta</label><textarea rows="3" id="qr-response" placeholder="Texto da resposta rápida..." style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px;resize:vertical;font-family:inherit"></textarea></div><div class="form-group"><label>Categoria</label><select id="qr-cat" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option>Geral</option><option>Financeiro</option><option>Suporte</option><option>Vendas</option></select></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="showToast('Resposta criada!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`});}
 
 // ─── Tab 9: Permissões ──────────────────────────────────────────
 function renderSettingsPermissions(el) {
@@ -4270,7 +4271,7 @@ function renderSettingsPermissions(el) {
       </div>`).join('')}
     </div>`;
 }
-function showSettingsCreatePermission(){showModal({title:'Novo Perfil de Permissão',body:`<div class="form-group"><label>Nome do perfil</label><input type="text" id="perm-name" placeholder="Ex: Suporte" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Módulos permitidos</label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${['dashboard','chat','crm','whatsapp','agents','flows','voice','analytics','sales','billing','settings','admin'].map(m=>`<label style="display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);font-size:11px;cursor:pointer"><input type="checkbox" value="${m}"> ${m}</label>`).join('')}</div></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="showToast('Perfil criado!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`});}
+function showSettingsCreatePermission(){showModal({title:'Novo Perfil de Permissão',body:`<div class="form-group"><label>Nome do perfil</label><input type="text" id="perm-name" placeholder="Ex: Suporte" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Módulos permitidos</label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${['dashboard','chat','crm','whatsapp','agents','flows','voice','analytics','sales','billing','settings','admin'].map(m=>`<label style="display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);font-size:11px;cursor:pointer"><input type="checkbox" value="${m}"> ${m}</label>`).join('')}</div></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="showToast('Perfil criado!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`});}
 
 // ─── Tab 10: Campos Personalizados ──────────────────────────────
 async function renderSettingsCustomFields(el) {
@@ -4287,7 +4288,7 @@ async function renderSettingsCustomFields(el) {
       </table>
     </div>`;
 }
-function showSettingsCreateField(){showModal({title:'Novo Campo Personalizado',body:`<div class="form-group"><label>Nome</label><input type="text" id="cf-name" placeholder="Ex: CPF" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Tipo</label><select id="cf-type" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="text">Texto</option><option value="number">Número</option><option value="date">Data</option><option value="select">Seleção</option><option value="email">Email</option><option value="phone">Telefone</option></select></div><div class="form-group"><label>Entidade</label><select id="cf-entity" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="contact">Contato</option><option value="conversation">Conversa</option><option value="deal">Negócio</option></select></div><div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="cf-required"> Obrigatório</label></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="showToast('Campo criado!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`});}
+function showSettingsCreateField(){showModal({title:'Novo Campo Personalizado',body:`<div class="form-group"><label>Nome</label><input type="text" id="cf-name" placeholder="Ex: CPF" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Tipo</label><select id="cf-type" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="text">Texto</option><option value="number">Número</option><option value="date">Data</option><option value="select">Seleção</option><option value="email">Email</option><option value="phone">Telefone</option></select></div><div class="form-group"><label>Entidade</label><select id="cf-entity" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="contact">Contato</option><option value="conversation">Conversa</option><option value="deal">Negócio</option></select></div><div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="cf-required"> Obrigatório</label></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="showToast('Campo criado!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`});}
 
 // ─── Tab 11: Credenciais ────────────────────────────────────────
 async function renderSettingsCredentials(el) {
@@ -4307,7 +4308,7 @@ async function renderSettingsCredentials(el) {
       </div>`).join('')}
     </div>`;
 }
-function showSettingsCreateCredential(){showModal({title:'Nova Credencial',body:`<div class="form-group"><label>Serviço</label><select id="cred-service" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option>Meta Cloud API</option><option>Groq AI</option><option>DeepSeek AI</option><option>ElevenLabs</option><option>OpenAI</option><option>Outro</option></select></div><div class="form-group"><label>Nome</label><input type="text" id="cred-name" placeholder="Ex: Production API Key" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Valor</label><input type="password" id="cred-value" placeholder="sk-..." style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="showToast('Credencial salva!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>`});}
+function showSettingsCreateCredential(){showModal({title:'Nova Credencial',body:`<div class="form-group"><label>Serviço</label><select id="cred-service" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option>Meta Cloud API</option><option>Groq AI</option><option>DeepSeek AI</option><option>ElevenLabs</option><option>OpenAI</option><option>Outro</option></select></div><div class="form-group"><label>Nome</label><input type="text" id="cred-name" placeholder="Ex: Production API Key" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Valor</label><input type="password" id="cred-value" placeholder="sk-..." style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="showToast('Credencial salva!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>`});}
 
 // ─── Tab 12: SLA ────────────────────────────────────────────────
 function renderSettingsSLA(el) {
@@ -4324,7 +4325,7 @@ function renderSettingsSLA(el) {
       </table>
     </div>`;
 }
-function showSettingsCreateSLA(){showModal({title:'Novo SLA',body:`<div class="form-group"><label>Canal</label><select id="sla-channel" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option>WhatsApp</option><option>Email</option><option>Instagram</option><option>Telegram</option><option>Telefone</option></select></div><div class="form-group"><label>Tempo de 1ª Resposta</label><input type="text" id="sla-first" placeholder="Ex: 5 min" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Tempo de Resolução</label><input type="text" id="sla-resolve" placeholder="Ex: 4 h" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Prioridade</label><select id="sla-priority" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option>Alta</option><option>Média</option><option>Baixa</option></select></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="showToast('SLA criado!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`});}
+function showSettingsCreateSLA(){showModal({title:'Novo SLA',body:`<div class="form-group"><label>Canal</label><select id="sla-channel" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option>WhatsApp</option><option>Email</option><option>Instagram</option><option>Telegram</option><option>Telefone</option></select></div><div class="form-group"><label>Tempo de 1ª Resposta</label><input type="text" id="sla-first" placeholder="Ex: 5 min" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Tempo de Resolução</label><input type="text" id="sla-resolve" placeholder="Ex: 4 h" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"></div><div class="form-group"><label>Prioridade</label><select id="sla-priority" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option>Alta</option><option>Média</option><option>Baixa</option></select></div>`,footer:`<button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button><button onclick="showToast('SLA criado!','success');document.querySelector('.modal-overlay.show')?.remove()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`});}
 
 // ─── Tab 13: Sistema ────────────────────────────────────────────
 async function renderSettingsSystem(el) {
@@ -4372,14 +4373,14 @@ async function loadAdminDashboard(el) {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <div><h2 style="margin:0;font-size:20px">Painel do Admin Master</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">Visão geral da plataforma SaaS</p></div>
       <div style="display:flex;gap:8px">
-        <button onclick="navigate('admin-customers')" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Novo Cliente</button>
+        <button onclick="navigate('admin-customers')" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Novo Cliente</button>
       </div>
     </div>
 
     <!-- Stats Cards -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><i class="fa-solid fa-users" style="color:#6c5ce7"></i><span style="font-size:12px;font-weight:600">Clientes Ativos</span></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><i class="fa-solid fa-users" style="color:#00b894"></i><span style="font-size:12px;font-weight:600">Clientes Ativos</span></div>
         <div style="font-size:24px;font-weight:700">${stats.activeCustomers || 0}</div>
         <div style="font-size:10px;color:var(--text-muted)">${stats.totalCustomers || 0} total</div>
       </div>
@@ -4405,7 +4406,7 @@ async function loadAdminDashboard(el) {
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
         <h3 style="margin:0 0 12px;font-size:14px;font-weight:600"><i class="fa-solid fa-bolt" style="color:#f59e0b;margin-right:6px"></i>Ações Rápidas</h3>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <button onclick="navigate('admin-customers');showCreateCustomerModal()" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);cursor:pointer;font-size:12px;text-align:left"><i class="fa-solid fa-user-plus" style="color:#6c5ce7;width:20px"></i>Criar novo cliente</button>
+          <button onclick="navigate('admin-customers');showCreateCustomerModal()" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);cursor:pointer;font-size:12px;text-align:left"><i class="fa-solid fa-user-plus" style="color:#00b894;width:20px"></i>Criar novo cliente</button>
           <button onclick="navigate('admin-plans')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);cursor:pointer;font-size:12px;text-align:left"><i class="fa-solid fa-tags" style="color:#22c55e;width:20px"></i>Gerenciar planos</button>
           <button onclick="navigate('admin-users')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);cursor:pointer;font-size:12px;text-align:left"><i class="fa-solid fa-user-shield" style="color:#3b82f6;width:20px"></i>Gerenciar usuários</button>
           <button onclick="navigate('admin-logs')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);cursor:pointer;font-size:12px;text-align:left"><i class="fa-solid fa-history" style="color:#f59e0b;width:20px"></i>Ver logs de auditoria</button>
@@ -4433,7 +4434,7 @@ async function loadAdminCustomers(el) {
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div><h2 style="margin:0;font-size:20px">Clientes</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">${customers?.length || 0} clientes cadastrados</p></div>
-      <button onclick="showCreateCustomerModal()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Novo Cliente</button>
+      <button onclick="showCreateCustomerModal()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Novo Cliente</button>
     </div>
 
     <div style="display:grid;gap:12px">
@@ -4445,7 +4446,7 @@ async function loadAdminCustomers(el) {
             <div style="font-size:11px;color:var(--text-muted)">${c.email} • ${c.company || 'Sem empresa'}</div>
             <div style="display:flex;gap:8px;margin-top:4px">
               <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:${c.status==='active'?'#22c55e22;color:#22c55e':c.status==='suspended'?'#ef444422;color:#ef4444':'#f59e0b22;color:#f59e0b'}">${c.status==='active'?'Ativo':c.status==='suspended'?'Suspenso':c.status}</span>
-              <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#6c5ce722;color:#6c5ce7">${c.plans?.name || 'Sem plano'}</span>
+              <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#00b89422;color:#00b894">${c.plans?.name || 'Sem plano'}</span>
             </div>
           </div>
           <div style="display:flex;gap:8px">
@@ -4473,7 +4474,7 @@ function showCreateCustomerModal() {
     <div style="padding:10px;background:#22c55e22;border:1px solid #22c55e;border-radius:8px;font-size:11px;color:#22c55e"><i class="fa-solid fa-info-circle"></i> Um usuário será criado automaticamente com senha: <strong>123456</strong></div>`,
     footer: `
       <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
-      <button onclick="saveNewCustomer()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar Cliente</button>`
+      <button onclick="saveNewCustomer()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar Cliente</button>`
   });
 }
 
@@ -4516,7 +4517,7 @@ async function editCustomer(id) {
     <div class="form-group"><label>Plano</label><select id="edit-cust-plan" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="plan-start" ${customer.plan_id==='plan-start'?'selected':''}>Start - R$97/mês</option><option value="plan-pro" ${customer.plan_id==='plan-pro'?'selected':''}>Pro - R$297/mês</option><option value="plan-scale" ${customer.plan_id==='plan-scale'?'selected':''}>Scale - R$797/mês</option><option value="plan-enterprise" ${customer.plan_id==='plan-enterprise'?'selected':''}>Enterprise - R$2997/mês</option></select></div>`,
     footer: `
       <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
-      <button onclick="updateCustomer('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>`
+      <button onclick="updateCustomer('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Salvar</button>`
   });
 }
 
@@ -4658,7 +4659,7 @@ async function loadAdminPlans(el) {
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div><h2 style="margin:0;font-size:20px">Planos</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">${plans?.length || 0} planos disponíveis</p></div>
-      <button onclick="showCreatePlanModal()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Novo Plano</button>
+      <button onclick="showCreatePlanModal()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Novo Plano</button>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
@@ -4668,7 +4669,7 @@ async function loadAdminPlans(el) {
             <button onclick="editPlan('${p.id}','${p.name}',${p.price})" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;font-size:10px"><i class="fa-solid fa-edit"></i></button>
           </div>
           <div style="font-size:18px;font-weight:700;margin-bottom:4px">${p.name}</div>
-          <div style="font-size:24px;font-weight:700;color:#6c5ce7;margin-bottom:12px">R$ ${p.price}<span style="font-size:12px;font-weight:400;color:var(--text-muted)">/mês</span></div>
+          <div style="font-size:24px;font-weight:700;color:#00b894;margin-bottom:12px">R$ ${p.price}<span style="font-size:12px;font-weight:400;color:var(--text-muted)">/mês</span></div>
           <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--text-muted)">
             <div><i class="fa-solid fa-check" style="color:#22c55e;width:16px"></i> ${p.max_workspaces} workspace(s)</div>
             <div><i class="fa-solid fa-check" style="color:#22c55e;width:16px"></i> ${p.max_phone_numbers} número(s) WhatsApp</div>
@@ -4702,7 +4703,7 @@ function showCreatePlanModal() {
     </div>`,
     footer: `
       <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
-      <button onclick="saveNewPlan()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar Plano</button>`
+      <button onclick="saveNewPlan()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar Plano</button>`
   });
 }
 
@@ -4747,7 +4748,7 @@ async function loadAdminUsers(el) {
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div><h2 style="margin:0;font-size:20px">Usuários</h2><p style="color:var(--text-muted);margin-top:2px;font-size:12px">${users?.length || 0} usuários cadastrados</p></div>
-      <button onclick="showCreateUserModal()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Novo Usuário</button>
+      <button onclick="showCreateUserModal()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Novo Usuário</button>
     </div>
 
     <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden">
@@ -4764,7 +4765,7 @@ async function loadAdminUsers(el) {
             <tr style="border-bottom:1px solid var(--border)">
               <td style="padding:12px 16px"><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:600">${u.name?.charAt(0)?.toUpperCase() || '?'}</div><span style="font-weight:500">${u.name}</span></div></td>
               <td style="padding:12px 16px;color:var(--text-muted)">${u.email}</td>
-              <td style="padding:12px 16px"><span style="padding:2px 8px;border-radius:4px;background:${u.role==='admin'?'#ef444422;color:#ef4444':u.role==='owner'?'#6c5ce722;color:#6c5ce7':'#3b82f622;color:#3b82f6'}">${u.role==='admin'?'Admin Master':u.role==='owner'?'Dono':u.role==='manager'?'Gestor':u.role==='financial'?'Financeiro':'Atendente'}</span></td>
+              <td style="padding:12px 16px"><span style="padding:2px 8px;border-radius:4px;background:${u.role==='admin'?'#ef444422;color:#ef4444':u.role==='owner'?'#00b89422;color:#00b894':'#3b82f622;color:#3b82f6'}">${u.role==='admin'?'Admin Master':u.role==='owner'?'Dono':u.role==='manager'?'Gestor':u.role==='financial'?'Financeiro':'Atendente'}</span></td>
               <td style="padding:12px 16px"><span style="padding:2px 8px;border-radius:4px;background:${u.is_active?'#22c55e22;color:#22c55e':'#ef444422;color:#ef4444'}">${u.is_active?'Ativo':'Inativo'}</span></td>
               <td style="padding:12px 16px;text-align:right"><button onclick="editUser('${u.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;font-size:10px"><i class="fa-solid fa-edit"></i></button></td>
             </tr>
@@ -4785,7 +4786,7 @@ function showCreateUserModal() {
     <div class="form-group"><label>Perfil</label><select id="new-user-role" style="width:100%;padding:10px 12px;background:#161b22;border:1px solid #2a3050;border-radius:8px;color:#e6edf3;font-size:13px"><option value="agent">Atendente</option><option value="manager">Gestor</option><option value="financial">Financeiro</option><option value="owner">Dono da Conta</option></select></div>`,
     footer: `
       <button onclick="closeModal(this.closest('.modal-overlay').id)" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px">Cancelar</button>
-      <button onclick="saveNewUser()" style="padding:8px 16px;border-radius:8px;border:none;background:#6c5ce7;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`
+      <button onclick="saveNewUser()" style="padding:8px 16px;border-radius:8px;border:none;background:#00b894;color:white;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-save"></i> Criar</button>`
   });
 }
 
@@ -4801,7 +4802,7 @@ async function loadAdminWorkspaces(el) {
     <div style="display:grid;gap:12px">
       ${(workspaces || []).map(w => `
         <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:16px">
-          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#6c5ce7);display:flex;align-items:center;justify-content:center;color:white"><i class="fa-solid fa-building"></i></div>
+          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#00b894);display:flex;align-items:center;justify-content:center;color:white"><i class="fa-solid fa-building"></i></div>
           <div style="flex:1">
             <div style="font-weight:600;font-size:14px">${w.name}</div>
             <div style="font-size:11px;color:var(--text-muted)">ID: ${w.id?.slice(0,8)} • Slug: ${w.slug}</div>
@@ -4882,6 +4883,429 @@ async function loadAdminLogs(el) {
       </table>
     </div>
   `;
+}
+
+// ─── Conexões (WhatsApp Instances) ───────────────────────────────
+let conexoesData = [];
+let conexoesModal = null;
+
+async function loadConexoes(el) {
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px"></i><p style="margin-top:8px">Carregando conexões...</p></div>';
+  conexoesData = await api('/api/conexoes') || [];
+  renderConexoes(el);
+}
+
+function renderConexoes(el) {
+  const connected = conexoesData.filter(c => c.status === 'connected').length;
+  const disconnected = conexoesData.filter(c => c.status !== 'connected').length;
+  const search = document.getElementById('conexoes-search')?.value?.toLowerCase() || '';
+  const filtered = search ? conexoesData.filter(c =>
+    (c.name || '').toLowerCase().includes(search) ||
+    (c.phone_number || '').toLowerCase().includes(search)
+  ) : conexoesData;
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <h2 style="margin:0;font-size:20px;font-weight:700;color:#e6edf3">Conexões</h2>
+        <p style="color:#8b9dc3;margin-top:2px;font-size:12px">Gerencie suas conexões WhatsApp</p>
+      </div>
+      <button onclick="openConexaoModal()" class="btn btn-primary" style="display:flex;align-items:center;gap:6px;padding:10px 18px">
+        <i class="fa-solid fa-plus"></i> Nova Conexão
+      </button>
+    </div>
+
+    <!-- Stats Cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Conectadas</p>
+          <p style="font-size:28px;font-weight:700;color:var(--success)">${connected}</p>
+        </div>
+        <div style="width:40px;height:40px;border-radius:10px;background:var(--success-bg);display:flex;align-items:center;justify-content:center">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--success)"></div>
+        </div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Desconectadas</p>
+          <p style="font-size:28px;font-weight:700;color:var(--danger)">${disconnected}</p>
+        </div>
+        <div style="width:40px;height:40px;border-radius:10px;background:var(--danger-bg);display:flex;align-items:center;justify-content:center">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--danger)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div style="margin-bottom:16px;position:relative">
+      <i class="fa-solid fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px"></i>
+      <input id="conexoes-search" type="text" placeholder="Busca por nome ou número da instância" value="${h(search)}"
+        oninput="renderConexoes(document.getElementById('content'))"
+        style="width:100%;padding:10px 12px 10px 36px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;color:var(--text-primary);font-size:13px;outline:none">
+    </div>
+
+    <!-- Connection List or Empty State -->
+    ${filtered.length === 0 ? renderConexoesEmpty(search) : renderConexoesList(filtered)}
+  `;
+}
+
+function renderConexoesEmpty(search) {
+  if (search) {
+    return `
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:40px;text-align:center">
+        <i class="fa-solid fa-search" style="font-size:32px;color:var(--text-muted);margin-bottom:12px"></i>
+        <p style="font-size:15px;font-weight:600;margin-bottom:4px">Nenhuma conexão encontrada</p>
+        <p style="font-size:12px;color:var(--text-muted)">Tente buscar por outro termo</p>
+      </div>`;
+  }
+  return `
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:48px;text-align:center">
+      <i class="fa-solid fa-plug" style="font-size:40px;color:var(--text-muted);margin-bottom:12px"></i>
+      <p style="font-size:15px;font-weight:600;margin-bottom:4px">Nenhuma conexão criada</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Crie sua primeira conexão para começar</p>
+      <button onclick="openConexaoModal()" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px">
+        <i class="fa-solid fa-plus"></i> Criar Primeira Conexão
+      </button>
+    </div>`;
+}
+
+function renderConexoesList(connections) {
+  return `
+    <div style="display:grid;gap:10px">
+      ${connections.map(c => renderConexaoCard(c)).join('')}
+    </div>
+  `;
+}
+
+function renderConexaoCard(c) {
+  const statusColors = {
+    connected: { bg: 'var(--success-bg)', color: 'var(--success)', text: 'Conectada', dot: 'var(--success)' },
+    connecting: { bg: 'var(--warning-bg)', color: 'var(--warning)', text: 'Conectando', dot: 'var(--warning)' },
+    pending: { bg: 'var(--info-bg)', color: 'var(--info)', text: 'Pendente', dot: 'var(--info)' },
+    disconnected: { bg: 'var(--danger-bg)', color: 'var(--danger)', text: 'Desconectada', dot: 'var(--danger)' },
+  };
+  const st = statusColors[c.status] || statusColors.disconnected;
+
+  return `
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:44px;height:44px;border-radius:11px;background:${c.provider === 'meta' ? 'rgba(59,130,246,0.15)' : 'var(--accent-light)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fa-brands fa-whatsapp" style="font-size:22px;color:${c.provider === 'meta' ? '#3b82f6' : 'var(--accent)'}"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+            <span style="font-weight:600;font-size:14px;color:var(--text-primary)">${h(c.name)}</span>
+            <span style="padding:2px 10px;border-radius:10px;font-size:10px;font-weight:600;background:${st.bg};color:${st.color}">
+              ${c.provider === 'meta' ? 'API Oficial' : 'Evolution'}
+            </span>
+            <span style="padding:2px 10px;border-radius:10px;font-size:10px;font-weight:600;background:${st.bg};color:${st.color};display:flex;align-items:center;gap:4px">
+              <span style="width:6px;height:6px;border-radius:50%;background:${st.dot}"></span>${st.text}
+            </span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text-muted)">
+            ${c.phone_number ? `<span><i class="fa-solid fa-phone" style="margin-right:4px"></i>${h(c.phone_number)}</span>` : ''}
+            <span><i class="fa-regular fa-clock" style="margin-right:4px"></i>${c.created_at ? timeAgo(c.created_at) : '-'}</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <button onclick="conexaoAction('${c.id}','connect')" class="btn btn-sm ${c.status === 'connected' ? 'btn-secondary' : 'btn-primary'}" style="padding:6px 12px;font-size:11px;border-radius:8px" title="${c.status === 'connected' ? 'Reconectar' : 'Conectar'}">
+            <i class="fa-solid ${c.status === 'connected' ? 'fa-rotate-right' : 'fa-link'}"></i>
+          </button>
+          <button onclick="conexaoAction('${c.id}','credentials')" class="btn btn-sm btn-secondary" style="padding:6px 10px;font-size:11px;border-radius:8px" title="Ver credenciais">
+            <i class="fa-solid fa-key"></i>
+          </button>
+          <button onclick="conexaoAction('${c.id}','delete')" class="btn btn-sm btn-secondary" style="padding:6px 10px;font-size:11px;border-radius:8px;color:var(--danger)" title="Excluir">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+          <button onclick="conexaoToggleMenu('${c.id}')" class="btn btn-sm btn-secondary" style="padding:6px 10px;font-size:11px;border-radius:8px">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </button>
+        </div>
+      </div>
+      <div id="conexao-menu-${c.id}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="conexaoAction('${c.id}','disconnect')" class="btn btn-sm btn-secondary" style="padding:6px 12px;font-size:11px;border-radius:8px"><i class="fa-solid fa-plug"></i> Desconectar</button>
+          <button onclick="conexaoAction('${c.id}','restart')" class="btn btn-sm btn-secondary" style="padding:6px 12px;font-size:11px;border-radius:8px"><i class="fa-solid fa-rotate"></i> Reiniciar</button>
+          <button onclick="conexaoAction('${c.id}','check-status')" class="btn btn-sm btn-secondary" style="padding:6px 12px;font-size:11px;border-radius:8px"><i class="fa-solid fa-heart-pulse"></i> Verificar status</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function conexaoToggleMenu(id) {
+  const menu = document.getElementById('conexao-menu-' + id);
+  if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+
+async function conexaoAction(id, action) {
+  const el = document.getElementById('content');
+  const c = conexoesData.find(x => x.id === id);
+  if (!c) return;
+
+  switch (action) {
+    case 'connect': {
+      if (c.provider === 'evolution') {
+        showToast('Solicitando QR Code...', 'info');
+        const result = await api(`/api/conexoes/${id}/connect`, { method: 'POST' });
+        if (result?.qrcode) {
+          showQRCodeModal(c.name, result.qrcode, result.pair_code);
+        } else {
+          showToast('Erro ao conectar: ' + (result?.error || 'sem resposta'), 'error');
+        }
+      } else {
+        showToast('Redirecionando para Meta...', 'info');
+      }
+      break;
+    }
+    case 'disconnect': {
+      conexaoConfirm({
+        title: 'Desconectar',
+        message: `Desconectar "${c.name}"?`,
+        danger: true,
+        onConfirm: async () => {
+          await api(`/api/conexoes/${id}/disconnect`, { method: 'POST' });
+          showToast('Desconectado', 'success');
+          loadConexoes(el);
+        }
+      });
+      break;
+    }
+    case 'restart': {
+      showToast('Reiniciando instância...', 'info');
+      const result = await api(`/api/conexoes/${id}/restart`, { method: 'POST' });
+      if (result?.ok) {
+        showToast('Instância reiniciada', 'success');
+        loadConexoes(el);
+      } else {
+        showToast('Erro ao reiniciar', 'error');
+      }
+      break;
+    }
+    case 'delete': {
+      conexaoConfirm({
+        title: 'Excluir Conexão',
+        message: `Tem certeza que deseja excluir permanentemente "${c.name}"?`,
+        danger: true,
+        onConfirm: async () => {
+          await api(`/api/conexoes/${id}`, { method: 'DELETE' });
+          showToast('Conexão excluída', 'success');
+          loadConexoes(el);
+        }
+      });
+      break;
+    }
+    case 'credentials': {
+      showToast('Carregando credenciais...', 'info');
+      const creds = await api(`/api/conexoes/${id}/credentials`);
+      if (creds) {
+        showCredentialsModal(c.name, creds);
+      }
+      break;
+    }
+    case 'check-status': {
+      const result = await api(`/api/conexoes/${id}/check-status`, { method: 'POST' });
+      if (result?.status) {
+        showToast(`Status: ${result.status} (${result.state || '-'})`, result.status === 'connected' ? 'success' : 'warning');
+        loadConexoes(el);
+      }
+      break;
+    }
+  }
+}
+
+// ─── Nova Conexão Modal ───────────────────────────────────────
+function openConexaoModal() {
+  conexoesModal = 'create';
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'conexao-modal-overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) closeConexaoModal(); };
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:460px">
+      <div class="modal-header">
+        <h3 style="margin:0;font-size:16px;font-weight:700">Nova Conexão</h3>
+        <button onclick="closeConexaoModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nome da Conexão *</label>
+          <input id="new-conexao-name" type="text" placeholder="Ex.: WhatsApp Vendas" style="width:100%;padding:12px 16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:14px;outline:none;font-family:inherit">
+        </div>
+        <div class="form-group">
+          <label>Tipo de Conexão</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+            <div id="conexao-type-evolution" class="conexao-type-card selected" onclick="selectConexaoType('evolution')" style="border:2px solid var(--accent);border-radius:10px;padding:14px;cursor:pointer;text-align:center;background:var(--accent-light);transition:all .2s">
+              <i class="fa-brands fa-whatsapp" style="font-size:22px;color:var(--accent);margin-bottom:6px;display:block"></i>
+              <div style="font-size:13px;font-weight:600;color:var(--text-primary)">Evolution API</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:2px">WhatsApp não oficial</div>
+            </div>
+            <div id="conexao-type-meta" class="conexao-type-card" onclick="selectConexaoType('meta')" style="border:2px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;text-align:center;transition:all .2s">
+              <i class="fa-brands fa-facebook" style="font-size:22px;color:#3b82f6;margin-bottom:6px;display:block"></i>
+              <div style="font-size:13px;font-weight:600;color:var(--text-primary)">API Oficial Meta</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:2px">WhatsApp Business API</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="closeConexaoModal()" class="btn btn-secondary" style="padding:10px 20px;font-size:13px">Cancelar</button>
+        <button onclick="createConexao()" class="btn btn-primary" style="padding:10px 20px;font-size:13px"><i class="fa-solid fa-plus"></i> Criar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  conexaoSelectedType = 'evolution';
+}
+
+let conexaoSelectedType = 'evolution';
+
+function selectConexaoType(type) {
+  conexaoSelectedType = type;
+  document.querySelectorAll('.conexao-type-card').forEach(c => {
+    c.style.borderColor = 'var(--border)';
+    c.style.background = 'transparent';
+  });
+  const el = document.getElementById('conexao-type-' + type);
+  if (el) {
+    el.style.borderColor = 'var(--accent)';
+    el.style.background = 'var(--accent-light)';
+  }
+}
+
+function closeConexaoModal() {
+  const overlay = document.getElementById('conexao-modal-overlay');
+  if (overlay) overlay.remove();
+  const qrOverlay = document.getElementById('conexao-qr-overlay');
+  if (qrOverlay) qrOverlay.remove();
+  const credOverlay = document.getElementById('conexao-cred-overlay');
+  if (credOverlay) credOverlay.remove();
+  conexoesModal = null;
+}
+
+async function createConexao() {
+  const name = document.getElementById('new-conexao-name')?.value?.trim();
+  if (!name) { showToast('Informe o nome da conexão', 'error'); return; }
+
+  closeConexaoModal();
+  showToast('Criando conexão...', 'info');
+  const result = await api('/api/conexoes', {
+    method: 'POST',
+    body: JSON.stringify({ name, provider: conexaoSelectedType }),
+  });
+
+  if (result?.id) {
+    showToast('Conexão criada!', 'success');
+    loadConexoes(document.getElementById('content'));
+  } else {
+    showToast('Erro ao criar: ' + (result?.error || 'desconhecido'), 'error');
+  }
+}
+
+// ─── QR Code Modal ────────────────────────────────────────────
+function showQRCodeModal(name, qrcodeBase64, pairCode) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'conexao-qr-overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:400px;text-align:center">
+      <div class="modal-header">
+        <h3 style="margin:0;font-size:16px;font-weight:700">Conectar ${h(name)}</h3>
+        <button onclick="this.closest('.modal-overlay').remove()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="padding:24px">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Escaneie o QR Code com o WhatsApp do seu celular</p>
+        ${qrcodeBase64 ? `<img src="${qrcodeBase64.startsWith('data:') ? '' : 'data:image/png;base64,'}${qrcodeBase64}" style="width:240px;height:240px;border-radius:12px;background:white;padding:8px;margin:0 auto 16px;display:block" alt="QR Code">` : ''}
+        ${pairCode ? `
+          <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Ou use o código de pareamento:</p>
+            <p style="font-size:24px;font-weight:700;letter-spacing:4px;color:var(--accent);font-family:monospace">${pairCode}</p>
+          </div>
+        ` : ''}
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button onclick="this.closest('.modal-overlay').remove();showToast('QR Code fechado','info')" class="btn btn-secondary" style="padding:10px 24px;font-size:13px">Fechar</button>
+          <button onclick="conexaoAction('${conexoesData.find(c => c.name === name)?.id || ''}','check-status')" class="btn btn-primary" style="padding:10px 24px;font-size:13px"><i class="fa-solid fa-rotate"></i> Verificar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+// ─── Credentials Modal ────────────────────────────────────────
+function showCredentialsModal(name, creds) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'conexao-cred-overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:500px">
+      <div class="modal-header">
+        <h3 style="margin:0;font-size:16px;font-weight:700">Credenciais - ${h(name)}</h3>
+        <button onclick="this.closest('.modal-overlay').remove()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Estas credenciais são somente leitura. Use o botão Copiar para utilizá-las.</p>
+        ${creds.api_url ? `
+          <div class="form-group">
+            <label>URL da Instância</label>
+            <div style="display:flex;gap:6px">
+              <input type="text" readonly value="${h(creds.api_url)}" style="flex:1;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:12px;font-family:monospace">
+              <button onclick="copyText('${h(creds.api_url)}')" class="btn btn-sm btn-secondary" style="padding:8px 12px;font-size:11px;border-radius:8px"><i class="fa-solid fa-copy"></i></button>
+            </div>
+          </div>
+        ` : ''}
+        ${creds.api_token ? `
+          <div class="form-group">
+            <label>Token da Instância</label>
+            <div style="display:flex;gap:6px">
+              <input type="text" id="cred-token-field" readonly value="${h(creds.api_token)}" style="flex:1;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:12px;font-family:monospace">
+              <button onclick="copyText(document.getElementById('cred-token-field').value)" class="btn btn-sm btn-secondary" style="padding:8px 12px;font-size:11px;border-radius:8px"><i class="fa-solid fa-copy"></i></button>
+            </div>
+          </div>
+        ` : ''}
+        ${creds.waba_id ? `<div class="form-group"><label>WABA ID</label><input type="text" readonly value="${h(creds.waba_id)}" style="width:100%;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:12px"></div>` : ''}
+        ${creds.phone_number_id ? `<div class="form-group"><label>ID do Número</label><input type="text" readonly value="${h(creds.phone_number_id)}" style="width:100%;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:12px"></div>` : ''}
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end">
+        <button onclick="this.closest('.modal-overlay').remove()" class="btn btn-secondary" style="padding:10px 20px;font-size:13px">Fechar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('Copiado para a área de transferência', 'success');
+  }).catch(() => {
+    showToast('Erro ao copiar', 'error');
+  });
+}
+
+function conexaoConfirm({ title, message, danger, onConfirm }) {
+  const mid = 'cx-confirm-' + Date.now();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = mid;
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(mid); };
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:400px">
+      <div class="modal-header">
+        <h3 style="margin:0;font-size:16px;font-weight:700">${title}</h3>
+        <button onclick="closeModal('${mid}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text-muted);font-size:13px;margin:0">${message}</p>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="closeModal('${mid}')" style="padding:8px 16px;border-radius:8px;border:1px solid #2a3050;background:#161b22;color:#8b9dc3;cursor:pointer;font-size:12px;font-weight:500">Cancelar</button>
+        <button id="${mid}-ok" style="padding:8px 16px;border-radius:8px;border:none;background:${danger ? '#ef4444' : '#00b894'};color:white;cursor:pointer;font-size:12px;font-weight:600">${danger ? 'Excluir' : 'Confirmar'}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById(mid + '-ok').onclick = () => { closeModal(mid); onConfirm(); };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────

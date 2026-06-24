@@ -28,6 +28,7 @@ import deployRoutes from './routes/deploy.js';
 import flowiseRoutes from './routes/flowise.js';
 import tagsRoutes from './routes/tags.js';
 import inboxRoutes from './routes/inbox.js';
+import conexoesRoutes from './routes/conexoes.js';
 import { getSupabase } from './db/supabase.js';
 import { authMiddleware } from './middleware/auth.js';
 
@@ -72,6 +73,7 @@ app.use('/api/deploy', authMiddleware, deployRoutes);
 app.use('/api/flowise', authMiddleware, flowiseRoutes);
 app.use('/api/tags', authMiddleware, tagsRoutes);
 app.use('/api/inbox', authMiddleware, inboxRoutes);
+app.use('/api/conexoes', authMiddleware, conexoesRoutes);
 
 // Simple health check (no auth required)
 app.get('/api/ping', (req, res) => {
