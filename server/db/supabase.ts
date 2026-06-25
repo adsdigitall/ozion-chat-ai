@@ -14,7 +14,10 @@ let supabase: SupabaseClient;
 export function getSupabase(): SupabaseClient {
   if (!supabase) {
     const SUPABASE_URL = getRequiredEnv('SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL');
-    const SUPABASE_KEY = getRequiredEnv('SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    // Use service role key for server-side operations (bypasses RLS)
+    // Falls back to anon key if service role key is not set
+    const SERVICE_ROLE_KEY = process.env['SUPABASE_SERVICE_ROLE_KEY'] || process.env['SUPABASE_SERVICE_KEY'];
+    const SUPABASE_KEY = SERVICE_ROLE_KEY || getRequiredEnv('SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY');
     supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   }
   return supabase;

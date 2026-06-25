@@ -34,7 +34,7 @@ router.post('/login', async (req, res) => {
     // For master admin, accept simple password check
     let passwordValid = false;
     
-    if (user.role === 'admin' && !user.password_hash?.startsWith('$2')) {
+    if ((user.role === 'admin' || user.role === 'admin_master') && !user.password_hash?.startsWith('$2')) {
       // Legacy admin - accept admin123
       passwordValid = password === 'admin123';
     } else if (user.password_hash) {
@@ -108,6 +108,101 @@ router.post('/login', async (req, res) => {
   } catch (error: any) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Register
+router.post('/register', async (req, res) => {
+  try {
+    const { name, email, password, company } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Nome, email e senha são obrigatórios' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Senha deve ter pelo menos 6 caracteres' });
+    }
+
+    const supabase = getSupabase();
+
+    // Check if user already exists
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single();
+
+    if (existing) {
+      return res.status(409).json({ error: 'Email já cadastrado' });
+    }
+
+    // Create tenant first
+    const tenantId = crypto.randomUUID();
+    const tenantSlug = (company || name || 'empresa').toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20) + '-' + Date.now().toString(36);
+
+    try {
+      await supabase.from('tenants').insert({
+        id: tenantId,
+        name: company || name + ' Business',
+        slug: tenantSlug,
+        is_master: 0,
+        plan: 'starter',
+        created_at: new Date().toISOString(),
+      });
+    } catch (e: any) {
+      console.warn('Tenant creation warning:', e.message);
+    }
+
+    // Create user
+    const userId = crypto.randomUUID();
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const { data: newUser, error: createError } = await supabase
+      .from('users')
+      .insert({
+        id: userId,
+        tenant_id: tenantId,
+        name,
+        email,
+        password_hash: passwordHash,
+        role: 'admin_master',
+        is_active: true,
+        permissions: '[]',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select('*')
+      .single();
+
+    if (createError) throw createError;
+
+    // Generate token
+    const authUser: AuthUser = {
+      id: userId,
+      email,
+      name,
+      role: 'admin_master',
+      tenant_id: tenantId,
+      permissions: [],
+      is_master: false,
+    };
+
+    const token = generateToken(authUser);
+
+    res.json({
+      token,
+      user: {
+        id: userId,
+        email,
+        name,
+        role: 'admin_master',
+        is_master: false,
+      },
+    });
+  } catch (error: any) {
+    console.error('Register error:', error);
+    res.status(500).json({ error: 'Erro ao criar conta: ' + (error.message || 'erro interno') });
   }
 });
 

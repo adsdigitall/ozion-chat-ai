@@ -159,7 +159,7 @@ function validateForm(fields, data) {
 
 // ─── Navigation (Dynamic based on user role) ──────────────────────
 function getNavItems() {
-  const isMaster = currentUser?.is_master || currentUser?.role === 'admin';
+  const isMaster = currentUser?.is_master || currentUser?.role === 'admin' || currentUser?.role === 'admin_master';
   
   // Admin Master navigation
   if (isMaster) {
@@ -211,6 +211,9 @@ function render() {
     return; 
   }
   
+  // Reset auth view when logged in
+  authView = 'login';
+  
   // Load user info if not loaded
   if (!currentUser) {
     const savedUser = localStorage.getItem('ozion_user');
@@ -227,18 +230,146 @@ function render() {
   loadPage(currentPage);
 }
 
+let authView = 'login';
+
 function loginHTML() {
-  return `<div class="login-screen"><div class="login-box">
-    <div style="text-align:center;margin-bottom:24px">
-      <div style="width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#7c3aed,#3b82f6);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px">🤖</div>
-      <h1 style="margin:0;font-size:22px">Ozion Chat AI</h1>
-      <p style="color:var(--text-muted);margin-top:4px;font-size:13px">Assistente de fluxos de conversa</p>
+  if (authView === 'signup') return signupHTML();
+  return `
+  <div class="login-screen" style="background:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+    <div style="width:100%;max-width:420px;padding:40px 32px">
+      <h1 style="font-size:28px;font-weight:800;color:#111;margin-bottom:8px;line-height:1.3">Comece a impulsionar os seus resultados de vendas.</h1>
+
+      <button onclick="showToast('Login com Facebook em breve','info')" style="width:100%;padding:14px;background:#1877f2;color:white;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:28px;font-family:inherit">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        Entrar com Facebook
+      </button>
+
+      <button onclick="showToast('Login com Google em breve','info')" style="width:100%;padding:14px;background:#fff;color:#333;border:1px solid #ddd;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px;font-family:inherit">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Fazer login como Ads
+      </button>
+
+      <div style="display:flex;align-items:center;margin:28px 0 20px;gap:12px">
+        <div style="flex:1;height:1px;background:#e0e0e0"></div>
+        <span style="font-size:13px;color:#888;white-space:nowrap">Ou acesse com seus dados</span>
+        <div style="flex:1;height:1px;background:#e0e0e0"></div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label style="font-size:14px;font-weight:600;color:#111;display:block;margin-bottom:6px">E-mail</label>
+        <div style="position:relative">
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#999;font-size:16px">✉</span>
+          <input id="login-email" type="email" placeholder="seu@email.com" value="admin@ozion.com"
+            style="width:100%;padding:14px 14px 14px 42px;border:1px solid #ddd;border-radius:10px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;background:#fff">
+        </div>
+      </div>
+
+      <div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+        <label style="font-size:14px;font-weight:600;color:#111">Senha</label>
+        <a href="#" onclick="showToast('Recuperação de senha em breve','info')" style="font-size:13px;color:#888;text-decoration:none">Esqueceu a senha?</a>
+      </div>
+      <div style="position:relative;margin-bottom:20px">
+        <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#999;font-size:16px">🔑</span>
+        <input id="login-pass" type="password" placeholder="••••••••" value="admin123"
+          style="width:100%;padding:14px 14px 14px 42px;border:1px solid #ddd;border-radius:10px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;background:#fff">
+      </div>
+
+      <div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:8px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="checkbox" id="recaptcha" style="width:20px;height:20px;cursor:pointer">
+          <span style="font-size:14px;color:#333">Não sou um robô</span>
+        </div>
+        <div style="text-align:center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <div style="font-size:8px;color:#999;margin-top:2px">reCAPTCHA</div>
+        </div>
+      </div>
+
+      <button onclick="doLogin()" style="width:100%;padding:14px;background:#9333ea;color:white;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit">
+        <span style="font-size:18px">➔</span> Acessar agora
+      </button>
+
+      <div style="display:flex;align-items:center;margin:24px 0 20px;gap:12px">
+        <div style="flex:1;height:1px;background:#e0e0e0"></div>
+        <span style="font-size:13px;color:#888;white-space:nowrap">Ainda não possui uma conta?</span>
+        <div style="flex:1;height:1px;background:#e0e0e0"></div>
+      </div>
+
+      <button onclick="authView='signup';render()" style="width:100%;padding:14px;background:#fff;color:#333;border:1px solid #ddd;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">
+        Clique aqui e cadastre-se
+      </button>
+
+      <div style="display:flex;justify-content:center;gap:24px;margin-top:32px">
+        <a href="#" style="font-size:12px;color:#999;text-decoration:none">Termos e condições</a>
+        <a href="#" style="font-size:12px;color:#999;text-decoration:none">Políticas de privacidade</a>
+      </div>
     </div>
-    <div class="form-group"><label>Email</label><input type="email" id="login-email" value="admin@ozion.com"></div>
-    <div class="form-group"><label>Senha</label><input type="password" id="login-pass" value="admin123"></div>
-    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="doLogin()"><i class="fa-solid fa-arrow-right"></i> Entrar</button>
-    <p style="text-align:center;margin-top:16px;font-size:11px;color:var(--text-muted)">Em 11 minutos seu IA está no ar</p>
-  </div></div>`;
+  </div>`;
+}
+
+function signupHTML() {
+  return `
+  <div class="login-screen" style="background:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+    <div style="width:100%;max-width:420px;padding:40px 32px">
+      <h1 style="font-size:28px;font-weight:800;color:#111;margin-bottom:8px;line-height:1.3">Crie sua conta gratuita.</h1>
+      <p style="font-size:14px;color:#666;margin-bottom:28px">Comece a impulsionar seus resultados agora.</p>
+
+      <div style="margin-bottom:16px">
+        <label style="font-size:14px;font-weight:600;color:#111;display:block;margin-bottom:6px">Nome completo</label>
+        <input id="signup-name" type="text" placeholder="Seu nome"
+          style="width:100%;padding:14px;border:1px solid #ddd;border-radius:10px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;background:#fff">
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label style="font-size:14px;font-weight:600;color:#111;display:block;margin-bottom:6px">Empresa</label>
+        <input id="signup-company" type="text" placeholder="Nome da empresa (opcional)"
+          style="width:100%;padding:14px;border:1px solid #ddd;border-radius:10px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;background:#fff">
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label style="font-size:14px;font-weight:600;color:#111;display:block;margin-bottom:6px">E-mail</label>
+        <div style="position:relative">
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#999;font-size:16px">✉</span>
+          <input id="signup-email" type="email" placeholder="seu@email.com"
+            style="width:100%;padding:14px 14px 14px 42px;border:1px solid #ddd;border-radius:10px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;background:#fff">
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <label style="font-size:14px;font-weight:600;color:#111;display:block;margin-bottom:6px">Senha</label>
+        <div style="position:relative">
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#999;font-size:16px">🔑</span>
+          <input id="signup-pass" type="password" placeholder="Mínimo 6 caracteres"
+            style="width:100%;padding:14px 14px 14px 42px;border:1px solid #ddd;border-radius:10px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;background:#fff">
+        </div>
+      </div>
+
+      <div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:8px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="checkbox" id="signup-recaptcha" style="width:20px;height:20px;cursor:pointer">
+          <span style="font-size:14px;color:#333">Não sou um robô</span>
+        </div>
+        <div style="text-align:center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <div style="font-size:8px;color:#999;margin-top:2px">reCAPTCHA</div>
+        </div>
+      </div>
+
+      <button onclick="doSignup()" style="width:100%;padding:14px;background:#9333ea;color:white;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit">
+        <span style="font-size:18px">➔</span> Criar minha conta
+      </button>
+
+      <div style="text-align:center;margin-top:24px">
+        <span style="font-size:13px;color:#888">Já possui uma conta? </span>
+        <a href="#" onclick="authView='login';render()" style="font-size:13px;color:#9333ea;font-weight:600;text-decoration:none">Fazer login</a>
+      </div>
+
+      <div style="display:flex;justify-content:center;gap:24px;margin-top:32px">
+        <a href="#" style="font-size:12px;color:#999;text-decoration:none">Termos e condições</a>
+        <a href="#" style="font-size:12px;color:#999;text-decoration:none">Políticas de privacidade</a>
+      </div>
+    </div>
+  </div>`;
 }
 
 function appHTML() {
@@ -340,9 +471,47 @@ function appHTML() {
 function navigate(page) { currentPage = page; selectedConv = null; render(); }
 function toggleSubmenu(id) { render(); }
 
+async function doSignup() {
+  const name = document.getElementById('signup-name')?.value?.trim();
+  const company = document.getElementById('signup-company')?.value?.trim();
+  const email = document.getElementById('signup-email')?.value?.trim();
+  const pass = document.getElementById('signup-pass')?.value;
+
+  if (!name) { showToast('Informe seu nome', 'error'); return; }
+  if (!email) { showToast('Informe seu email', 'error'); return; }
+  if (!pass || pass.length < 6) { showToast('Senha deve ter pelo menos 6 caracteres', 'error'); return; }
+
+  try {
+    const res = await fetch(API + '/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password: pass, company })
+    });
+
+    const data = await res.json();
+
+    if (data.token) {
+      setAuthToken(data.token);
+      currentUser = data.user;
+      localStorage.setItem('ozion_user', JSON.stringify(data.user));
+      localStorage.setItem('ozion_logged', '1');
+      authView = 'login';
+      showToast('Conta criada com sucesso!', 'success');
+      render();
+    } else {
+      showToast(data.error || 'Erro ao criar conta', 'error');
+    }
+  } catch (e) {
+    showToast('Erro ao conectar com o servidor', 'error');
+  }
+}
+
 async function doLogin() {
-  const email = document.getElementById('login-email')?.value || 'admin@ozion.com';
-  const pass = document.getElementById('login-pass')?.value || 'admin123';
+  const email = document.getElementById('login-email')?.value;
+  const pass = document.getElementById('login-pass')?.value;
+
+  if (!email) { showToast('Informe seu email', 'error'); return; }
+  if (!pass) { showToast('Informe sua senha', 'error'); return; }
   
   try {
     const res = await fetch(API + '/api/auth/login', {
@@ -4025,8 +4194,8 @@ function changePasswordSettings(){const o=document.getElementById('prof-old-pass
 // ─── Tab 3: Time ────────────────────────────────────────────────
 async function renderSettingsTeam(el) {
   const users = await api('/api/admin/users') || [];
-  const roleLabels = {owner:'Dono',admin:'Admin',manager:'Gestor',financial:'Financeiro',agent:'Atendente'};
-  const roleColors = {owner:'#00b894',admin:'#ef4444',manager:'#3b82f6',financial:'#f59e0b',agent:'#22c55e'};
+  const roleLabels = {owner:'Dono',admin:'Admin',admin_master:'Admin Master',manager:'Gestor',financial:'Financeiro',agent:'Atendente'};
+  const roleColors = {owner:'#00b894',admin:'#ef4444',admin_master:'#ef4444',manager:'#3b82f6',financial:'#f59e0b',agent:'#22c55e'};
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div><h3 style="margin:0;font-size:15px">Time</h3><p style="color:var(--text-muted);font-size:11px;margin:2px 0 0">${users.length} membros</p></div>
@@ -4765,7 +4934,7 @@ async function loadAdminUsers(el) {
             <tr style="border-bottom:1px solid var(--border)">
               <td style="padding:12px 16px"><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:600">${u.name?.charAt(0)?.toUpperCase() || '?'}</div><span style="font-weight:500">${u.name}</span></div></td>
               <td style="padding:12px 16px;color:var(--text-muted)">${u.email}</td>
-              <td style="padding:12px 16px"><span style="padding:2px 8px;border-radius:4px;background:${u.role==='admin'?'#ef444422;color:#ef4444':u.role==='owner'?'#00b89422;color:#00b894':'#3b82f622;color:#3b82f6'}">${u.role==='admin'?'Admin Master':u.role==='owner'?'Dono':u.role==='manager'?'Gestor':u.role==='financial'?'Financeiro':'Atendente'}</span></td>
+              <td style="padding:12px 16px"><span style="padding:2px 8px;border-radius:4px;background:${u.role==='admin'||u.role==='admin_master'?'#ef444422;color:#ef4444':u.role==='owner'?'#00b89422;color:#00b894':'#3b82f622;color:#3b82f6'}">${u.role==='admin'||u.role==='admin_master'?'Admin Master':u.role==='owner'?'Dono':u.role==='manager'?'Gestor':u.role==='financial'?'Financeiro':'Atendente'}</span></td>
               <td style="padding:12px 16px"><span style="padding:2px 8px;border-radius:4px;background:${u.is_active?'#22c55e22;color:#22c55e':'#ef444422;color:#ef4444'}">${u.is_active?'Ativo':'Inativo'}</span></td>
               <td style="padding:12px 16px;text-align:right"><button onclick="editUser('${u.id}')" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;font-size:10px"><i class="fa-solid fa-edit"></i></button></td>
             </tr>
